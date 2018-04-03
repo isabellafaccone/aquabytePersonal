@@ -6,6 +6,7 @@ services:
       - ./special.env
     volumes:
       - /home/ubuntu/thomas:/root/thomas/
+      - /data/:/root/data/
     ports:
       - "1234:1234"
     logging:

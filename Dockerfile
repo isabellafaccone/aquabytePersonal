@@ -1,11 +1,19 @@
 FROM tensorflow/tensorflow:latest-gpu
 
 RUN apt-get update && \
-    apt-get install -y  \
+    apt-get install -y \
         git \
         git-core \
+        libfontconfig1 \
+        libgconf-2-4 \
+        libglu1 \
+        libsm6 \
+        libxext6 \
+        libxi6 \
+        libxrender1 \
+        unrar \
         vim \
-        zip
+        wget
 
 COPY /src/requirements.txt /root/
 RUN pip install -r /root/requirements.txt

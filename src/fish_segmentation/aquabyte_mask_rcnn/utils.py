@@ -727,7 +727,7 @@ def download_trained_weights(coco_model_path, verbose=1):
     if verbose > 0:
         print("Downloading pretrained model to " + coco_model_path + " ...")
     resp = urllib2.urlopen(COCO_MODEL_URL)
-    with open(COCO_MODEL_PATH, 'wb') as out:
+    with open(coco_model_path, 'wb') as out:
         shutil.copyfileobj(resp, out)
     if verbose > 0:
         print("... done downloading pretrained model!")

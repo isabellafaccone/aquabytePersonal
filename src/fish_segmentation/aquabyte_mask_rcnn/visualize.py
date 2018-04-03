@@ -128,7 +128,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
                 color='w', size=11, backgroundcolor="none")
 
         # Mask
-        mask = masks[:, :, i]
+        mask = masks[:512, :512, i]
         masked_image = apply_mask(masked_image, mask, color)
 
         # Mask Polygon

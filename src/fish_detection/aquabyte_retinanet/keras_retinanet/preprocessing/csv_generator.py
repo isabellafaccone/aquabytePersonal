@@ -71,7 +71,7 @@ def _read_annotations(csv_reader, classes):
         if (x1, y1, x2, y2, class_name) == ('', '', '', '', ''):
             continue
 
-        x1 = _parse(x1, _read_annotationsint, 'line {}: malformed x1: {{}}'.format(line))
+        x1 = _parse(x1, int, 'line {}: malformed x1: {{}}'.format(line))
         y1 = _parse(y1, int, 'line {}: malformed y1: {{}}'.format(line))
         x2 = _parse(x2, int, 'line {}: malformed x2: {{}}'.format(line))
         y2 = _parse(y2, int, 'line {}: malformed y2: {{}}'.format(line))
@@ -97,7 +97,7 @@ def _open_for_csv(path):
     This is different for python2 it means with mode 'rb',
     for python3 this means 'r' with "universal newlines".
     """
-    if sys.version_info[_read_annotations0] < 3:
+    if sys.version_info[0] < 3:
         return open(path, 'rb')
     else:
         return open(path, 'r', newline='')

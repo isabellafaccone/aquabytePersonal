@@ -1,4 +1,4 @@
-# Aquabyte trainer
+# Aquabyte CV research
 
 This repository is used to train various models for the aquabyte-ml pipeline. As of now, Aquabyte trainer can train a 
 fish detection model using Retinanet and a fish segmentation model using Mask-RCNN. 
