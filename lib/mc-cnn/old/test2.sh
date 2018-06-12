@@ -1,0 +1,1 @@
+floyd run --data NrEPEBVu3UesckDxwa5Tp6 --env torch:py2 "th samples/bin2png.lua"
