@@ -44,6 +44,7 @@ def get_data(data_dir_base, idx, include_image=True):
     annotation_file_name = 'annot_{}.json'.format(idx)
     annotation_file_path = '{}/{}/{}'.format(data_dir_base, 'annotations', annotation_file_name)
     annotation_data = json.load(open(annotation_file_path, 'rb'))
+    print(annotation_data)
 
     # get segmentation data
     segmentation_file_name = 'left_{}.npy'.format(idx)
