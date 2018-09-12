@@ -1,4 +1,0 @@
-floyd run --gpu --env torch:py2 "th predict.lua -net_fname net/net_kitti_fast_-a_train_all.t7 -left samples/input/kittiL.jpg -right samples/input/kittiR.jpg -disp_max 70"
-#floyd run --gpu --env torch:py2 "th main.lua kitti fast -a predict -net_fname net/net_kitti_fast_-a_train_all.t7 -left samples/input/kittiL.jpg -right samples/input/kittiR.jpg -disp_max 70"
-#floyd run --gpu --env torch:py2 "apt-get install libpng++-dev && make && th main.lua kitti fast -a predict -net_fname net/net_kitti_fast_-a_train_all.t7 -left samples/input/20m_00s_042803u.png -right samples/input/20m_00s_042803u_1.png -disp_max 70"
-#floyd run --gpu --data CexLkNrSyz4DMe3MeaSbeX --env torch:py2 "apt-get install libpng++-dev && make && th main.lua kitti fast -a predict -net_fname net/net_kitti_fast_-a_train_all.t7 -left samples/input/kittiL.jpg -right samples/input/kittiR.jpg -disp_max 70"
