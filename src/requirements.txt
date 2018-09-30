@@ -1,0 +1,7 @@
+Cython==0.28.1
+Keras==2.1.5
+np-utils==0.5.4.0
+opencv-python==3.4.0.12
+scikit-image==0.13.1
+scikit-learn==0.19.1
+SQLAlchemy==1.2.5
