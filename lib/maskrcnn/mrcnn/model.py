@@ -1626,7 +1626,7 @@ def generate_random_rois(image_shape, count, gt_class_ids, gt_boxes):
     return rois
 
 
-def data_generator(dataset, config, shuffle=True, augment=False, augmentation=None,
+def data_generator(dataset, config, shuffle=True, augment=False, augmentation={'imgaug': None, 'albumentations': None},
                    random_rois=0, batch_size=1, detection_targets=False):
     """A generator that returns images and corresponding target class ids,
     bounding box deltas, and masks.
@@ -2232,7 +2232,7 @@ class MaskRCNN():
                 self.epoch = int(m.group(6)) - 1 + 1
 
         # Directory for training logs
-        self.log_dir = os.path.join(self.model_dir, "{}{:%Y%m%dT%H%M}".format(
+        self.log_dir = os.path.join(self.model_dir, "{}_{:%Y%m%d_%HH%M}".format(
             self.config.NAME.lower(), now))
 
         # Path to save after each epoch. Include placeholders that get filled by Keras.
@@ -2241,8 +2241,8 @@ class MaskRCNN():
         self.checkpoint_path = self.checkpoint_path.replace(
             "*epoch*", "{epoch:04d}")
 
-    def train(self, train_dataset, val_dataset, learning_rate, epochs, layers,
-              augmentation=None):
+    def train(self, train_dataset, val_dataset, learning_rate, epochs, layers, callback_list,
+              augmentation={'imgaug': None, 'albumentations': None}):
         """Train the model.
         train_dataset, val_dataset: Training and validation Dataset objects.
         learning_rate: The learning rate to train with
@@ -2294,12 +2294,7 @@ class MaskRCNN():
                                        batch_size=self.config.BATCH_SIZE)
 
         # Callbacks
-        callbacks = [
-            keras.callbacks.TensorBoard(log_dir=self.log_dir,
-                                        histogram_freq=0, write_graph=True, write_images=False),
-            keras.callbacks.ModelCheckpoint(self.checkpoint_path,
-                                            verbose=0, save_weights_only=True),
-        ]
+        callbacks = callback_list
 
         # Train
         log("\nStarting at epoch {}. LR={}\n".format(self.epoch, learning_rate))
