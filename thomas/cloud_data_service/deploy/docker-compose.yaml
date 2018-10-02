@@ -1,0 +1,20 @@
+version: '3.1'
+services:
+  cloud-data-service:
+    build: ../
+    image: cloud_data_service
+    volumes:
+      - /data/:/root/data/
+    secrets:
+      - aws_credentials
+    environment:
+      - AWS_CREDENTIALS=/run/secrets/aws_credentials
+    logging:
+      driver: journald
+      options:
+        tag: "cloud-data-service"
+    restart: always
+
+secrets:
+  aws_credentials:
+    file: ./aws_credentials.json
