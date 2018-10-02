@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import glob
-from utils import crop_and_mask
+#from utils import crop_and_mask
 from obb import OBB
 import cv2
 import copy
@@ -117,7 +117,7 @@ def computes_noised_sliced_dmap(mdepth, mask, x1, x2, stdev, nb_of_regions):
     new_depth = copy.deepcopy(mdepth)
     noised_dmap_list = []
     quotient = (x2 - x1) / nb_of_regions
-    print(x2, x1, quotient)
+    #print(x2, x1, quotient)
     for slice_ix in range(nb_of_regions):
         x_start = x1 + slice_ix * quotient
         if slice_ix != nb_of_regions - 1:
