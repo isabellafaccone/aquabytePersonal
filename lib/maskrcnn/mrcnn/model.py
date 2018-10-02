@@ -1217,17 +1217,17 @@ def load_image_gt(dataset, config, image_id, augment=False, augmentation=None,
         mode=config.IMAGE_RESIZE_MODE)
     mask = utils.resize_mask(mask, scale, padding, crop)
 
-    # Random horizontal flips.
-    # TODO: will be removed in a future update in favor of augmentation
-    if augment:
-        logging.warning("'augment' is depricated. Use 'augmentation' instead.")
-        if random.randint(0, 1):
-            image = np.fliplr(image)
-            mask = np.fliplr(mask)
-
     # Augmentation
+    # either with img or albumentations
+    if augmentation['albumentations']:
+        from albumentations import Compose
+        aug = Compose(augmentation['albumentations'])
+        augmented = aug(image=image, mask=np.array(mask, np.uint8))
+        image = augmented['image']
+        mask = augmented['mask']
+    
     # This requires the imgaug lib (https://github.com/aleju/imgaug)
-    if augmentation:
+    if augmentation['imgaug']:
         import imgaug
 
         # Augmentors that are safe to apply to masks

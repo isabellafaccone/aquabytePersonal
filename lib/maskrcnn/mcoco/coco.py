@@ -92,7 +92,7 @@ class CocoConfig(Config):
 ############################################################
 
 class CocoDataset(utils.Dataset):
-    def load_coco(self, dataset_dir, dataset_name, subset, year=DEFAULT_DATASET_YEAR, class_ids=None,
+    def load_coco(self, coco_file_path, year=DEFAULT_DATASET_YEAR, class_ids=None,
                   class_map=None, return_coco=False, auto_download=False):
         """Load a subset of the COCO dataset.
         dataset_dir: The root directory of the COCO dataset.
@@ -108,11 +108,8 @@ class CocoDataset(utils.Dataset):
         if auto_download is True:
             self.auto_download(dataset_dir, subset, year)
 
-        coco = COCO("{}/instance_annotations/instance_{}_{}.json".format(dataset_dir, dataset_name, subset))
-        if subset == "minival" or subset == "valminusminival":
-            subset = "val"
-        image_dir = "{}/instance_{}_images".format(dataset_dir, subset)
-
+        coco = COCO(coco_file_path)
+        
         # Load all classes or a subset?
         if not class_ids:
             # All classes
@@ -137,7 +134,7 @@ class CocoDataset(utils.Dataset):
         for i in image_ids:
             self.add_image(
                 "coco", image_id=i,
-                path=os.path.join(image_dir, coco.imgs[i]['file_name']),
+                path=coco.imgs[i]['local_path'],
                 width=coco.imgs[i]["width"],
                 height=coco.imgs[i]["height"],
                 annotations=coco.loadAnns(coco.getAnnIds(
