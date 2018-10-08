@@ -797,6 +797,22 @@ def compute_recall(pred_boxes, gt_boxes, iou):
     recall = len(set(matched_gt_boxes)) / gt_boxes.shape[0]
     return recall, positive_ids
 
+def compute_precision(pred_boxes, gt_boxes, iou):
+    """ Compute the precision at the given IoU threshold.
+    """
+    overlaps = compute_overlaps(pred_boxes, gt_boxes)
+    iou_max = np.max(overlaps, axis=1)
+    iou_argmax = np.argmax(overlaps, axis=1)
+    positive_ids = np.where(iou_max >= iou)[0]
+    matched_gt_boxes = iou_argmax[positive_ids]
+    
+    if  len(set(matched_gt_boxes)) == 0:
+        precision = 0
+    else:
+        precision = len(set(matched_gt_boxes)) / pred_boxes.shape[0]
+
+    return precision
+
 
 # ## Batch Slicing
 # Some custom layers support a batch size of 1 only, and require a lot of work

@@ -6,6 +6,7 @@ import mrcnn.model as modellib
 import pycocotools
 import pycococreatortools.pycococreatortools as pycococreatortools
 import datetime
+from tqdm import tqdm
 
 def compute_per_class_precision(gt_boxes, gt_class_ids, gt_masks,
               pred_boxes, pred_class_ids, pred_scores, pred_masks,
@@ -70,7 +71,8 @@ def compute_multiple_per_class_precision(model, inference_config, dataset, iou_t
 
     class_precisions = {}
 
-    for image_id in image_ids:
+    for i in tqdm(range(len(image_ids))):
+        image_id = image_ids[i]
         image, _, gt_class_id, gt_bbox, gt_mask =\
             modellib.load_image_gt(dataset, inference_config,
                                 image_id, use_mini_mask=False)
@@ -91,7 +93,7 @@ def compute_multiple_per_class_precision(model, inference_config, dataset, iou_t
                 
     return class_precisions
 
-def result_to_coco(result, class_names, image_size, tolerance=2, INFO=None, LICENSES=None):
+def result_to_coco(result, class_names, image_size, tolerance=2, image_id=1, INFO=None, LICENSES=None):
     """Encodes Mask R-CNN detection result into COCO format
     """
 
@@ -116,7 +118,7 @@ def result_to_coco(result, class_names, image_size, tolerance=2, INFO=None, LICE
 
     IMAGES = [
         {
-            "id": 1,
+            "id": image_id,
             "width": image_size[1],
             "height": image_size[0],
             "license": 1
@@ -155,7 +157,7 @@ def result_to_coco(result, class_names, image_size, tolerance=2, INFO=None, LICE
 
         annotation = pycococreatortools.create_annotation_info(
             annotation_id=index,
-            image_id=1,
+            image_id=image_id,
             category_info={"id": result['class_ids'][index].item(), "is_crowd": False},
             binary_mask=mask,
             image_size=image_size,

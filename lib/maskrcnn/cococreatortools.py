@@ -59,13 +59,14 @@ def binary_mask_to_polygon(binary_mask, tolerance=0):
 
     return polygons
 
-def create_image_info(image_id, file_name, image_size, 
+def create_image_info(image_id, file_path, image_size,
                       date_captured=datetime.datetime.utcnow().isoformat(' '),
                       license_id=1, coco_url="", flickr_url=""):
 
     image_info = {
             "id": image_id,
-            "file_name": file_name,
+            "file_name": os.path.basename(file_path),
+            "local_path": file_path,
             "width": image_size[0],
             "height": image_size[1],
             "date_captured": date_captured,
@@ -76,7 +77,8 @@ def create_image_info(image_id, file_name, image_size,
 
     return image_info
 
-def create_annotation_info(annotation_id, image_id, category_info, binary_mask, 
+
+def create_annotation_info(annotation_id, image_id, category_info, binary_mask,
                            image_size=None, tolerance=2, bounding_box=None):
 
     if image_size is not None:
@@ -91,10 +93,12 @@ def create_annotation_info(annotation_id, image_id, category_info, binary_mask,
     if bounding_box is None:
         bounding_box = mask.toBbox(binary_mask_encoded)
 
+    # TODO (@Thomas) check the effect of the tolerance parameter
+    category_info["is_crowd"] = 0
     if category_info["is_crowd"]:
         is_crowd = 1
         segmentation = binary_mask_to_rle(binary_mask)
-    else :
+    else:
         is_crowd = 0
         segmentation = binary_mask_to_polygon(binary_mask, tolerance)
         if not segmentation:
@@ -110,18 +114,8 @@ def create_annotation_info(annotation_id, image_id, category_info, binary_mask,
         "segmentation": segmentation,
         "width": binary_mask.shape[1],
         "height": binary_mask.shape[0],
-    } 
+    }
 
     return annotation_info
 
-def filter_for_annotations(root, files, image_filename):
-    file_types = ['*.png']
-    file_types = r'|'.join([fnmatch.translate(x) for x in file_types])
-    basename_no_extension = os.path.splitext(os.path.basename(image_filename))[0]
-    file_name_prefix = basename_no_extension + '.*'
-    files = [os.path.join(root, f) for f in files]
-    files = [f for f in files if re.match(file_types, f)]
-    files = [f for f in files if re.match(file_name_prefix, os.path.splitext(os.path.basename(f))[0])]
-
-    return files
 
