@@ -6,6 +6,8 @@ Copyright (c) 2017 Matterport, Inc.
 Licensed under the MIT License (see LICENSE for details)
 Written by Waleed Abdulla
 """
+import json
+import os
 
 import math
 import numpy as np
@@ -212,3 +214,23 @@ class Config(object):
             if not a.startswith("__") and not callable(getattr(self, a)):
                 print("{:30} {}".format(a, getattr(self, a)))
         print("\n")
+        
+    def to_json(self, log_dir):
+        """Jsonify Configuration values."""
+        config_dict = {}
+        config_path = os.path.join(log_dir, "config_{}.json".format(self.NAME))
+        if not os.path.isfile(config_path):
+            for a in dir(self):
+                if not a.startswith("__") and not callable(getattr(self, a)):
+                    if type(getattr(self, a)) == np.ndarray:
+                        config_dict[a] = getattr(self, a).tolist()
+                    else:
+                        config_dict[a] = getattr(self, a)
+            if not os.path.isdir(log_dir):
+                os.makedirs(log_dir)
+
+            with open(config_path, 'w') as f:
+                json.dump(config_dict, f)
+            print("Config saved at {}".format(config_path))
+        else:
+            print('Config file already exist')

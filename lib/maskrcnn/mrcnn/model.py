@@ -2224,18 +2224,16 @@ class MaskRCNN():
             # Continue from we left of. Get epoch and date from the file name
             # A sample model path might look like:
             # /path/to/logs/coco20171029T2315/mask_rcnn_coco_0001.h5
-            regex = r".*/\w+(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})/mask\_rcnn\_\w+(\d{4})\.h5"
-            m = re.match(regex, model_path)
-            if m:
-                now = datetime.datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)),
-                                        int(m.group(4)), int(m.group(5)))
-                # Epoch number in file is 1-based, and in Keras code it's 0-based.
-                # So, adjust for that then increment by one to start from the next epoch
-                self.epoch = int(m.group(6)) - 1 + 1
-
-        # Directory for training logs
-        self.log_dir = os.path.join(self.model_dir, "{}_{:%Y%m%d_%HH%M}".format(
-            self.config.NAME.lower(), now))
+            try:
+                self.epoch = int(os.path.basename(model_path).split('.')[0].split('_')[-1])
+                self.log_dir = os.path.dirname(model_path)
+            except:
+                self.epoch = 0
+                self.log_dir = os.path.join(self.model_dir, "{}_{:%Y%m%d_%HH%M}".format(self.config.NAME.lower(), now))
+        else:
+            # Directory for training logs
+            self.log_dir = os.path.join(self.model_dir, "{}_{:%Y%m%d_%HH%M}".format(
+                self.config.NAME.lower(), now))
 
         # Path to save after each epoch. Include placeholders that get filled by Keras.
         self.checkpoint_path = os.path.join(self.log_dir, "mask_rcnn_{}_*epoch*.h5".format(
