@@ -79,7 +79,7 @@ orientation = {'curved': 4, 'lateral': 5, 'other': 6}
 credentials = json.load(open("credentials.json"))
 s3_client = boto3.client('s3', aws_access_key_id=credentials["aws_access_key_id"],
                          aws_secret_access_key=credentials["aws_secret_access_key"],
-                         region_name="us-west-1")
+                         region_name="eu-west-1")
 
 
 def main(base_folder):

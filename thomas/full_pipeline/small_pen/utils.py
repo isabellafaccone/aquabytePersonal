@@ -35,7 +35,7 @@ def convert_to_world_point(x, y, d):
 
 
 def get_local_dic():
-    all_images_path = glob.glob('/root/data/small_pen_data_collection/sotra-small-pen/pen-1/2018-10-01/*/*.jpg')
+    all_images_path = glob.glob('/root/data/small_pen_data_collection/*_rectified/*.jpg')
     local_dic = {}
     for path in all_images_path:
         if 'rectified' not in path:
@@ -43,16 +43,19 @@ def get_local_dic():
     return local_dic
 
 
-def get_pairs(example_coco, local_dic):
+def get_pairs(example_coco, local_dic=None):
     # create pairs list
     pairs = {}
     for (imgid, imgdata) in example_coco.imgs.items():
-        file_name = imgdata['coco_url'].split('%2F')[2].split('?alt')[0]
-        img_path = local_dic[file_name]
+        if 'local_path' in imgdata:
+            img_path = imgdata['local_path']
+        else:
+            file_name = imgdata['coco_url'].split('%2F')[2].split('?alt')[0]
+            img_path = local_dic[file_name]
         annotation_ids = example_coco.getAnnIds(imgIds=[imgid])
         if len(annotation_ids) == 0:
             continue
-        if 'rectified' not in img_path:
+        if 'rectified' in img_path:
             ts = os.path.basename(img_path).split('.')[0].split('_')[-1]
             side = os.path.basename(img_path).split('.')[0].split('_')[0]
             if ts not in pairs:
