@@ -22,6 +22,10 @@ class Config(object):
     sub-class that inherits from this one and override properties
     that need to be changed.
     """
+    # Using coordconv or not https://arxiv.org/pdf/1807.03247.pdf
+    COORDCONV = False
+    
+    
     # Name the configurations. For example, 'COCO', 'Experiment 3', ...etc.
     # Useful if your code needs to do things differently depending on which
     # experiment is running.

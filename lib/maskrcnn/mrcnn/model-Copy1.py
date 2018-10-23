@@ -25,7 +25,7 @@ import keras.engine as KE
 import keras.models as KM
 
 from mrcnn import utils
-from mrcnn import coord
+from coord import CoordinateChannel2D
 
 # Requires TensorFlow 1.3+ and Keras 2.0.8+.
 from distutils.version import LooseVersion
@@ -824,7 +824,7 @@ class DetectionLayer(KE.Layer):
 #  Region Proposal Network (RPN)
 ############################################################
 
-def rpn_graph(feature_map, anchors_per_location, anchor_stride, coordconv):
+def rpn_graph(feature_map, anchors_per_location, anchor_stride):
     """Builds the computation graph of Region Proposal Network.
 
     feature_map: backbone features [batch, height, width, depth]
@@ -841,25 +841,13 @@ def rpn_graph(feature_map, anchors_per_location, anchor_stride, coordconv):
     # TODO: check if stride of 2 causes alignment issues if the featuremap
     #       is not even.
     # Shared convolutional base of the RPN
-    print(feature_map)
-    if coordconv:
-        x = coord.CoordinateChannel2D(data_format="channels_last")(feature_map)
-        shared = KL.Conv2D(512, (3, 3), padding='same', activation='relu',
-                           strides=anchor_stride,
-                           name='rpn_conv_shared')(x)
-    else:
-        shared = KL.Conv2D(512, (3, 3), padding='same', activation='relu',
-                           strides=anchor_stride,
-                           name='rpn_conv_shared')(feature_map)
+    shared = KL.Conv2D(512, (3, 3), padding='same', activation='relu',
+                       strides=anchor_stride,
+                       name='rpn_conv_shared')(feature_map)
 
     # Anchor Score. [batch, height, width, anchors per location * 2].
-    if coordconv:
-        x = coord.CoordinateChannel2D(data_format="channels_last")(shared)
-        x = KL.Conv2D(2 * anchors_per_location, (1, 1), padding='valid',
-                      activation='linear', name='rpn_class_raw')(x)
-    else:
-        x = KL.Conv2D(2 * anchors_per_location, (1, 1), padding='valid',
-                      activation='linear', name='rpn_class_raw')(shared)
+    x = KL.Conv2D(2 * anchors_per_location, (1, 1), padding='valid',
+                  activation='linear', name='rpn_class_raw')(shared)
 
     # Reshape to [batch, anchors, 2]
     rpn_class_logits = KL.Lambda(
@@ -871,13 +859,8 @@ def rpn_graph(feature_map, anchors_per_location, anchor_stride, coordconv):
 
     # Bounding box refinement. [batch, H, W, anchors per location, depth]
     # where depth is [x, y, log(w), log(h)]
-    if coordconv:
-        x = coord.CoordinateChannel2D(data_format="channels_last")(shared)
-        x = KL.Conv2D(anchors_per_location * 4, (1, 1), padding="valid",
-                      activation='linear', name='rpn_bbox_pred')(x)
-    else:
-        x = KL.Conv2D(anchors_per_location * 4, (1, 1), padding="valid",
-                      activation='linear', name='rpn_bbox_pred')(shared)
+    x = KL.Conv2D(anchors_per_location * 4, (1, 1), padding="valid",
+                  activation='linear', name='rpn_bbox_pred')(shared)
 
     # Reshape to [batch, anchors, 4]
     rpn_bbox = KL.Lambda(lambda t: tf.reshape(t, [tf.shape(t)[0], -1, 4]))(x)
@@ -885,7 +868,7 @@ def rpn_graph(feature_map, anchors_per_location, anchor_stride, coordconv):
     return [rpn_class_logits, rpn_probs, rpn_bbox]
 
 
-def build_rpn_model(anchor_stride, anchors_per_location, depth, coordconv):
+def build_rpn_model(anchor_stride, anchors_per_location, depth):
     """Builds a Keras model of the Region Proposal Network.
     It wraps the RPN graph so it can be used multiple times with shared
     weights.
@@ -903,7 +886,7 @@ def build_rpn_model(anchor_stride, anchors_per_location, depth, coordconv):
     """
     input_feature_map = KL.Input(shape=[None, None, depth],
                                  name="input_rpn_feature_map")
-    outputs = rpn_graph(input_feature_map, anchors_per_location, anchor_stride, coordconv)
+    outputs = rpn_graph(input_feature_map, anchors_per_location, anchor_stride)
     return KM.Model([input_feature_map], outputs, name="rpn_model")
 
 
@@ -1841,10 +1824,7 @@ class MaskRCNN():
         self.model_dir = model_dir
         self.set_log_dir()
         self.keras_model = self.build(mode=mode, config=config)
-    
-    def summary(self):
-        print(self.keras_model.summary())
-    
+
     def build(self, mode, config):
         """Build Mask R-CNN architecture.
             input_shape: The shape of the input image.
@@ -1942,7 +1922,7 @@ class MaskRCNN():
 
         # RPN Model
         rpn = build_rpn_model(config.RPN_ANCHOR_STRIDE,
-                              len(config.RPN_ANCHOR_RATIOS), 256, config.COORDCONV)
+                              len(config.RPN_ANCHOR_RATIOS), 256)
         # Loop through pyramid layers
         layer_outputs = []  # list of lists
         for p in rpn_feature_maps:
