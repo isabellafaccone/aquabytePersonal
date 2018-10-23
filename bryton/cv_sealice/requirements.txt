@@ -1,2 +1,0 @@
-opencv-python==3.4.0.12
-scikit-image==0.13.1
