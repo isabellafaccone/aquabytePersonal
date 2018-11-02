@@ -24,7 +24,7 @@ const fields = [ 'id',
   'mechanicalRemoval',
   'timeSinceLastChitinSynthesisInhibitorTreatment' ];
 
-const outputPath = './out.csv';
+const outputPath = './2015.csv';
 
 const opts = { fields };
 const transformOpts = { encoding: 'utf-8' };
@@ -35,9 +35,9 @@ const json2csv = new Json2csvTransform(opts, transformOpts);
  
 const processor = json2csv.pipe(output);
 
-let year = 2016;
+let year = 2015;
 
-let month = 1;
+let month = 27;
 
 let allData = [];
 
@@ -61,13 +61,17 @@ async.whilst(() => { return month <= 52; }, (cb) => {
       let localityWeekUrl = `https://www.barentswatch.no/api/v1/geodata/fishhealth/locality/${localityNumber}/${year}/${month}`;
     
       request({ url: localityWeekUrl }, (err, resp, body) => {
-        let localityWeekData = JSON.parse(body);
+        let localityWeekData;
+
+        if (body) {
+          localityWeekData = JSON.parse(body);
+        } else {
+          debugger;
+        }
 
         allData.push(localityWeekData.localityWeek);
 
         json2csv.write(JSON.stringify(localityWeekData.localityWeek));
-
-        debugger;
 
         cb();
       });
