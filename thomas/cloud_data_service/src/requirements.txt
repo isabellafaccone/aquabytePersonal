@@ -1,5 +1,6 @@
 boto3==1.7.49
 Cython==0.28.1
 numpy==1.14.1
+opencv-python==3.4.3.18
 Pillow==5.0.0
 scikit-image==0.13.1

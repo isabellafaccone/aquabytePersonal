@@ -45,7 +45,7 @@ def create_combinations_files(json_path, info, licenses, categories, base_folder
 
     for (i, annotation) in enumerate(annotations['Images']):
         if i % 50 == 0:
-            print ('Image {} out of {} downloaded and added'.format(i, len(annotations['Images'])))
+            print ('Image {} out of {} postprocessed'.format(i, len(annotations['Images'])))
 
         url = annotation['ImageURL']
         image_name = os.path.basename(url)
