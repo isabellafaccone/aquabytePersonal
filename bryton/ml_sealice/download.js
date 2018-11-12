@@ -24,7 +24,7 @@ const fields = [ 'id',
   'mechanicalRemoval',
   'timeSinceLastChitinSynthesisInhibitorTreatment' ];
 
-const outputPath = './out.csv';
+const outputPath = './2018_36.csv';
 
 const opts = { fields };
 const transformOpts = { encoding: 'utf-8' };
@@ -35,9 +35,9 @@ const json2csv = new Json2csvTransform(opts, transformOpts);
  
 const processor = json2csv.pipe(output);
 
-let year = 2016;
+let year = 2018;
 
-let month = 1;
+let month = 36;
 
 let allData = [];
 
