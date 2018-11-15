@@ -35,7 +35,11 @@ const json2csv = new Json2csvTransform(opts, transformOpts);
  
 const processor = json2csv.pipe(output);
 
+<<<<<<< HEAD
 let year = 2016;
+=======
+let year = 2018;
+>>>>>>> 9a56a3ac353998f8f8c6daeaa3518bfd1d6e296f
 
 let month = 1;
 
@@ -46,6 +50,10 @@ async.whilst(() => { return month <= 52; }, (cb) => {
 
   request({ url: localitiesURL }, (err, resp, body) => {
     let localitiesData = JSON.parse(body);
+
+    console.log(JSON.stringify(localitiesData, null, 2));
+
+    process.exit(0);
 
     let localityNumbers = [];
 
