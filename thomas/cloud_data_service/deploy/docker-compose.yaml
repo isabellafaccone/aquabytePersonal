@@ -3,12 +3,15 @@ services:
   cloud-data-service:
     build: ../
     image: cloud_data_service
+    container_name: cloud_data_service
     volumes:
-      - /data/:/root/data/
+      - /data/:/app/data/
     secrets:
       - aws_credentials
+      - sql_credentials
     environment:
       - AWS_CREDENTIALS=/run/secrets/aws_credentials
+      - SQL_CREDENTIALS=/run/secrets/sql_credentials
     logging:
       driver: journald
       options:
@@ -18,3 +21,5 @@ services:
 secrets:
   aws_credentials:
     file: ./aws_credentials.json
+  sql_credentials:
+    file: ./sql_credentials.json
