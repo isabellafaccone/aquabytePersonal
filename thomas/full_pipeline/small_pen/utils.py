@@ -24,8 +24,8 @@ def convert_to_world_point(x, y, d):
     px_x = x - image_center_x
     px_z = image_center_y - y
 
-    sensor_x = px_x * (image_sensor_width / 3000)
-    sensor_z = px_z * (image_sensor_height / 4096)
+    sensor_x = px_x * (image_sensor_height / 3000)
+    sensor_z = px_z * (image_sensor_width / 4096)
     
     # d = depth_map[y, x]
     world_y = d

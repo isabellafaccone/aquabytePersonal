@@ -26,5 +26,6 @@ def gtsf_main(base_folder, s3_client):
             s3_client.download_file("aquabyte-groundtruths", key, destination)
 
     # second, rectification
-    rectification_files = glob.glob('/root/data/small_pen_data_collection/underwater_enclosure_0*/parameters*')
+    rectification_files = glob.glob(os.path.join(base_folder,
+                                                 '/underwater_enclosure_0*/parameters*'))
     Rectification(base_folder, cloud_experiments_download, rectification_files)
