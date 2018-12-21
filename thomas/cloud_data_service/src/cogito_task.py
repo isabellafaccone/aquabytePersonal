@@ -6,6 +6,7 @@ from datetime import datetime
 
 import skimage.io as io
 from skimage.transform import resize
+from pycocotools.coco import COCO
 
 from utils import get_matching_s3_keys
 
@@ -33,6 +34,7 @@ def cogito_main(base_folder, s3_client, new_size):
         annotations = json.load(open(json_destination))
         annotations_resized = copy.deepcopy(annotations)
 
+        # step 0 - take care of annotations
         # download the images into the corresponding folders
         for (i, (annotation, annotation_res)) in enumerate(zip(annotations['images'], annotations_resized['images'])):
             if i % 1000 == 0:
@@ -68,6 +70,12 @@ def cogito_main(base_folder, s3_client, new_size):
         with open(os.path.join(base_folder, 'cocofiles', 'coco_body_parts_' + json_file), 'w') as f:
             json.dump(annotations, f)
 
+        # step 2 - save heads with eye
+        id2class = json.load(open("./id_class_matching.json"))
+        coco = COCO(os.path.join(base_folder, 'cocofiles', 'coco_body_parts_' + json_file))
+
+
+        # step 3 - take care of resized annotations
         yfactor = new_size[0] / 3000.0
         xfactor = new_size[1] / 4096.0
         # resize the annotations as well

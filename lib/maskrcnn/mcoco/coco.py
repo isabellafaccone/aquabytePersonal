@@ -132,13 +132,15 @@ class CocoDataset(utils.Dataset):
 
         # Add images
         for i in image_ids:
-            self.add_image(
-                "coco", image_id=i,
-                path=coco.imgs[i]['local_path'],
-                width=coco.imgs[i]["width"],
-                height=coco.imgs[i]["height"],
-                annotations=coco.loadAnns(coco.getAnnIds(
-                    imgIds=[i], catIds=class_ids, iscrowd=None)))
+            # only keep image with annotations
+            if len(coco.getAnnIds(imgIds=[i])) > 0:
+                self.add_image(
+                    "coco", image_id=i,
+                    path=coco.imgs[i]['local_path'],
+                    width=coco.imgs[i]["width"],
+                    height=coco.imgs[i]["height"],
+                    annotations=coco.loadAnns(coco.getAnnIds(
+                        imgIds=[i], catIds=class_ids, iscrowd=None)))
         if return_coco:
             return coco
 

@@ -1,0 +1,11 @@
+[{"id": 1, "name": "F", "supercategory": "F"},
+ {"id": 2, "name": "Head", "supercategory": "Head"},
+ {"id": 3, "name": "Caudal Fin", "supercategory": "Caudal Fin"},
+ {"id": 4, "name": "Dorsal Fin", "supercategory": "Dorsal Fin"},
+ {"id": 5, "name": "Adipose Fin", "supercategory": "Adipose Fin"},
+ {"id": 6, "name": "Anal Fin", "supercategory": "Anal Fin"},
+ {"id": 7, "name": "Pelvic Fin", "supercategory": "Pelvic Fin"},
+ {"id": 8, "name": "Pectoral Fin", "supercategory": "Pectoral Fin"},
+ {"id": 9, "name": "Eye", "supercategory": "Eye"},
+ {"id": 10, "name": "Body", "supercategory": "Body"},
+ {"id": 11, "name": "Freckles", "supercategory": "Freckles"}]
