@@ -1,0 +1,1 @@
+sudo docker build -t bryton_biomass . 

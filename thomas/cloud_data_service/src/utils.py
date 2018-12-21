@@ -92,7 +92,7 @@ class Rectification:
 
     def _load_exp_calibration_mapping(self):
         exp2cal = {}
-        with open('/root/data/small_pen_data_collection/calibration.csv', 'r') as f:
+        with open(os.path.join(self.base_folder, 'calibration.csv'), 'r') as f:
             cr = csv.reader(f)
             for (i, row) in enumerate(cr):
                 if i == 0:
