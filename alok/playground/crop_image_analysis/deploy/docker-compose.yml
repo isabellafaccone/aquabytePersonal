@@ -1,0 +1,24 @@
+version: '3.1'
+services:
+  crop-image-analysis:
+    command: "sleep 1000h"
+    build: ../
+    image: crop-image-analysis
+    container_name: crop_image_analysis
+    volumes:
+      - /data/:/app/data/
+    secrets:
+      - aws_credentials
+    environment:
+      - AWS_CREDENTIALS=/run/secrets/aws_credentials
+    ports:
+      - "9999:9999"
+    logging:
+      driver: journald
+      options:
+        tag: "crop-image-analysis"
+    restart: always
+
+secrets:
+  aws_credentials:
+    file: ./aws_credentials.json
