@@ -1,0 +1,6 @@
+logs/
+utils/dataset/
+trained_models/
+test_imgs/
+temp-python/
+cpm_sample_dataset_512x512.tfrecords
