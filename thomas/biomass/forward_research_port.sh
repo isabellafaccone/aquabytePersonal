@@ -1,1 +1,0 @@
-ssh -NfL localhost:9899:localhost:9899 ubuntu@research.aquabyte.ai -p 22
