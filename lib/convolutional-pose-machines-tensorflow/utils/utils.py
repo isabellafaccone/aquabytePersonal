@@ -62,8 +62,11 @@ def load_ann_keypoints(annotation, order):
 def load_image_keypoints(annotation, FLAGS, reshape=True, buffer=100):
     """from annotation load image + keypoints"""
     # load image first
-    local_path = os.path.join("/root/data/gtsf_phase_I/", 
-              "/".join(annotation["Labeled Data"].split("/")[7:]))
+    if 'local_path' in annotation:
+        local_path = annotation['local_path']
+    else:
+        local_path = os.path.join("/root/data/gtsf_phase_I/", 
+                                  "/".join(annotation["Labeled Data"].split("/")[7:]))
     image = cv2.imread(local_path)
     #print(local_path)
        
@@ -79,15 +82,20 @@ def load_image_keypoints(annotation, FLAGS, reshape=True, buffer=100):
         image = transform["image"]
         keypoints = transform["keypoints"]
     
-    # crop the image min / max values
+    # crop the image min / max value
     keypoints = np.array(keypoints)
-    xs = keypoints[:, 0]
-    min_x, max_x = np.min(xs) - buffer, np.max(xs) + buffer
-    ys = keypoints[:, 1]
-    min_y, max_y = np.min(ys) - buffer, np.max(ys) + buffer
-    
-    #print(min_y,max_y, min_x, max_x)
-    image = image[min_y:max_y, min_x:max_x, : ]
+    if FLAGS.crop:
+        xs = keypoints[:, 0]
+        min_x, max_x = np.min(xs) - buffer, np.max(xs) + buffer
+        ys = keypoints[:, 1]
+        min_y, max_y = np.min(ys) - buffer, np.max(ys) + buffer
+
+        #print(min_y,max_y, min_x, max_x)
+        image = image[min_y:max_y, min_x:max_x, : ]
+    else:
+        min_x = 0
+        min_y = 0
+        
     height, width, _ = image.shape
     if not reshape:
         ratio_width = 1.0
