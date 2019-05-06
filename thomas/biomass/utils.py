@@ -10,6 +10,15 @@ IMAGE_SENSOR_HEIGHT = 0.01035
 PIXEL_COUNT_WIDTH = 4096
 PIXEL_COUNT_HEIGHT = 3000
 
+BASELINE = 0.10019751688037272
+FOCAL_LENGTH = 0.013658357173918818
+FOCAL_LENGTH_PIXEL =  3958.944108382266
+IMAGE_SENSOR_HEIGHT = 0.01035
+IMAGE_SENSOR_WIDTH = 0.01412
+PIXEL_COUNT_HEIGHT = 3000
+PIXEL_COUNT_WIDTH = 4096
+
+
 def convert_to_world_point(x, y, d):
     """ from pixel coordinates to world coordinates """
     
@@ -20,7 +29,7 @@ def convert_to_world_point(x, y, d):
 
     sensor_x = px_x * (IMAGE_SENSOR_WIDTH / 4096)
     sensor_z = px_z * (IMAGE_SENSOR_HEIGHT / 3000)
-
+    # print(image_center_x, image_center_y, px_x, px_z, sensor_x, sensor_z)
     # d = depth_map[y, x]
     world_y = d
     world_x = (world_y * sensor_x) / FOCAL_LENGTH
