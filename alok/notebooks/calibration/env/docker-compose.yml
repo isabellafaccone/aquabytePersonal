@@ -5,7 +5,7 @@ services:
     command: sleep 1000h
     image: calibration
     volumes:
-      - /Users/aloksaxena/Documents/aquabyteai/notebooks/calibration:/app
+      - /Users/aloksaxena/Documents/aquabyteai/repos/cv_research/alok/notebooks/calibration:/app
     ports:
       - "9999:9999"
     logging:
