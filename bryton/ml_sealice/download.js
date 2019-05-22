@@ -35,7 +35,11 @@ const json2csv = new Json2csvTransform(opts, transformOpts);
  
 const processor = json2csv.pipe(output);
 
+<<<<<<< HEAD
+let year = 2016;
+=======
 let year = 2018;
+>>>>>>> 9a56a3ac353998f8f8c6daeaa3518bfd1d6e296f
 
 let month = 1;
 
@@ -65,17 +69,13 @@ async.whilst(() => { return month <= 52; }, (cb) => {
       let localityWeekUrl = `https://www.barentswatch.no/api/v1/geodata/fishhealth/locality/${localityNumber}/${year}/${month}`;
     
       request({ url: localityWeekUrl }, (err, resp, body) => {
-        let localityWeekData;
-
-        if (body) {
-          localityWeekData = JSON.parse(body);
-        } else {
-          debugger;
-        }
+        let localityWeekData = JSON.parse(body);
 
         allData.push(localityWeekData.localityWeek);
 
         json2csv.write(JSON.stringify(localityWeekData.localityWeek));
+
+        debugger;
 
         cb();
       });
