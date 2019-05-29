@@ -22,17 +22,20 @@ def lice_main(base_folder, s3_client):
                        autoload_with=sql_engine)
 
     # inner join on fish crop id
+    # TODO @Thomas debug this
     query = select([fish_crops.c.image_key, lice_crops.c.lice_bbox_list]) \
         .select_from(lice_crops.join(fish_crops, lice_crops.c.lati_fish_detections_id == fish_crops.c.id)) \
         .where(and_(fish_crops.c.site_id == 23,
-                    lice_crops.c.lice_bbox_list is not None,
-                    func.json_array_length(lice_crops.c.lice_bbox_list) > 0,
+                    lice_crops.c.lice_bbox_list != None,
+                    # func.json_array_length(lice_crops.c.lice_bbox_list) > 0,
                     lice_crops.c.created_by == "gunnar@aquabyte.ai"))
 
     json_files = []
     counter = 0
     with sql_engine.connect() as conn:
         for row in conn.execute(query):
+	    if len(row) == 0:
+	    	continue
             # [image_key, lice_json]
             results = {}
             key = row[0]
@@ -57,7 +60,7 @@ def lice_main(base_folder, s3_client):
             json_files.append(os.path.join(destination, image_name.replace("jpg", "json")))
     print("{} new files have downloaded".format(counter))
 
-    # # step 2 - create training and validation sets
+    # step 2 - create training and validation sets
     for jf in json_files:
         with open(jf, "r") as f:
             annotations = json.load(f)

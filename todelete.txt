@@ -1,0 +1,1678 @@
+.
+├── alok
+│   ├── biomass_estimation
+│   │   ├── biomass_utils
+│   │   │   ├── __init__.py
+│   │   │   ├── __init__.pyc
+│   │   │   ├── points_of_interest.py
+│   │   │   ├── points_of_interest.pyc
+│   │   │   ├── preprocessing.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── __init__.cpython-36.pyc
+│   │   │   │   └── points_of_interest.cpython-36.pyc
+│   │   │   └── quantities.py
+│   │   ├── blender
+│   │   │   ├── Biomass Estimation - Erko-Rotoy Data.ipynb
+│   │   │   ├── Biomass Estimation - Feature Extraction.ipynb
+│   │   │   ├── Biomass Estimation - Regression Model.ipynb
+│   │   │   ├── Biomass Estimation - Regression Model (Old).ipynb
+│   │   │   ├── Biomass Estimation - Volume Integration Method.ipynb
+│   │   │   └── Biomass Estimation with Synthetic Data.ipynb
+│   │   ├── deep_learning
+│   │   │   ├── Keras Test.ipynb
+│   │   │   ├── Salmon Weight Net - 3 channel centered input.ipynb
+│   │   │   ├── Salmon Weight Net - 3 channel input - blended image and depth map.ipynb
+│   │   │   ├── Salmon Weight Net - 4 channel input.ipynb
+│   │   │   ├── Salmon Weight Net - 6 channel input - overlayed raw images.ipynb
+│   │   │   ├── Salmon Weight Net - end-to-end.ipynb
+│   │   │   ├── Salmon Weight Net - larger training set.ipynb
+│   │   │   └── Salmon Weight Net - medium training set.ipynb
+│   │   ├── docker-compose.yaml
+│   │   ├── erko_data_full_pipeline
+│   │   │   ├── Biomass Estimation - Erko-Rotoy Data (2).ipynb
+│   │   │   ├── Biomass Estimation - Erko-Rotoy Data.ipynb
+│   │   │   ├── Biomass Estimation - Erko-Rotoy Data with Pipeliner.ipynb
+│   │   │   ├── Biomass Estimation - Erko-Rotoy Data with Pipeliner - V2.ipynb
+│   │   │   ├── Biomass Full Pipeline - Accounting for Normalization.ipynb
+│   │   │   ├── Biomass Full Pipeline - Feature Analysis.ipynb
+│   │   │   ├── Biomass Full Pipeline.ipynb
+│   │   │   ├── Biomass Full Pipeline - Output Tweaks.ipynb
+│   │   │   ├── Biomass Full Pipeline - Prediction Generation.ipynb
+│   │   │   ├── Biomass Full Pipeline - Single Case Analysis.ipynb
+│   │   │   ├── biomass_service_output
+│   │   │   │   ├── image_0_2659_430_3900.jpg
+│   │   │   │   ├── image_1_2061_484_3177.jpg
+│   │   │   │   ├── image_1249_1439_1726_2572.jpg
+│   │   │   │   ├── image_1506_5_2217_1644.jpg
+│   │   │   │   ├── image_1576_38_2383_1667.jpg
+│   │   │   │   ├── image_1835_2165_2551_4086.jpg
+│   │   │   │   ├── image_20_1986_531_3031.jpg
+│   │   │   │   ├── image_204_2471_688_3132.jpg
+│   │   │   │   ├── image_21_3156_426_4096.jpg
+│   │   │   │   ├── image_2615_906_3000_2145.jpg
+│   │   │   │   ├── image_29_2_455_1103.jpg
+│   │   │   │   ├── image_29_380_387_951.jpg
+│   │   │   │   ├── image_644_2077_1157_3051.jpg
+│   │   │   │   └── image_908_23_1391_1483.jpg
+│   │   │   ├── disp_change.ipynb
+│   │   │   ├── forward_pass_small_set.ipynb
+│   │   │   ├── forward_pass_test_set_2.ipynb
+│   │   │   ├── forward_pass_test_set.ipynb
+│   │   │   ├── Sensitivity Analysis.ipynb
+│   │   │   └── test_set_biomass.ipynb
+│   │   ├── gtsf
+│   │   │   ├── Biomass_Model_Feature_Filtration-Copy1.ipynb
+│   │   │   ├── Biomass_Model_Feature_Filtration.ipynb
+│   │   │   ├── bryton_notebook - Alok's analysis.ipynb
+│   │   │   ├── bryton_notebook.ipynb
+│   │   │   ├── keypoints.json
+│   │   │   ├── Length Analysis on Keypoint Annotations.ipynb
+│   │   │   ├── oriented_bounding_box
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── OBB Implementation.ipynb
+│   │   │   │   ├── obb.py
+│   │   │   │   ├── obb.pyc
+│   │   │   │   └── utils.py
+│   │   │   └── Oriented Bounding Box
+│   │   │       └── OBB Implementation.ipynb
+│   │   ├── __init__.py
+│   │   ├── MNIST_data
+│   │   │   ├── t10k-images-idx3-ubyte.gz
+│   │   │   ├── t10k-labels-idx1-ubyte.gz
+│   │   │   ├── train-images-idx3-ubyte.gz
+│   │   │   └── train-labels-idx1-ubyte.gz
+│   │   ├── oriented_bounding_box
+│   │   │   ├── OBB Implementation.ipynb
+│   │   │   └── pyobb
+│   │   ├── Oriented Bounding Box
+│   │   │   └── pyobb
+│   │   └── playground
+│   │       └── Ground Truth Disparity Analysis -- Checkerboard Images.ipynb
+│   ├── deploy
+│   │   ├── aws_credentials.json
+│   │   └── docker-compose.yml
+│   ├── dispnet-flownet-docker
+│   ├── lice_counting
+│   │   ├── 010 - Trivial Lice Counting Algorithm.ipynb
+│   │   └── Lice Bounding Box Size Analysis.ipynb
+│   ├── notebooks
+│   │   ├── calibration
+│   │   │   ├── env
+│   │   │   │   ├── docker-compose.yml
+│   │   │   │   ├── Dockerfile
+│   │   │   │   └── requirements.txt
+│   │   │   └── src
+│   │   │       ├── calibration.ipynb
+│   │   │       ├── mass_image_rectification.ipynb
+│   │   │       ├── rectification
+│   │   │       └── rectification.cpp
+│   │   ├── labelbox
+│   │   │   ├── Labelbox URLs Generator - GTSF.ipynb
+│   │   │   └── Labelbox URLs Generator.ipynb
+│   │   ├── optics
+│   │   │   ├── camera_optics_analysis_basler_ace.ipynb
+│   │   │   ├── camera_optics_analysis.ipynb
+│   │   │   ├── camera_optics_analysis_new.ipynb
+│   │   │   └── Resolution Target Analysis.ipynb
+│   │   └── playground
+│   │       └── report_generator.ipynb
+│   ├── playground
+│   │   ├── crop_image_analysis
+│   │   │   ├── deploy
+│   │   │   │   ├── aws_credentials.json
+│   │   │   │   └── docker-compose.yml
+│   │   │   ├── Dockerfile
+│   │   │   └── src
+│   │   │       ├── Crop Dataset Construction.ipynb
+│   │   │       ├── Crop Size and Aspect Ratio Investigation.ipynb
+│   │   │       ├── Crop Size and Aspect Ratio Investigation -- Post Optics Change.ipynb
+│   │   │       ├── Luminance Analysis.ipynb
+│   │   │       ├── old
+│   │   │       │   ├── download_crops.ipynb
+│   │   │       │   └── download_crops_new.ipynb
+│   │   │       └── requirements.txt
+│   │   ├── full_image_filtration
+│   │   │   └── src
+│   │   │       ├── Dataset Construction for Current Model Validation.ipynb
+│   │   │       ├── Dataset Construction for Labelbox.ipynb
+│   │   │       ├── Full Training Dataset Creation on Disk.ipynb
+│   │   │       ├── Mobilenet Model Training - Expanded Dataset.ipynb
+│   │   │       └── Mobilenet Model Training.ipynb
+│   │   ├── keypoint_detection
+│   │   │   └── src
+│   │   │       ├── Keypoint Dataset Construction .ipynb
+│   │   │       └── Keypoint Detection Model - Small Dataset.ipynb
+│   │   └── Statistical Analysis for Biomass.ipynb
+│   └── rectification
+│       └── mass_image_rectification.ipynb
+├── bryton
+│   ├── Bryton's notebooks-Copy1.ipynb
+│   ├── Bryton's notebooks.ipynb
+│   ├── enter_container.sh
+│   ├── full_fish_detection
+│   │   └── maskrcnn_matterport
+│   │       ├── annotations_try.json
+│   │       ├── assets
+│   │       │   ├── 4k_video.gif
+│   │       │   ├── balloon_color_splash.gif
+│   │       │   ├── detection_activations.png
+│   │       │   ├── detection_anchors.png
+│   │       │   ├── detection_final.png
+│   │       │   ├── detection_histograms.png
+│   │       │   ├── detection_masks.png
+│   │       │   ├── detection_refinement.png
+│   │       │   ├── detection_tensorboard.png
+│   │       │   ├── images_to_osm.png
+│   │       │   ├── mapping_challenge.png
+│   │       │   ├── nucleus_segmentation.png
+│   │       │   └── street.png
+│   │       ├── build
+│   │       │   ├── bdist.linux-x86_64
+│   │       │   └── lib
+│   │       │       └── mrcnn
+│   │       │           ├── config.py
+│   │       │           ├── __init__.py
+│   │       │           ├── model.py
+│   │       │           ├── parallel_model.py
+│   │       │           ├── utils.py
+│   │       │           └── visualize.py
+│   │       ├── cococreatortools.py
+│   │       ├── cococreatortools.pyc
+│   │       ├── data_utils.py
+│   │       ├── data_utils.pyc
+│   │       ├── dist
+│   │       │   └── mask_rcnn-2.1-py3.5.egg
+│   │       ├── images
+│   │       │   ├── 1045023827_4ec3e8ba5c_z.jpg
+│   │       │   ├── 12283150_12d37e6389_z.jpg
+│   │       │   ├── 2383514521_1fc8d7b0de_z.jpg
+│   │       │   ├── 2502287818_41e4b0c4fb_z.jpg
+│   │       │   ├── 2516944023_d00345997d_z.jpg
+│   │       │   ├── 25691390_f9944f61b5_z.jpg
+│   │       │   ├── 262985539_1709e54576_z.jpg
+│   │       │   ├── 3132016470_c27baa00e8_z.jpg
+│   │       │   ├── 3627527276_6fe8cd9bfe_z.jpg
+│   │       │   ├── 3651581213_f81963d1dd_z.jpg
+│   │       │   ├── 3800883468_12af3c0b50_z.jpg
+│   │       │   ├── 3862500489_6fd195d183_z.jpg
+│   │       │   ├── 3878153025_8fde829928_z.jpg
+│   │       │   ├── 4410436637_7b0ca36ee7_z.jpg
+│   │       │   ├── 4782628554_668bc31826_z.jpg
+│   │       │   ├── 5951960966_d4e1cda5d0_z.jpg
+│   │       │   ├── 6584515005_fce9cec486_z.jpg
+│   │       │   ├── 6821351586_59aa0dc110_z.jpg
+│   │       │   ├── 7581246086_cf7bbb7255_z.jpg
+│   │       │   ├── 7933423348_c30bd9bd4e_z.jpg
+│   │       │   ├── 8053677163_d4c8f416be_z.jpg
+│   │       │   ├── 8239308689_efa6c11b08_z.jpg
+│   │       │   ├── 8433365521_9252889f9a_z.jpg
+│   │       │   ├── 8512296263_5fc5458e20_z.jpg
+│   │       │   ├── 8699757338_c3941051b6_z.jpg
+│   │       │   ├── 8734543718_37f6b8bd45_z.jpg
+│   │       │   ├── 8829708882_48f263491e_z.jpg
+│   │       │   ├── 9118579087_f9ffa19e63_z.jpg
+│   │       │   └── 9247489789_132c0d534a_z.jpg
+│   │       ├── LICENSE
+│   │       ├── logs
+│   │       ├── MANIFEST.in
+│   │       ├── mask_rcnn.egg-info
+│   │       │   ├── dependency_links.txt
+│   │       │   ├── PKG-INFO
+│   │       │   ├── SOURCES.txt
+│   │       │   └── top_level.txt
+│   │       ├── mcoco
+│   │       │   ├── coco.py
+│   │       │   ├── __init__.py
+│   │       │   └── __pycache__
+│   │       │       ├── coco.cpython-35.pyc
+│   │       │       └── __init__.cpython-35.pyc
+│   │       ├── mextra
+│   │       │   ├── __init__.py
+│   │       │   ├── __pycache__
+│   │       │   │   ├── __init__.cpython-35.pyc
+│   │       │   │   └── utils.cpython-35.pyc
+│   │       │   └── utils.py
+│   │       ├── mrcnn
+│   │       │   ├── config.py
+│   │       │   ├── config.pyc
+│   │       │   ├── __init__.py
+│   │       │   ├── __init__.pyc
+│   │       │   ├── model.py
+│   │       │   ├── parallel_model.py
+│   │       │   ├── __pycache__
+│   │       │   │   ├── config.cpython-35.pyc
+│   │       │   │   ├── __init__.cpython-35.pyc
+│   │       │   │   ├── model.cpython-35.pyc
+│   │       │   │   ├── utils.cpython-35.pyc
+│   │       │   │   └── visualize.cpython-35.pyc
+│   │       │   ├── utils.py
+│   │       │   ├── utils.pyc
+│   │       │   └── visualize.py
+│   │       ├── __pycache__
+│   │       │   ├── cococreatortools.cpython-35.pyc
+│   │       │   └── data_utils.cpython-35.pyc
+│   │       ├── README.md
+│   │       ├── requirements.txt
+│   │       ├── samples
+│   │       │   ├── balloon
+│   │       │   │   ├── balloon.py
+│   │       │   │   ├── inspect_balloon_data.ipynb
+│   │       │   │   ├── inspect_balloon_model.ipynb
+│   │       │   │   └── README.md
+│   │       │   ├── coco
+│   │       │   │   ├── coco.py
+│   │       │   │   ├── inspect_data.ipynb
+│   │       │   │   ├── inspect_model.ipynb
+│   │       │   │   └── inspect_weights.ipynb
+│   │       │   ├── demo.ipynb
+│   │       │   ├── nucleus
+│   │       │   │   ├── inspect_nucleus_data.ipynb
+│   │       │   │   ├── inspect_nucleus_model.ipynb
+│   │       │   │   ├── nucleus.py
+│   │       │   │   └── README.md
+│   │       │   └── shapes
+│   │       │       ├── shapes.py
+│   │       │       └── train_shapes.ipynb
+│   │       ├── setup.cfg
+│   │       ├── setup.py
+│   │       ├── test.ipynb
+│   │       ├── training_evaluation_pipeline.ipynb
+│   │       └── weights
+│   ├── jupyter
+│   │   ├── Dockerfile
+│   │   ├── README.md
+│   │   ├── requirements.txt
+│   │   ├── run_jupyter.sh
+│   │   └── start_jupyter_notebook.sh
+│   ├── ml_sealice
+│   │   ├── 2015_1_27.csv
+│   │   ├── 2016.csv
+│   │   ├── 2017.csv
+│   │   ├── 2018.csv
+│   │   ├── Beta regression.ipynb
+│   │   ├── combined_2016_2018.csv
+│   │   ├── data
+│   │   │   ├── 2015_1_26.csv
+│   │   │   ├── 2015_27.csv
+│   │   │   ├── 2017_11.csv
+│   │   │   ├── 2017_13.csv
+│   │   │   ├── 2017_1.csv
+│   │   │   ├── 2017_31.csv
+│   │   │   ├── 2017_35.csv
+│   │   │   ├── 2017_37.csv
+│   │   │   ├── 2017_41.csv
+│   │   │   ├── 2017_7.csv
+│   │   │   ├── 2017_8.csv
+│   │   │   ├── 2018_19.csv
+│   │   │   ├── 2018_1.csv
+│   │   │   ├── 2018_21.csv
+│   │   │   ├── 2018_2.csv
+│   │   │   └── 2018_36.csv
+│   │   ├── download.js
+│   │   ├── GTM.ipynb
+│   │   ├── localities.json
+│   │   ├── Marginal sea lice distribution.ipynb
+│   │   ├── package.json
+│   │   ├── package-lock.json
+│   │   ├── README.md
+│   │   └── Sea lice analysis.ipynb
+│   ├── readme.txt
+│   ├── reidentification
+│   │   └── Freckle detection.ipynb
+│   └── sealice
+│       ├── 1_get_sealice_SVM_training_data.ipynb
+│       ├── 2_train_sealice_SVM.ipynb
+│       ├── 3_test_sealice_SVM_precision_recall_no_keypoint.ipynb
+│       ├── 4_full_sealice_SVM_pipeline.ipynb
+│       ├── annotations.csv
+│       ├── Helvetica-Regular.ttf
+│       ├── imenco.jpg
+│       ├── Keyboard.ttf
+│       ├── LATIgen.ipynb
+│       ├── lib
+│       │   ├── detections.py
+│       │   ├── features.py
+│       │   ├── __init__.py
+│       │   ├── move_to_ipython
+│       │   │   ├── 1_new_get_feature_descriptors.py
+│       │   │   ├── 2_new_sealice_svm_train.py
+│       │   │   ├── 3_new_sealice_svm_predict_anno_video.py
+│       │   │   └── 4_new_detect_sealice_svm_orb.py
+│       │   ├── svm.py
+│       │   └── utils.py
+│       ├── licedata.ipynb
+│       ├── models
+│       │   └── sealice_detection_ORB_SVM_model.yml
+│       ├── old_lib
+│       │   ├── 1_features_from_video.py
+│       │   ├── 2_sealice_svm_train.py
+│       │   ├── 3_sealice_svm_predict_anno_video.py
+│       │   ├── 4_detect_sealice_svm_orb.py
+│       │   ├── archive
+│       │   │   ├── annotations
+│       │   │   │   ├── annotation_bboxes.py
+│       │   │   │   ├── im_read_plot_scratch.py
+│       │   │   │   ├── parse2.py
+│       │   │   │   ├── parse.py
+│       │   │   │   ├── xml_parser_2.py
+│       │   │   │   ├── xml_parser.py
+│       │   │   │   └── xmlparser.py
+│       │   │   ├── optical_flow
+│       │   │   │   └── optic_flow_seg_test.py
+│       │   │   ├── scratch_files
+│       │   │   │   ├── sealice_1.py
+│       │   │   │   ├── sealice_2.py
+│       │   │   │   ├── sealice_3.py
+│       │   │   │   ├── sealice_4_old.py
+│       │   │   │   ├── sealice_4.py
+│       │   │   │   └── sealice_5.py
+│       │   │   ├── segmentation
+│       │   │   │   └── fastmask_algorithm_2.py
+│       │   │   └── tracking
+│       │   │       ├── kalman_filter_MOT
+│       │   │       │   ├── common.py
+│       │   │       │   ├── detectors.py
+│       │   │       │   ├── kalman_filter.py
+│       │   │       │   ├── object_tracking_KF.pdf
+│       │   │       │   ├── object_tracking.py
+│       │   │       │   ├── sealice_candidates.py
+│       │   │       │   └── tracker.py
+│       │   │       └── kalman_tracker.py
+│       │   ├── future_versions
+│       │   │   ├── sealice_svm_predict_anno_video_2.py
+│       │   │   └── sealice_svm_train_2.py
+│       │   └── README.md
+│       ├── requirements.txt
+│       ├── sealice_detection_ORB_SVM_model.yml
+│       └── train_sealice_SVM.ipynb
+├── clean_script.py
+├── convolutional-pose-machines-aquabyte
+│   ├── demo_cpm.py
+│   ├── keypoints.json
+│   ├── logs
+│   │   └── _cpm_body_i512x512_o64x64_6s
+│   │       ├── events.out.tfevents.1552598814.ddc75aeeb78d_cpm_body_i512x512_o64x64_6s
+│   │       └── events.out.tfevents.1552599114.ddc75aeeb78d_cpm_body_i512x512_o64x64_6s
+│   ├── models
+│   │   └── nets
+│   │       ├── cpm_body.py
+│   │       ├── cpm_body_slim.py
+│   │       ├── cpm_hand.py
+│   │       ├── cpm_hand_slim.py
+│   │       ├── __init__.py
+│   │       └── __pycache__
+│   │           ├── cpm_body.cpython-35.pyc
+│   │           ├── cpm_body.cpython-36.pyc
+│   │           ├── cpm_body_slim.cpython-35.pyc
+│   │           ├── cpm_body_slim.cpython-36.pyc
+│   │           ├── cpm_hand_slim.cpython-35.pyc
+│   │           ├── cpm_hand_slim.cpython-36.pyc
+│   │           ├── __init__.cpython-35.pyc
+│   │           └── __init__.cpython-36.pyc
+│   ├── README.md
+│   ├── train.py
+│   └── utils
+│       ├── cpm_utils.py
+│       ├── create_cpm_tfr_fulljoints.py
+│       ├── get_dataset_from_keypoints.py
+│       ├── __pycache__
+│       │   ├── cpm_utils.cpython-35.pyc
+│       │   ├── cpm_utils.cpython-36.pyc
+│       │   ├── tf_utils.cpython-35.pyc
+│       │   └── tf_utils.cpython-36.pyc
+│       └── tf_utils.py
+├── lib
+│   ├── maskrcnn
+│   │   ├── annotations_try.json
+│   │   ├── assets
+│   │   │   ├── 4k_video.gif
+│   │   │   ├── balloon_color_splash.gif
+│   │   │   ├── detection_activations.png
+│   │   │   ├── detection_anchors.png
+│   │   │   ├── detection_final.png
+│   │   │   ├── detection_histograms.png
+│   │   │   ├── detection_masks.png
+│   │   │   ├── detection_refinement.png
+│   │   │   ├── detection_tensorboard.png
+│   │   │   ├── images_to_osm.png
+│   │   │   ├── mapping_challenge.png
+│   │   │   ├── nucleus_segmentation.png
+│   │   │   └── street.png
+│   │   ├── augmentation_viz.ipynb
+│   │   ├── build
+│   │   │   └── lib
+│   │   │       └── mrcnn
+│   │   │           ├── config.py
+│   │   │           ├── __init__.py
+│   │   │           ├── model.py
+│   │   │           ├── parallel_model.py
+│   │   │           ├── utils.py
+│   │   │           └── visualize.py
+│   │   ├── cococreatortools.py
+│   │   ├── core
+│   │   ├── data_utils.py
+│   │   ├── dist
+│   │   │   └── mask_rcnn-2.1-py3.5.egg
+│   │   ├── forward_pass_new_images-Copy1.ipynb
+│   │   ├── forward_pass_new_images-Copy2.ipynb
+│   │   ├── forward_pass_new_images.ipynb
+│   │   ├── images
+│   │   │   ├── 1045023827_4ec3e8ba5c_z.jpg
+│   │   │   ├── 12283150_12d37e6389_z.jpg
+│   │   │   ├── 2383514521_1fc8d7b0de_z.jpg
+│   │   │   ├── 2502287818_41e4b0c4fb_z.jpg
+│   │   │   ├── 2516944023_d00345997d_z.jpg
+│   │   │   ├── 25691390_f9944f61b5_z.jpg
+│   │   │   ├── 262985539_1709e54576_z.jpg
+│   │   │   ├── 3132016470_c27baa00e8_z.jpg
+│   │   │   ├── 3627527276_6fe8cd9bfe_z.jpg
+│   │   │   ├── 3651581213_f81963d1dd_z.jpg
+│   │   │   ├── 3800883468_12af3c0b50_z.jpg
+│   │   │   ├── 3862500489_6fd195d183_z.jpg
+│   │   │   ├── 3878153025_8fde829928_z.jpg
+│   │   │   ├── 4410436637_7b0ca36ee7_z.jpg
+│   │   │   ├── 4782628554_668bc31826_z.jpg
+│   │   │   ├── 5951960966_d4e1cda5d0_z.jpg
+│   │   │   ├── 6584515005_fce9cec486_z.jpg
+│   │   │   ├── 6821351586_59aa0dc110_z.jpg
+│   │   │   ├── 7581246086_cf7bbb7255_z.jpg
+│   │   │   ├── 7933423348_c30bd9bd4e_z.jpg
+│   │   │   ├── 8053677163_d4c8f416be_z.jpg
+│   │   │   ├── 8239308689_efa6c11b08_z.jpg
+│   │   │   ├── 8433365521_9252889f9a_z.jpg
+│   │   │   ├── 8512296263_5fc5458e20_z.jpg
+│   │   │   ├── 8699757338_c3941051b6_z.jpg
+│   │   │   ├── 8734543718_37f6b8bd45_z.jpg
+│   │   │   ├── 8829708882_48f263491e_z.jpg
+│   │   │   ├── 9118579087_f9ffa19e63_z.jpg
+│   │   │   └── 9247489789_132c0d534a_z.jpg
+│   │   ├── mcoco
+│   │   │   ├── coco.py
+│   │   │   ├── __init__.py
+│   │   │   └── __pycache__
+│   │   │       ├── coco.cpython-35.pyc
+│   │   │       └── __init__.cpython-35.pyc
+│   │   ├── mextra
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── __init__.cpython-35.pyc
+│   │   │   │   └── utils.cpython-35.pyc
+│   │   │   └── utils.py
+│   │   ├── monitor.ipynb
+│   │   ├── mrcnn
+│   │   │   ├── config.py
+│   │   │   ├── coord.py
+│   │   │   ├── __init__.py
+│   │   │   ├── model-Copy1.py
+│   │   │   ├── model.py
+│   │   │   ├── parallel_model.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── config.cpython-35.pyc
+│   │   │   │   ├── coord.cpython-35.pyc
+│   │   │   │   ├── __init__.cpython-35.pyc
+│   │   │   │   ├── model.cpython-35.pyc
+│   │   │   │   ├── parallel_model.cpython-35.pyc
+│   │   │   │   ├── utils.cpython-35.pyc
+│   │   │   │   └── visualize.cpython-35.pyc
+│   │   │   ├── utils.py
+│   │   │   └── visualize.py
+│   │   ├── __pycache__
+│   │   │   ├── cococreatortools.cpython-35.pyc
+│   │   │   ├── data_utils.cpython-35.pyc
+│   │   │   └── slack.cpython-35.pyc
+│   │   ├── requirements.txt
+│   │   ├── samples
+│   │   │   ├── balloon
+│   │   │   │   ├── balloon.py
+│   │   │   │   ├── inspect_balloon_data.ipynb
+│   │   │   │   ├── inspect_balloon_model.ipynb
+│   │   │   │   └── README.md
+│   │   │   ├── coco
+│   │   │   │   ├── coco.py
+│   │   │   │   ├── inspect_data.ipynb
+│   │   │   │   ├── inspect_model.ipynb
+│   │   │   │   └── inspect_weights.ipynb
+│   │   │   ├── demo.ipynb
+│   │   │   ├── nucleus
+│   │   │   │   ├── inspect_nucleus_data.ipynb
+│   │   │   │   ├── inspect_nucleus_model.ipynb
+│   │   │   │   ├── nucleus.py
+│   │   │   │   └── README.md
+│   │   │   └── shapes
+│   │   │       ├── shapes.py
+│   │   │       └── train_shapes.ipynb
+│   │   ├── setup.cfg
+│   │   ├── setup.py
+│   │   ├── slack.py
+│   │   ├── test.json
+│   │   ├── tofwdpass.txt
+│   │   ├── training_evaluation_pipeline_2019_salmon_only_crops.ipynb
+│   │   ├── training_evaluation_pipeline_2019_salmon_only.ipynb
+│   │   ├── training_evaluation_pipeline_body_parts.ipynb
+│   │   ├── training_evaluation_pipeline_coord.ipynb
+│   │   ├── training_evaluation_pipeline-Copy5.ipynb
+│   │   ├── training_evaluation_pipeline_full.ipynb
+│   │   ├── training_evaluation_pipeline_full_lateral-Copy1.ipynb
+│   │   ├── training_evaluation_pipeline_full_lateral.ipynb
+│   │   ├── training_evaluation_pipeline_full_small.ipynb
+│   │   ├── training_evaluation_pipeline.ipynb
+│   │   ├── training_evaluation_pipeline_no_coord.ipynb
+│   │   └── training_evaluation_pipeline_template.ipynb
+│   ├── maskrcnn_dev
+│   │   ├── annotations_try.json
+│   │   ├── assets
+│   │   │   ├── 4k_video.gif
+│   │   │   ├── balloon_color_splash.gif
+│   │   │   ├── detection_activations.png
+│   │   │   ├── detection_anchors.png
+│   │   │   ├── detection_final.png
+│   │   │   ├── detection_histograms.png
+│   │   │   ├── detection_masks.png
+│   │   │   ├── detection_refinement.png
+│   │   │   ├── detection_tensorboard.png
+│   │   │   ├── images_to_osm.png
+│   │   │   ├── mapping_challenge.png
+│   │   │   ├── nucleus_segmentation.png
+│   │   │   └── street.png
+│   │   ├── augmentation_viz.ipynb
+│   │   ├── build
+│   │   │   └── lib
+│   │   │       └── mrcnn
+│   │   │           ├── config.py
+│   │   │           ├── __init__.py
+│   │   │           ├── model.py
+│   │   │           ├── parallel_model.py
+│   │   │           ├── utils.py
+│   │   │           └── visualize.py
+│   │   ├── cococreatortools.py
+│   │   ├── data_utils.py
+│   │   ├── dist
+│   │   │   └── mask_rcnn-2.1-py3.5.egg
+│   │   ├── forward_pass_new_images-Copy1.ipynb
+│   │   ├── forward_pass_new_images-Copy2.ipynb
+│   │   ├── forward_pass_new_images.ipynb
+│   │   ├── images
+│   │   │   ├── 1045023827_4ec3e8ba5c_z.jpg
+│   │   │   ├── 12283150_12d37e6389_z.jpg
+│   │   │   ├── 2383514521_1fc8d7b0de_z.jpg
+│   │   │   ├── 2502287818_41e4b0c4fb_z.jpg
+│   │   │   ├── 2516944023_d00345997d_z.jpg
+│   │   │   ├── 25691390_f9944f61b5_z.jpg
+│   │   │   ├── 262985539_1709e54576_z.jpg
+│   │   │   ├── 3132016470_c27baa00e8_z.jpg
+│   │   │   ├── 3627527276_6fe8cd9bfe_z.jpg
+│   │   │   ├── 3651581213_f81963d1dd_z.jpg
+│   │   │   ├── 3800883468_12af3c0b50_z.jpg
+│   │   │   ├── 3862500489_6fd195d183_z.jpg
+│   │   │   ├── 3878153025_8fde829928_z.jpg
+│   │   │   ├── 4410436637_7b0ca36ee7_z.jpg
+│   │   │   ├── 4782628554_668bc31826_z.jpg
+│   │   │   ├── 5951960966_d4e1cda5d0_z.jpg
+│   │   │   ├── 6584515005_fce9cec486_z.jpg
+│   │   │   ├── 6821351586_59aa0dc110_z.jpg
+│   │   │   ├── 7581246086_cf7bbb7255_z.jpg
+│   │   │   ├── 7933423348_c30bd9bd4e_z.jpg
+│   │   │   ├── 8053677163_d4c8f416be_z.jpg
+│   │   │   ├── 8239308689_efa6c11b08_z.jpg
+│   │   │   ├── 8433365521_9252889f9a_z.jpg
+│   │   │   ├── 8512296263_5fc5458e20_z.jpg
+│   │   │   ├── 8699757338_c3941051b6_z.jpg
+│   │   │   ├── 8734543718_37f6b8bd45_z.jpg
+│   │   │   ├── 8829708882_48f263491e_z.jpg
+│   │   │   ├── 9118579087_f9ffa19e63_z.jpg
+│   │   │   └── 9247489789_132c0d534a_z.jpg
+│   │   ├── mcoco
+│   │   │   ├── coco.py
+│   │   │   ├── __init__.py
+│   │   │   └── __pycache__
+│   │   │       ├── coco.cpython-35.pyc
+│   │   │       └── __init__.cpython-35.pyc
+│   │   ├── mextra
+│   │   │   ├── __init__.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── __init__.cpython-35.pyc
+│   │   │   │   └── utils.cpython-35.pyc
+│   │   │   └── utils.py
+│   │   ├── monitor.ipynb
+│   │   ├── mrcnn
+│   │   │   ├── config.py
+│   │   │   ├── coord.py
+│   │   │   ├── __init__.py
+│   │   │   ├── model-Copy1.py
+│   │   │   ├── model.py
+│   │   │   ├── parallel_model.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── config.cpython-35.pyc
+│   │   │   │   ├── coord.cpython-35.pyc
+│   │   │   │   ├── __init__.cpython-35.pyc
+│   │   │   │   ├── model.cpython-35.pyc
+│   │   │   │   ├── parallel_model.cpython-35.pyc
+│   │   │   │   ├── utils.cpython-35.pyc
+│   │   │   │   └── visualize.cpython-35.pyc
+│   │   │   ├── utils.py
+│   │   │   └── visualize.py
+│   │   ├── __pycache__
+│   │   │   ├── cococreatortools.cpython-35.pyc
+│   │   │   ├── data_utils.cpython-35.pyc
+│   │   │   └── slack.cpython-35.pyc
+│   │   ├── requirements.txt
+│   │   ├── samples
+│   │   │   ├── balloon
+│   │   │   │   ├── balloon.py
+│   │   │   │   ├── inspect_balloon_data.ipynb
+│   │   │   │   ├── inspect_balloon_model.ipynb
+│   │   │   │   └── README.md
+│   │   │   ├── coco
+│   │   │   │   ├── coco.py
+│   │   │   │   ├── inspect_data.ipynb
+│   │   │   │   ├── inspect_model.ipynb
+│   │   │   │   └── inspect_weights.ipynb
+│   │   │   ├── demo.ipynb
+│   │   │   ├── nucleus
+│   │   │   │   ├── inspect_nucleus_data.ipynb
+│   │   │   │   ├── inspect_nucleus_model.ipynb
+│   │   │   │   ├── nucleus.py
+│   │   │   │   └── README.md
+│   │   │   └── shapes
+│   │   │       ├── shapes.py
+│   │   │       └── train_shapes.ipynb
+│   │   ├── setup.cfg
+│   │   ├── setup.py
+│   │   ├── slack.py
+│   │   ├── test.json
+│   │   ├── tofwdpass.txt
+│   │   ├── training_evaluation_pipeline_body_parts.ipynb
+│   │   ├── training_evaluation_pipeline_coord.ipynb
+│   │   ├── training_evaluation_pipeline-Copy5.ipynb
+│   │   ├── training_evaluation_pipeline_full.ipynb
+│   │   ├── training_evaluation_pipeline_full_lateral-Copy1.ipynb
+│   │   ├── training_evaluation_pipeline_full_lateral.ipynb
+│   │   ├── training_evaluation_pipeline_full_small.ipynb
+│   │   ├── training_evaluation_pipeline.ipynb
+│   │   ├── training_evaluation_pipeline_no_coord.ipynb
+│   │   └── training_evaluation_pipeline_template.ipynb
+│   └── pycococreator.py
+├── logs
+│   ├── coco20181022T1839
+│   └── coco20181022T1842
+├── simon
+│   ├── blender_dataset_generator
+│   │   └── cv_datagen
+│   ├── data_generator
+│   │   ├── data_creation_pipeline.ipynb
+│   │   ├── data_generator.py
+│   │   ├── data_generator.pyc
+│   │   └── semantic_mask_generator.pyc
+│   ├── detection
+│   │   └── retinanet_aquabyte
+│   │       ├── custom_callbacks.py
+│   │       ├── custom_callbacks.pyc
+│   │       ├── custom_metrics.py
+│   │       ├── custom_metrics.pyc
+│   │       ├── data_utils.py
+│   │       ├── data_utils.pyc
+│   │       ├── detection_history2.json
+│   │       ├── detection_history.json
+│   │       ├── erko_0907.json
+│   │       ├── erko_5k_0909.json
+│   │       ├── erko_bigger_0907.json
+│   │       ├── keras-retinanet
+│   │       ├── result_generator.py
+│   │       ├── result_generator.pyc
+│   │       ├── test.png
+│   │       ├── test.txt
+│   │       ├── training_detection.ipynb
+│   │       └── utils.pyc
+│   ├── error_analysis
+│   │   ├── barycenter_robustness_test.ipynb
+│   │   ├── blender_v3.csv
+│   │   ├── data_generator.py
+│   │   ├── data_generator.pyc
+│   │   ├── data_utils.py
+│   │   ├── data_utils.pyc
+│   │   ├── eigen_vector_robustness_test.ipynb
+│   │   ├── error_analysor.py
+│   │   ├── error_analysor.pyc
+│   │   ├── error_pipeline.ipynb
+│   │   ├── lenght_estimator.py
+│   │   ├── lenght_estimator.pyc
+│   │   ├── obb.py
+│   │   ├── obb.pyc
+│   │   ├── utils.py
+│   │   └── utils.pyc
+│   ├── segmentation
+│   │   └── maskrcnn
+│   │       ├── annotations_try.json
+│   │       ├── assets
+│   │       │   ├── 4k_video.gif
+│   │       │   ├── balloon_color_splash.gif
+│   │       │   ├── detection_activations.png
+│   │       │   ├── detection_anchors.png
+│   │       │   ├── detection_final.png
+│   │       │   ├── detection_histograms.png
+│   │       │   ├── detection_masks.png
+│   │       │   ├── detection_refinement.png
+│   │       │   ├── detection_tensorboard.png
+│   │       │   ├── images_to_osm.png
+│   │       │   ├── mapping_challenge.png
+│   │       │   ├── nucleus_segmentation.png
+│   │       │   └── street.png
+│   │       ├── build
+│   │       │   └── lib
+│   │       │       └── mrcnn
+│   │       │           ├── config.py
+│   │       │           ├── __init__.py
+│   │       │           ├── model.py
+│   │       │           ├── parallel_model.py
+│   │       │           ├── utils.py
+│   │       │           └── visualize.py
+│   │       ├── cococreatortools.py
+│   │       ├── data_utils.py
+│   │       ├── dist
+│   │       │   └── mask_rcnn-2.1-py3.5.egg
+│   │       ├── images
+│   │       │   ├── 1045023827_4ec3e8ba5c_z.jpg
+│   │       │   ├── 12283150_12d37e6389_z.jpg
+│   │       │   ├── 2383514521_1fc8d7b0de_z.jpg
+│   │       │   ├── 2502287818_41e4b0c4fb_z.jpg
+│   │       │   ├── 2516944023_d00345997d_z.jpg
+│   │       │   ├── 25691390_f9944f61b5_z.jpg
+│   │       │   ├── 262985539_1709e54576_z.jpg
+│   │       │   ├── 3132016470_c27baa00e8_z.jpg
+│   │       │   ├── 3627527276_6fe8cd9bfe_z.jpg
+│   │       │   ├── 3651581213_f81963d1dd_z.jpg
+│   │       │   ├── 3800883468_12af3c0b50_z.jpg
+│   │       │   ├── 3862500489_6fd195d183_z.jpg
+│   │       │   ├── 3878153025_8fde829928_z.jpg
+│   │       │   ├── 4410436637_7b0ca36ee7_z.jpg
+│   │       │   ├── 4782628554_668bc31826_z.jpg
+│   │       │   ├── 5951960966_d4e1cda5d0_z.jpg
+│   │       │   ├── 6584515005_fce9cec486_z.jpg
+│   │       │   ├── 6821351586_59aa0dc110_z.jpg
+│   │       │   ├── 7581246086_cf7bbb7255_z.jpg
+│   │       │   ├── 7933423348_c30bd9bd4e_z.jpg
+│   │       │   ├── 8053677163_d4c8f416be_z.jpg
+│   │       │   ├── 8239308689_efa6c11b08_z.jpg
+│   │       │   ├── 8433365521_9252889f9a_z.jpg
+│   │       │   ├── 8512296263_5fc5458e20_z.jpg
+│   │       │   ├── 8699757338_c3941051b6_z.jpg
+│   │       │   ├── 8734543718_37f6b8bd45_z.jpg
+│   │       │   ├── 8829708882_48f263491e_z.jpg
+│   │       │   ├── 9118579087_f9ffa19e63_z.jpg
+│   │       │   └── 9247489789_132c0d534a_z.jpg
+│   │       ├── mcoco
+│   │       │   ├── coco.py
+│   │       │   ├── __init__.py
+│   │       │   └── __pycache__
+│   │       │       ├── coco.cpython-35.pyc
+│   │       │       └── __init__.cpython-35.pyc
+│   │       ├── mextra
+│   │       │   ├── __init__.py
+│   │       │   ├── __pycache__
+│   │       │   │   ├── __init__.cpython-35.pyc
+│   │       │   │   └── utils.cpython-35.pyc
+│   │       │   └── utils.py
+│   │       ├── mrcnn
+│   │       │   ├── config.py
+│   │       │   ├── __init__.py
+│   │       │   ├── model.py
+│   │       │   ├── parallel_model.py
+│   │       │   ├── __pycache__
+│   │       │   │   ├── config.cpython-35.pyc
+│   │       │   │   ├── __init__.cpython-35.pyc
+│   │       │   │   ├── model.cpython-35.pyc
+│   │       │   │   ├── utils.cpython-35.pyc
+│   │       │   │   └── visualize.cpython-35.pyc
+│   │       │   ├── utils.py
+│   │       │   └── visualize.py
+│   │       ├── __pycache__
+│   │       │   ├── cococreatortools.cpython-35.pyc
+│   │       │   └── data_utils.cpython-35.pyc
+│   │       ├── requirements.txt
+│   │       ├── samples
+│   │       │   ├── balloon
+│   │       │   │   ├── balloon.py
+│   │       │   │   ├── inspect_balloon_data.ipynb
+│   │       │   │   ├── inspect_balloon_model.ipynb
+│   │       │   │   └── README.md
+│   │       │   ├── coco
+│   │       │   │   ├── coco.py
+│   │       │   │   ├── inspect_data.ipynb
+│   │       │   │   ├── inspect_model.ipynb
+│   │       │   │   └── inspect_weights.ipynb
+│   │       │   ├── demo.ipynb
+│   │       │   ├── nucleus
+│   │       │   │   ├── inspect_nucleus_data.ipynb
+│   │       │   │   ├── inspect_nucleus_model.ipynb
+│   │       │   │   ├── nucleus.py
+│   │       │   │   └── README.md
+│   │       │   └── shapes
+│   │       │       ├── shapes.py
+│   │       │       └── train_shapes.ipynb
+│   │       ├── setup.cfg
+│   │       ├── setup.py
+│   │       └── training_evaluation_pipeline.ipynb
+│   └── volume_estimation
+│       ├── blender_v3_croped_normalized_dmap_300_100.csv
+│       ├── blender_v3.csv
+│       ├── classifier.py
+│       ├── data_loader.py
+│       ├── data_loader.pyc
+│       ├── dataset_creator.ipynb
+│       ├── data_utils.py
+│       ├── feature_extractor.ipynb
+│       ├── models
+│       │   ├── height_estimator_50_epoch_lr_1e-2_simple_convnet_L1_loss.pt
+│       │   ├── length_estimator_50_epoch_lr_1e-2_simple_convnet_L1_loss.pt
+│       │   ├── volume_estimator_50_epoch_lr_1e-2_multi_head_convnet_L1_loss.pt
+│       │   ├── volume_estimator_50_epoch_lr_1e-2_simple_convnet_L1_loss.pt
+│       │   └── width_estimator_50_epoch_lr_1e-2_simple_convnet_L1_loss.pt
+│       ├── models.py
+│       └── training_pipeline.ipynb
+├── thomas
+│   ├── biomass
+│   │   ├── alok2.ipynb
+│   │   ├── alok.ipynb
+│   │   ├── biomass_exploration.ipynb
+│   │   ├── Biomass_Model_Feature_Filtration.ipynb
+│   │   ├── blender_model_exploration.ipynb
+│   │   ├── clean_annotations.ipynb
+│   │   ├── create_input.ipynb
+│   │   ├── dataframe_blender.csv
+│   │   ├── EDA_gtsf_2.0.ipynb
+│   │   ├── gtsf_phase_I_prediction.ipynb
+│   │   ├── history.json
+│   │   ├── keypoints_181017010001_coco_format.json
+│   │   ├── keypoints_181017010001_json_format.json
+│   │   ├── keypoints_detection_gtsf.ipynb
+│   │   ├── keypoints_detection_keras.ipynb
+│   │   ├── look_gtsf.ipynb
+│   │   ├── mobilenet_utils.py
+│   │   ├── old
+│   │   │   ├── biomass_inference
+│   │   │   │   ├── biomass_estimation.py
+│   │   │   │   ├── inference.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── size_estimation.py
+│   │   │   ├── build-container.sh
+│   │   │   ├── Dockerfile
+│   │   │   ├── Dockerfile.lua
+│   │   │   ├── forward_research_port.sh
+│   │   │   ├── frame_depth_map
+│   │   │   │   ├── depth_map.ipynb
+│   │   │   │   ├── net_kitti_fast_-a_train_all.t7
+│   │   │   │   └── README.md
+│   │   │   ├── login_research_container.sh
+│   │   │   ├── occlusion
+│   │   │   │   ├── 0_train_object_detection_algorithm_augmentation.ipynb
+│   │   │   │   ├── 0_train_object_detection_algorithm-Copy1.ipynb
+│   │   │   │   ├── 0_train_object_detection_algorithm.ipynb
+│   │   │   │   ├── 1_detect_occlusion_with_bboxes.ipynb
+│   │   │   │   ├── 2_detect_occlusion_with_mask_shape.ipynb
+│   │   │   │   ├── display_results.ipynb
+│   │   │   │   ├── history_all.json
+│   │   │   │   ├── history_aug.json
+│   │   │   │   └── history.json
+│   │   │   ├── README.md
+│   │   │   ├── rebuild_research_container.sh
+│   │   │   ├── restart_research_container.sh
+│   │   │   ├── robust biomass
+│   │   │   │   └── 0_robust_length_estimator.ipynb
+│   │   │   ├── segmentation
+│   │   │   │   └── u-net.ipynb
+│   │   │   └── setup.py
+│   │   ├── pcr_approach.ipynb
+│   │   ├── pcr_rewritten.ipynb
+│   │   ├── __pycache__
+│   │   │   └── utils.cpython-35.pyc
+│   │   ├── sample_message.json
+│   │   ├── sensitivity_analysis.ipynb
+│   │   ├── single_coco.json
+│   │   ├── test.jpg
+│   │   └── utils.py
+│   ├── blur
+│   │   └── blur_detection.ipynb
+│   ├── cloud_data_service
+│   │   ├── deploy
+│   │   │   └── docker-compose.yaml
+│   │   ├── Dockerfile
+│   │   ├── README.md
+│   │   └── src
+│   │       ├── cogito_task.py
+│   │       ├── entrypoint.sh
+│   │       ├── gtsf_task.py
+│   │       ├── id_class_matching.json
+│   │       ├── lice_task.py
+│   │       ├── postprocessing.py
+│   │       ├── pycococreator.py
+│   │       ├── requirements.txt
+│   │       ├── tasks.py
+│   │       ├── utils.py
+│   │       └── utils.pyc
+│   ├── deploy
+│   │   ├── docker-compose.yml
+│   │   └── special.env
+│   ├── detection
+│   │   ├── CONTRIBUTORS.md
+│   │   ├── keras_retinanet
+│   │   │   ├── backend
+│   │   │   │   ├── cntk_backend.py
+│   │   │   │   ├── common.py
+│   │   │   │   ├── dynamic.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── tensorflow_backend.py
+│   │   │   │   └── theano_backend.py
+│   │   │   ├── bin
+│   │   │   │   ├── convert_model.py
+│   │   │   │   ├── debug.py
+│   │   │   │   ├── evaluate_coco.py
+│   │   │   │   ├── evaluate.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── train.py
+│   │   │   ├── callbacks
+│   │   │   │   ├── coco.py
+│   │   │   │   ├── common.py
+│   │   │   │   ├── eval.py
+│   │   │   │   └── __init__.py
+│   │   │   ├── initializers.py
+│   │   │   ├── __init__.py
+│   │   │   ├── layers
+│   │   │   │   ├── filter_detections.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── _misc.py
+│   │   │   ├── losses.py
+│   │   │   ├── models
+│   │   │   │   ├── densenet.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── mobilenet.py
+│   │   │   │   ├── resnet.py
+│   │   │   │   ├── retinanet.py
+│   │   │   │   └── vgg.py
+│   │   │   ├── preprocessing
+│   │   │   │   ├── coco.py
+│   │   │   │   ├── csv_generator.py
+│   │   │   │   ├── generator.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── kitti.py
+│   │   │   │   ├── open_images.py
+│   │   │   │   └── pascal_voc.py
+│   │   │   └── utils
+│   │   │       ├── anchors.py
+│   │   │       ├── coco_eval.py
+│   │   │       ├── colors.py
+│   │   │       ├── eval.py
+│   │   │       ├── image.py
+│   │   │       ├── __init__.py
+│   │   │       ├── keras_version.py
+│   │   │       ├── model.py
+│   │   │       ├── transform.py
+│   │   │       └── visualization.py
+│   │   ├── LICENSE
+│   │   ├── README.md
+│   │   ├── setup.cfg
+│   │   └── setup.py
+│   ├── Dockerfile
+│   ├── error_analysis.ipynb
+│   ├── forward_pass_test_set.ipynb
+│   ├── full_pipeline
+│   │   ├── blender
+│   │   │   ├── 1_segmentation.ipynb
+│   │   │   ├── 1_segmentation_raw.ipynb
+│   │   │   ├── 2_detection.ipynb
+│   │   │   ├── 3_evaluate.ipynb
+│   │   │   ├── 4_depth_estimation.ipynb
+│   │   │   ├── 4_sgbm.ipynb
+│   │   │   ├── detection_history.json
+│   │   │   ├── error_analysis.ipynb
+│   │   │   ├── full.ipynb
+│   │   │   ├── obb.pyc
+│   │   │   ├── raw_segmentation_history.json
+│   │   │   ├── segmentation_history.json
+│   │   │   ├── test.png
+│   │   │   ├── unet.py
+│   │   │   ├── unet.pyc
+│   │   │   └── utils.pyc
+│   │   ├── erko
+│   │   │   ├── 0_data_exploration.ipynb
+│   │   │   ├── 0_data_maskrcnn_creation.ipynb
+│   │   │   ├── 1_bbox_from_unet.ipynb
+│   │   │   ├── 1_results.ipynb
+│   │   │   ├── 1_segmentation_contours-Copy1.ipynb
+│   │   │   ├── 1_segmentation_contours-Copy2.ipynb
+│   │   │   ├── 1_segmentation_contours.ipynb
+│   │   │   ├── 2_detection.ipynb
+│   │   │   ├── 4_depth_estimation.ipynb
+│   │   │   ├── 4_SGBM.ipynb
+│   │   │   ├── balanced_images.json
+│   │   │   ├── erko_0816_history.json
+│   │   │   ├── erko_0817_oneclass_fg_history.json
+│   │   │   ├── erko_0817_oneclass_history.json
+│   │   │   ├── erko_0904_oneclass_fg_history.json
+│   │   │   ├── erko_0905_2_oneclass_fg_history.json
+│   │   │   ├── erko_0905_balanced_large_oneclass_fg_history.json
+│   │   │   ├── erko_0905_balanced_oneclass_fg_history.json
+│   │   │   ├── erko_0905_oneclass_fg_history.json
+│   │   │   ├── erko_0906_contours_history.json
+│   │   │   ├── erko_0906_pink_eroded_history.json
+│   │   │   ├── eval_modified.py
+│   │   │   ├── eval_modified.pyc
+│   │   │   ├── full.ipynb
+│   │   │   ├── good_images2.json
+│   │   │   ├── haze_removal.ipynb
+│   │   │   ├── history.json
+│   │   │   ├── __pycache__
+│   │   │   │   └── unet.cpython-35.pyc
+│   │   │   ├── test.png
+│   │   │   ├── unet.py
+│   │   │   └── unet.pyc
+│   │   ├── gopro
+│   │   │   ├── 1_segmentation_contours.ipynb
+│   │   │   ├── 1_segmentation_foreground.ipynb
+│   │   │   ├── 1_segmentation.ipynb
+│   │   │   ├── 2_detection.ipynb
+│   │   │   ├── 2_detection_small.ipynb
+│   │   │   ├── coins.png
+│   │   │   ├── detection_fg_history.json
+│   │   │   ├── detection_history.json
+│   │   │   ├── detection_small_history.json
+│   │   │   ├── eval_modified.py
+│   │   │   ├── eval_modified.pyc
+│   │   │   ├── segmentation_contours_0808_aug_history.json
+│   │   │   ├── segmentation_contours_0813_aug_history.json
+│   │   │   ├── segmentation_contours_0820_aug_history.json
+│   │   │   ├── segmentation_contours_aug2_history.json
+│   │   │   ├── segmentation_contours_history.json
+│   │   │   ├── segmentation_history.json
+│   │   │   ├── unet.py
+│   │   │   └── unet.pyc
+│   │   ├── imenco
+│   │   │   ├── data_exploration.ipynb
+│   │   │   ├── detection.ipynb
+│   │   │   ├── imenco_history.json
+│   │   │   ├── unet_imenco.ipynb
+│   │   │   ├── unet.ipynb
+│   │   │   ├── unet.py
+│   │   │   └── unet.pyc
+│   │   ├── sflab
+│   │   │   ├── 0_data_exploration.ipynb
+│   │   │   ├── 1_segmentation.ipynb
+│   │   │   ├── 2_detection-Copy1.ipynb
+│   │   │   ├── 2_detection.ipynb
+│   │   │   ├── 3_depth_mapping_monodepth.ipynb
+│   │   │   ├── 3_depth_mapping_SGBM.ipynb
+│   │   │   ├── average_gradients.py
+│   │   │   ├── average_gradients.pyc
+│   │   │   ├── bilinear_sampler.py
+│   │   │   ├── bilinear_sampler.pyc
+│   │   │   ├── bilinear_sampler_pytorch.py
+│   │   │   ├── bilinear_sampler_pytorch.pyc
+│   │   │   ├── data_loader.py
+│   │   │   ├── data_loader.pyc
+│   │   │   ├── detection_history.json
+│   │   │   ├── disparities.npy
+│   │   │   ├── disparities_pp.npy
+│   │   │   ├── eval_modified.py
+│   │   │   ├── eval_modified.pyc
+│   │   │   ├── FULL.ipynb
+│   │   │   ├── history.json
+│   │   │   ├── loss.py
+│   │   │   ├── loss.pyc
+│   │   │   ├── main_monodepth_pytorch.py
+│   │   │   ├── main_monodepth_pytorch.pyc
+│   │   │   ├── models_resnet.py
+│   │   │   ├── models_resnet.pyc
+│   │   │   ├── monodepth_dataloader_modified.py
+│   │   │   ├── monodepth_dataloader.py
+│   │   │   ├── monodepth_dataloader.pyc
+│   │   │   ├── monodepth_dataloader_unet.py
+│   │   │   ├── monodepth_main.py
+│   │   │   ├── monodepth_model_modified.py
+│   │   │   ├── monodepth_model.py
+│   │   │   ├── monodepth_model.pyc
+│   │   │   ├── monodepth_model_unet.py
+│   │   │   ├── monodepth_simple.py
+│   │   │   ├── obb.py
+│   │   │   ├── obb.pyc
+│   │   │   ├── segmentation_history.json
+│   │   │   ├── setup.py
+│   │   │   ├── unet.py
+│   │   │   └── unet.pyc
+│   │   └── small_pen
+│   │       ├── 0_data_exploration.ipynb
+│   │       ├── 1_mass_rectification.ipynb
+│   │       ├── 2_extract_fish(not_working).ipynb
+│   │       ├── 3_depth_map.ipynb
+│   │       ├── 4_length_estimation.ipynb
+│   │       ├── 5_automated_length_estimation-Copy1.ipynb
+│   │       ├── 5_automated_length_estimation.ipynb
+│   │       ├── 6_body_parts_identification_(dataset_creation).ipynb
+│   │       ├── 7_exploratory_data_analysis.ipynb
+│   │       ├── 8_weights_forecasting_2.ipynb
+│   │       ├── 8_weights_forecasting.ipynb
+│   │       ├── caffe2_tutorial.ipynb
+│   │       ├── calibration_open_cv.ipynb
+│   │       ├── conc.jpg
+│   │       ├── coord_conv.py
+│   │       ├── create_cogito_data.ipynb
+│   │       ├── dataset_complete.csv
+│   │       ├── dataset.csv
+│   │       ├── dataset_predictions0.csv
+│   │       ├── dataset_predictions1.csv
+│   │       ├── dataset_predictions2.csv
+│   │       ├── dataset_predictions3.csv
+│   │       ├── dataset_predictions4.csv
+│   │       ├── dataset_predictions5.csv
+│   │       ├── dataset_predictions_complete.csv
+│   │       ├── dataset_world_coordinates.csv
+│   │       ├── dataset_world_coordinates_full.csv
+│   │       ├── deeplearning_eye_detector_from_head.ipynb
+│   │       ├── deeplearning_keypoints_detector_0.ipynb
+│   │       ├── deeplearning_keypoints_detector_1-Copy1.ipynb
+│   │       ├── deeplearning_keypoints_detector_1-Copy2.ipynb
+│   │       ├── deeplearning_keypoints_detector_1.ipynb
+│   │       ├── disp_change.ipynb
+│   │       ├── eye_detection_coord.json
+│   │       ├── eye_detection_no_coord.json
+│   │       ├── freckle_extractor_unet.ipynb
+│   │       ├── freckles_extractor.ipynb
+│   │       ├── grid_extraction.ipynb
+│   │       ├── head_classifier-Copy1.ipynb
+│   │       ├── head_classifier.ipynb
+│   │       ├── head_tail_detection.ipynb
+│   │       ├── headtail_history2.json
+│   │       ├── headtail_history.json
+│   │       ├── head_tail_masks.json
+│   │       ├── head_tails_segmentation.json
+│   │       ├── paste_and_resize.ipynb
+│   │       ├── pcr_approach.ipynb
+│   │       ├── pgm_approach.ipynb
+│   │       ├── __pycache__
+│   │       │   ├── coord_conv.cpython-35.pyc
+│   │       │   ├── slack.cpython-35.pyc
+│   │       │   ├── stereo_calibration.cpython-35.pyc
+│   │       │   ├── unet.cpython-35.pyc
+│   │       │   └── utils.cpython-35.pyc
+│   │       ├── pycococreator.py
+│   │       ├── slack.py
+│   │       ├── stereo_calibration.py
+│   │       ├── stitched_filters_4x4.png
+│   │       ├── test.jpg
+│   │       ├── to_forwardpass.txt
+│   │       ├── unet.py
+│   │       └── utils.py
+│   ├── gtsf
+│   │   ├── data_exploration.ipynb
+│   │   ├── diffeomorphic_map.png
+│   │   ├── dipy_clean.ipynb
+│   │   ├── dipy_clean_loop_crop.ipynb
+│   │   ├── dipy_clean_loop.ipynb
+│   │   ├── dipy_test.ipynb
+│   │   ├── direct_warp_result.png
+│   │   ├── input_images.png
+│   │   ├── inverse_warp_result.png
+│   │   ├── __pycache__
+│   │   │   └── utils.cpython-35.pyc
+│   │   └── utils.py
+│   ├── gtsf_data_service
+│   ├── left_right_matching.ipynb
+│   ├── lice_algorithms
+│   │   ├── algorithm0_lice_detection.ipynb
+│   │   ├── algorithm1_lice_classification.ipynb
+│   │   ├── autokeras_test.ipynb
+│   │   ├── cut_and_classify.ipynb
+│   │   ├── data_exploration.ipynb
+│   │   ├── detection-Copy1.ipynb
+│   │   ├── detection.ipynb
+│   │   ├── erko_0_data_download_exploration.ipynb
+│   │   ├── erko_1_get_svm_lice_data.ipynb
+│   │   ├── erko_2_train_sealice_SVM.ipynb
+│   │   ├── eval_modified.py
+│   │   ├── eval_modified.pyc
+│   │   ├── history.json
+│   │   ├── imagenet_utils.py
+│   │   ├── lib
+│   │   │   ├── detections.py
+│   │   │   ├── features.py
+│   │   │   ├── features.pyc
+│   │   │   ├── __init__.py
+│   │   │   ├── __init__.pyc
+│   │   │   ├── move_to_ipython
+│   │   │   │   ├── 1_new_get_feature_descriptors.py
+│   │   │   │   ├── 2_new_sealice_svm_train.py
+│   │   │   │   ├── 3_new_sealice_svm_predict_anno_video.py
+│   │   │   │   └── 4_new_detect_sealice_svm_orb.py
+│   │   │   ├── svm.py
+│   │   │   ├── svm.pyc
+│   │   │   ├── utils.py
+│   │   │   └── utils.pyc
+│   │   ├── lice_classification.ipynb
+│   │   ├── lice_classification_new.ipynb
+│   │   ├── lice_detection_new.ipynb
+│   │   ├── lice_loc_heatmap.ipynb
+│   │   ├── loss_viz.ipynb
+│   │   ├── __pycache__
+│   │   │   ├── unet.cpython-35.pyc
+│   │   │   └── utils.cpython-35.pyc
+│   │   ├── slide_and_match.ipynb
+│   │   ├── test
+│   │   ├── test.jpg
+│   │   ├── test.pdf
+│   │   ├── unet.py
+│   │   ├── Untitled1.ipynb
+│   │   ├── Untitled2.ipynb
+│   │   ├── Untitled.ipynb
+│   │   └── utils.py
+│   ├── lice_blom
+│   │   ├── create_coco_crops.ipynb
+│   │   └── crops_visualization.ipynb
+│   ├── out
+│   │   ├── 0
+│   │   │   └── input
+│   │   │       ├── left_frame.jpg
+│   │   │       ├── left_frame.jpg.frame_meta.json
+│   │   │       ├── left_frame.jpg.predictions.json
+│   │   │       ├── right_frame.jpg
+│   │   │       ├── right_frame.jpg.frame_meta.json
+│   │   │       └── right_frame.jpg.predictions.json
+│   │   └── 1
+│   │       └── input
+│   │           ├── left_frame.jpg
+│   │           ├── left_frame.jpg.frame_meta.json
+│   │           ├── left_frame.jpg.predictions.json
+│   │           ├── right_frame.jpg
+│   │           ├── right_frame.jpg.frame_meta.json
+│   │           └── right_frame.jpg.predictions.json
+│   ├── out2
+│   │   ├── 0
+│   │   │   └── input
+│   │   │       ├── biomass.json
+│   │   │       ├── left_frame.jpg
+│   │   │       ├── left_frame.jpg.frame_meta.json
+│   │   │       ├── left_frame.jpg.segmentation.prediction.json
+│   │   │       ├── right_frame.jpg
+│   │   │       ├── right_frame.jpg.frame_meta.json
+│   │   │       └── right_frame.jpg.segmentation.prediction.json
+│   │   ├── 1
+│   │   │   └── input
+│   │   │       ├── biomass.json
+│   │   │       ├── left_frame.jpg
+│   │   │       ├── left_frame.jpg.frame_meta.json
+│   │   │       ├── left_frame.jpg.segmentation.prediction.json
+│   │   │       ├── right_frame.jpg
+│   │   │       ├── right_frame.jpg.frame_meta.json
+│   │   │       └── right_frame.jpg.segmentation.prediction.json
+│   │   ├── 2
+│   │   │   └── input
+│   │   │       ├── biomass.json
+│   │   │       ├── left_frame.jpg
+│   │   │       ├── left_frame.jpg.frame_meta.json
+│   │   │       ├── left_frame.jpg.segmentation.prediction.json
+│   │   │       ├── right_frame.jpg
+│   │   │       ├── right_frame.jpg.frame_meta.json
+│   │   │       └── right_frame.jpg.segmentation.prediction.json
+│   │   ├── 3
+│   │   │   └── input
+│   │   │       ├── biomass.json
+│   │   │       ├── left_frame.jpg
+│   │   │       ├── left_frame.jpg.frame_meta.json
+│   │   │       ├── left_frame.jpg.segmentation.prediction.json
+│   │   │       ├── right_frame.jpg
+│   │   │       ├── right_frame.jpg.frame_meta.json
+│   │   │       └── right_frame.jpg.segmentation.prediction.json
+│   │   ├── 4
+│   │   │   └── input
+│   │   │       ├── biomass.json
+│   │   │       ├── left_frame.jpg
+│   │   │       ├── left_frame.jpg.frame_meta.json
+│   │   │       ├── left_frame.jpg.segmentation.prediction.json
+│   │   │       ├── right_frame.jpg
+│   │   │       ├── right_frame.jpg.frame_meta.json
+│   │   │       └── right_frame.jpg.segmentation.prediction.json
+│   │   ├── 5
+│   │   │   └── input
+│   │   │       ├── biomass.json
+│   │   │       ├── left_frame.jpg
+│   │   │       ├── left_frame.jpg.frame_meta.json
+│   │   │       ├── left_frame.jpg.segmentation.prediction.json
+│   │   │       ├── right_frame.jpg
+│   │   │       ├── right_frame.jpg.frame_meta.json
+│   │   │       └── right_frame.jpg.segmentation.prediction.json
+│   │   └── 6
+│   │       └── input
+│   │           ├── biomass.json
+│   │           ├── left_frame.jpg
+│   │           ├── left_frame.jpg.frame_meta.json
+│   │           ├── left_frame.jpg.segmentation.prediction.json
+│   │           ├── right_frame.jpg
+│   │           ├── right_frame.jpg.frame_meta.json
+│   │           └── right_frame.jpg.segmentation.prediction.json
+│   ├── pellet
+│   │   ├── detection_fg_history.json
+│   │   ├── keras-retinanet
+│   │   │   ├── CONTRIBUTORS.md
+│   │   │   ├── examples
+│   │   │   │   ├── 000000008021.jpg
+│   │   │   │   └── ResNet50RetinaNet.ipynb
+│   │   │   ├── images
+│   │   │   │   ├── coco1.png
+│   │   │   │   ├── coco2.png
+│   │   │   │   └── coco3.png
+│   │   │   ├── ISSUE_TEMPLATE.md
+│   │   │   ├── keras_retinanet
+│   │   │   │   ├── backend
+│   │   │   │   │   ├── cntk_backend.py
+│   │   │   │   │   ├── common.py
+│   │   │   │   │   ├── dynamic.py
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── tensorflow_backend.py
+│   │   │   │   │   └── theano_backend.py
+│   │   │   │   ├── bin
+│   │   │   │   │   ├── convert_model.py
+│   │   │   │   │   ├── debug.py
+│   │   │   │   │   ├── evaluate.py
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   └── train.py
+│   │   │   │   ├── callbacks
+│   │   │   │   │   ├── coco.py
+│   │   │   │   │   ├── common.py
+│   │   │   │   │   ├── eval.py
+│   │   │   │   │   └── __init__.py
+│   │   │   │   ├── initializers.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── layers
+│   │   │   │   │   ├── filter_detections.py
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   └── _misc.py
+│   │   │   │   ├── losses.py
+│   │   │   │   ├── models
+│   │   │   │   │   ├── densenet.py
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── mobilenet.py
+│   │   │   │   │   ├── resnet.py
+│   │   │   │   │   ├── retinanet.py
+│   │   │   │   │   └── vgg.py
+│   │   │   │   ├── preprocessing
+│   │   │   │   │   ├── coco.py
+│   │   │   │   │   ├── csv_generator.py
+│   │   │   │   │   ├── generator.py
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── kitti.py
+│   │   │   │   │   ├── open_images.py
+│   │   │   │   │   └── pascal_voc.py
+│   │   │   │   └── utils
+│   │   │   │       ├── anchors.py
+│   │   │   │       ├── coco_eval.py
+│   │   │   │       ├── colors.py
+│   │   │   │       ├── compute_overlap.pyx
+│   │   │   │       ├── config.py
+│   │   │   │       ├── eval.py
+│   │   │   │       ├── image.py
+│   │   │   │       ├── __init__.py
+│   │   │   │       ├── keras_version.py
+│   │   │   │       ├── model.py
+│   │   │   │       ├── transform.py
+│   │   │   │       └── visualization.py
+│   │   │   ├── LICENSE
+│   │   │   ├── README.md
+│   │   │   ├── setup.cfg
+│   │   │   ├── setup.py
+│   │   │   ├── snapshots
+│   │   │   └── tests
+│   │   │       ├── backend
+│   │   │       │   ├── __init__.py
+│   │   │       │   └── test_common.py
+│   │   │       ├── bin
+│   │   │       │   └── test_train.py
+│   │   │       ├── __init__.py
+│   │   │       ├── layers
+│   │   │       │   ├── __init__.py
+│   │   │       │   ├── test_filter_detections.py
+│   │   │       │   └── test_misc.py
+│   │   │       ├── models
+│   │   │       │   ├── __init__.py
+│   │   │       │   ├── test_densenet.py
+│   │   │       │   └── test_mobilenet.py
+│   │   │       ├── preprocessing
+│   │   │       │   ├── __init__.py
+│   │   │       │   ├── test_csv_generator.py
+│   │   │       │   └── test_generator.py
+│   │   │       ├── test-data
+│   │   │       ├── test_losses.py
+│   │   │       └── utils
+│   │   │           ├── __init__.py
+│   │   │           ├── test_anchors.py
+│   │   │           └── test_transform.py
+│   │   ├── pellet_data_preprocessing.ipynb
+│   │   ├── pellet_detection_inference.ipynb
+│   │   ├── pellet_detection_training.ipynb
+│   │   └── pellet_tracking.ipynb
+│   ├── postprocessing
+│   │   ├── enhance_viz.ipynb
+│   │   ├── haze-removal.ipynb
+│   │   ├── haze_removal.py
+│   │   ├── haze_removal.pyc
+│   │   └── post_processing_basics.ipynb
+│   ├── preprocessing
+│   │   └── 0_visualization.ipynb
+│   ├── priority_queue
+│   │   ├── classifier_predict_crops_5.ipynb
+│   │   ├── classifier_predict_crops.ipynb
+│   │   ├── classifier_predict_frames_1.ipynb
+│   │   ├── classifier_predict_frames_3.ipynb
+│   │   ├── data_exploration.ipynb
+│   │   ├── download_data.ipynb
+│   │   ├── download_good_data.ipynb
+│   │   ├── train_classifier_1.ipynb
+│   │   ├── train_classifier_5.ipynb
+│   │   ├── train_classifier_frames_1.ipynb
+│   │   ├── train_classifier_frames_3.ipynb
+│   │   ├── train_classifier_frames_dual_head.ipynb
+│   │   └── viz_data.ipynb
+│   ├── __pycache__
+│   │   └── utils.cpython-35.pyc
+│   ├── README.md
+│   ├── reidentification
+│   │   ├── create_dataset.ipynb
+│   │   ├── labels
+│   │   │   ├── all.json
+│   │   │   ├── cogito2018-11-01.json
+│   │   │   ├── cogito2018-11-02.json
+│   │   │   └── cogito2018-11-05.json
+│   │   ├── __pycache__
+│   │   │   └── unet.cpython-35.pyc
+│   │   ├── train_model.ipynb
+│   │   └── unet.py
+│   ├── sealice
+│   │   ├── 1_get_sealice_SVM_training_data.ipynb
+│   │   ├── 2_train_sealice_SVM.ipynb
+│   │   ├── 3_test_sealice_SVM_precision_recall_no_keypoint.ipynb
+│   │   ├── 4_full_sealice_SVM_pipeline.ipynb
+│   │   ├── annotations.csv
+│   │   ├── Helvetica-Regular.ttf
+│   │   ├── imenco.jpg
+│   │   ├── Keyboard.ttf
+│   │   ├── LATIgen.ipynb
+│   │   ├── lib
+│   │   │   ├── detections.py
+│   │   │   ├── detections.pyc
+│   │   │   ├── features.py
+│   │   │   ├── features.pyc
+│   │   │   ├── __init__.py
+│   │   │   ├── __init__.pyc
+│   │   │   ├── move_to_ipython
+│   │   │   │   ├── 1_new_get_feature_descriptors.py
+│   │   │   │   ├── 2_new_sealice_svm_train.py
+│   │   │   │   ├── 3_new_sealice_svm_predict_anno_video.py
+│   │   │   │   └── 4_new_detect_sealice_svm_orb.py
+│   │   │   ├── svm.py
+│   │   │   ├── svm.pyc
+│   │   │   ├── utils.py
+│   │   │   └── utils.pyc
+│   │   ├── licedata.ipynb
+│   │   ├── models
+│   │   │   └── sealice_detection_ORB_SVM_model.yml
+│   │   ├── old_lib
+│   │   │   ├── 1_features_from_video.py
+│   │   │   ├── 2_sealice_svm_train.py
+│   │   │   ├── 3_sealice_svm_predict_anno_video.py
+│   │   │   ├── 4_detect_sealice_svm_orb.py
+│   │   │   ├── archive
+│   │   │   │   ├── annotations
+│   │   │   │   │   ├── annotation_bboxes.py
+│   │   │   │   │   ├── im_read_plot_scratch.py
+│   │   │   │   │   ├── parse2.py
+│   │   │   │   │   ├── parse.py
+│   │   │   │   │   ├── xml_parser_2.py
+│   │   │   │   │   ├── xml_parser.py
+│   │   │   │   │   └── xmlparser.py
+│   │   │   │   ├── optical_flow
+│   │   │   │   │   └── optic_flow_seg_test.py
+│   │   │   │   ├── scratch_files
+│   │   │   │   │   ├── sealice_1.py
+│   │   │   │   │   ├── sealice_2.py
+│   │   │   │   │   ├── sealice_3.py
+│   │   │   │   │   ├── sealice_4_old.py
+│   │   │   │   │   ├── sealice_4.py
+│   │   │   │   │   └── sealice_5.py
+│   │   │   │   ├── segmentation
+│   │   │   │   │   └── fastmask_algorithm_2.py
+│   │   │   │   └── tracking
+│   │   │   │       ├── kalman_filter_MOT
+│   │   │   │       │   ├── common.py
+│   │   │   │       │   ├── detectors.py
+│   │   │   │       │   ├── kalman_filter.py
+│   │   │   │       │   ├── object_tracking_KF.pdf
+│   │   │   │       │   ├── object_tracking.py
+│   │   │   │       │   ├── sealice_candidates.py
+│   │   │   │       │   └── tracker.py
+│   │   │   │       └── kalman_tracker.py
+│   │   │   ├── future_versions
+│   │   │   │   ├── sealice_svm_predict_anno_video_2.py
+│   │   │   │   └── sealice_svm_train_2.py
+│   │   │   └── README.md
+│   │   ├── requirements.txt
+│   │   ├── sealice_detection_ORB_SVM_model.yml
+│   │   └── train_sealice_SVM.ipynb
+│   ├── segmentation
+│   │   ├── instance_segmentation
+│   │   │   ├── instance_segmentation_with_dual_unet.ipynb
+│   │   │   ├── unet.py
+│   │   │   └── unet.pyc
+│   │   ├── LICENSE
+│   │   ├── MANIFEST.in
+│   │   ├── mrcnn
+│   │   │   ├── config.py
+│   │   │   ├── __init__.py
+│   │   │   ├── model.py
+│   │   │   ├── parallel_model.py
+│   │   │   ├── utils.py
+│   │   │   └── visualize.py
+│   │   ├── README.md
+│   │   ├── requirements.txt
+│   │   ├── semantic_segmentation
+│   │   │   ├── imenco_history.json
+│   │   │   ├── unet_imenco.ipynb
+│   │   │   ├── unet.ipynb
+│   │   │   ├── unet.py
+│   │   │   └── unet.pyc
+│   │   ├── setup.cfg
+│   │   └── setup.py
+│   ├── small_pen.txt
+│   ├── src
+│   │   ├── fish_detection
+│   │   │   ├── 0_train_model.ipynb
+│   │   │   ├── 1_test_performances.ipynb
+│   │   │   ├── aquabyte_retinanet
+│   │   │   │   ├── examples
+│   │   │   │   │   ├── 000000008021.jpg
+│   │   │   │   │   ├── ResNet50RetinaNet-Copy1.ipynb
+│   │   │   │   │   └── ResNet50RetinaNet.ipynb
+│   │   │   │   ├── images
+│   │   │   │   │   ├── coco1.png
+│   │   │   │   │   ├── coco2.png
+│   │   │   │   │   └── coco3.png
+│   │   │   │   ├── keras_retinanet
+│   │   │   │   │   ├── backend
+│   │   │   │   │   │   ├── cntk_backend.py
+│   │   │   │   │   │   ├── common.py
+│   │   │   │   │   │   ├── dynamic.py
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   ├── tensorflow_backend.py
+│   │   │   │   │   │   └── theano_backend.py
+│   │   │   │   │   ├── bin
+│   │   │   │   │   │   ├── debug.py
+│   │   │   │   │   │   ├── evaluate_coco.py
+│   │   │   │   │   │   ├── evaluate.py
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── train.py
+│   │   │   │   │   ├── callbacks
+│   │   │   │   │   │   ├── coco.py
+│   │   │   │   │   │   ├── common.py
+│   │   │   │   │   │   ├── eval.py
+│   │   │   │   │   │   └── __init__.py
+│   │   │   │   │   ├── initializers.py
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── layers
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── _misc.py
+│   │   │   │   │   ├── losses.py
+│   │   │   │   │   ├── models
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   ├── mobilenet.py
+│   │   │   │   │   │   ├── resnet.py
+│   │   │   │   │   │   └── retinanet.py
+│   │   │   │   │   ├── preprocessing
+│   │   │   │   │   │   ├── coco.py
+│   │   │   │   │   │   ├── csv_generator.py
+│   │   │   │   │   │   ├── generator.py
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   ├── kitti.py
+│   │   │   │   │   │   ├── open_images.py
+│   │   │   │   │   │   └── pascal_voc.py
+│   │   │   │   │   └── utils
+│   │   │   │   │       ├── anchors.py
+│   │   │   │   │       ├── coco_eval.py
+│   │   │   │   │       ├── colors.py
+│   │   │   │   │       ├── eval.py
+│   │   │   │   │       ├── image.py
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── keras_version.py
+│   │   │   │   │       ├── model.py
+│   │   │   │   │       ├── transform.py
+│   │   │   │   │       └── visualization.py
+│   │   │   │   ├── LICENSE
+│   │   │   │   ├── README.md
+│   │   │   │   ├── setup.cfg
+│   │   │   │   ├── setup.py
+│   │   │   │   └── tests
+│   │   │   │       ├── backend
+│   │   │   │       │   ├── __init__.py
+│   │   │   │       │   └── test_common.py
+│   │   │   │       ├── bin
+│   │   │   │       │   └── test_train.py
+│   │   │   │       ├── __init__.py
+│   │   │   │       ├── layers
+│   │   │   │       │   ├── __init__.py
+│   │   │   │       │   └── test_misc.py
+│   │   │   │       ├── models
+│   │   │   │       │   ├── __init__.py
+│   │   │   │       │   └── test_mobilenet.py
+│   │   │   │       ├── preprocessing
+│   │   │   │       │   ├── __init__.py
+│   │   │   │       │   ├── test_csv_generator.py
+│   │   │   │       │   └── test_generator.py
+│   │   │   │       └── utils
+│   │   │   │           ├── __init__.py
+│   │   │   │           └── test_transform.py
+│   │   │   └── visualize_results.ipynb
+│   │   ├── fish_segmentation
+│   │   │   ├── train_model.ipynb
+│   │   │   └── visualize_results.ipynb
+│   │   ├── requirements.txt
+│   │   └── temp
+│   │       ├── create_annotations.ipynb
+│   │       └── data_exploration.ipynb
+│   └── utils.py
+└── todelete.txt
+
+286 directories, 1389 files
