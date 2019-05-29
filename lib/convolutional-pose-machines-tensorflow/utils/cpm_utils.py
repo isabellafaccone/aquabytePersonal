@@ -51,6 +51,20 @@ def read_image(file, cam, boxsize, type):
                      int(img_w / 2 - boxsize / 2):int(img_w / 2 + boxsize / 2), :]
     return output_img
 
+def make_heatmap_single(input_size, heatmap_size, gaussian_variance, batch_joints):
+    scale_factor = input_size // heatmap_size
+    gt_heatmap_np = []
+    invert_heatmap_np = np.ones(shape=(heatmap_size, heatmap_size))
+    for j in range(batch_joints.shape[0]):
+        cur_joint_heatmap = make_gaussian(heatmap_size,
+                                          gaussian_variance,
+                                          center=(batch_joints[j] // scale_factor))
+        gt_heatmap_np.append(cur_joint_heatmap)
+        invert_heatmap_np -= cur_joint_heatmap
+    gt_heatmap_np.append(invert_heatmap_np)
+    gt_heatmap_np = np.array(gt_heatmap_np)
+    gt_heatmap_np = np.transpose(gt_heatmap_np, (1, 2, 0))
+    return gt_heatmap_np
 
 def make_gaussian(size, fwhm=3, center=None):
     """ Make a square gaussian kernel.
