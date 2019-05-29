@@ -136,7 +136,7 @@ class CocoDataset(utils.Dataset):
             if len(coco.getAnnIds(imgIds=[i])) > 0:
                 self.add_image(
                     "coco", image_id=i,
-                    path=coco.imgs[i]['local_path'],
+                    path=coco.imgs[i]['local_path'].replace("app", "root"),
                     width=coco.imgs[i]["width"],
                     height=coco.imgs[i]["height"],
                     annotations=coco.loadAnns(coco.getAnnIds(
