@@ -19,4 +19,4 @@ for filename in all_notebooks:
         with io.open(filename, 'w', encoding='utf8') as f:
             write(nb, f)
     except Exception as e:
-        print(e.message)
+        print(e)
