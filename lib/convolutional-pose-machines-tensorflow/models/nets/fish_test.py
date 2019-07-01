@@ -264,7 +264,7 @@ class CPM_Model(CPM):
                                                     name='mid_conv7')
             self.stage_heatmap.append(self.current_heatmap)
 
-    def build_loss(self, lr, lr_decay_rate, lr_decay_step, optimizer='Adam', clipping=False):
+    def build_loss(self, lr, lr_decay_rate, lr_decay_step, optimizer='Adam', clipping=False, staircase=False):
         self.total_loss = 0
         self.total_loss_eval = 0
         self.init_lr = lr
@@ -296,14 +296,16 @@ class CPM_Model(CPM):
             self.cur_lr = tf.train.exponential_decay(self.init_lr,
                                                  global_step=self.global_step,
                                                  decay_rate=self.lr_decay_rate,
-                                                 decay_steps=self.lr_decay_step)
+                                                 decay_steps=self.lr_decay_step,
+                                                 staircase=staircase)
             tf.summary.scalar('global learning rate', self.cur_lr)
 
             self.train_op = tf.contrib.layers.optimize_loss(loss=self.total_loss,
                                                             global_step=self.global_step,
                                                             learning_rate=self.cur_lr,
                                                             optimizer=self.optimizer,
-                                                            clip_gradients=1.0 if clipping else None)
+                                                            clip_gradients=1.0 if clipping else None,
+                                                            )
 
     def load_weights_from_file(self, weight_file_path, sess, finetune=True):
         # weight_file_object = open(weight_file_path, 'rb')

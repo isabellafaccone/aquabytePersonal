@@ -18761,7 +18761,7 @@ node {
         dtype: DT_INT32
         tensor_shape {
         }
-        int_val: 10000
+        int_val: 5000
       }
     }
   }

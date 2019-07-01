@@ -5,10 +5,102 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import keras
 import os
-from utils.cpm_utils import make_heatmaps_from_joints
+from utils.cpm_utils import make_heatmaps_from_joints, make_heatmap_single
+import random
+from multiprocessing import Pool
 # from OpenGL.GL import *
 # from OpenGL.GLU import *
+import time
 
+
+class DataGeneratorAsync(keras.utils.Sequence):
+    'Generates data for Keras'
+    def __init__(self, annotations_set, FLAGS):
+        'Initialization'
+        start = time.time()
+        self.annotations = annotations_set
+        self.on_epoch_end()
+        self.FLAGS = FLAGS
+        pool = Pool(8)
+        self.data = pool.map_async(self._load_image_keypoints_gaussian, self.annotations[:100])
+        pool.close()
+        pool.join()
+        
+        self.batches = []
+        self._create_batches()
+        end = time.time()
+        print('Data is ready for training {}'.format(end-start))
+
+    def _load_image_keypoints_gaussian(self, annotation):
+        image, keypoints = load_image_keypoints(annotation, self.FLAGS)
+        heatmap = make_heatmap_single(self.FLAGS.input_size[0], 
+                                      self.FLAGS.heatmap_size, 
+                                      self.FLAGS.joint_gaussian_variance,
+                                      keypoints)
+        return image, keypoints, heatmap
+        
+    def _create_batches(self):
+        data = self.data.get()
+        images = [t[0] for t in data]
+        keypoints = [t[1] for t in data]
+        heatmaps = [t[2] for t in data]
+        
+        batch_images = [images[k:k+self.FLAGS.batch_size] for k in range(0, len(images), self.FLAGS.batch_size)]
+        batch_keypoints = [keypoints[k:k+self.FLAGS.batch_size] for k in range(0, len(keypoints), self.FLAGS.batch_size)]
+        batch_heatmaps = [heatmaps[k:k+self.FLAGS.batch_size] for k in range(0, len(heatmaps), self.FLAGS.batch_size)]
+        
+        for (img, kp, hm) in zip(batch_images, batch_keypoints, batch_heatmaps):
+            self.batches.append([np.array(img), 
+                                 np.array(batch_keypoints), 
+                                 np.array(batch_heatmaps)])
+        
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return len(self.annotations) // self.FLAGS.batch_size
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        return self.batches[index]
+
+    def on_epoch_end(self):
+        'Updates indexes after each epoch'
+        np.random.shuffle(self.annotations)
+
+
+
+def data_generator(annotations, FLAGS, nsteps=1000):
+    index = 0
+    while True:
+        xbatch = []
+        ybatch = []
+        start = index*FLAGS.batch_size
+        for i in range(FLAGS.batch_size):
+            buffer = np.random.choice(FLAGS.buffer_range)
+            image, keypoints = load_image_keypoints(annotations[start + i], 
+                                                    FLAGS,
+                                                    reshape=True,
+                                                    buffer=buffer)
+            xbatch.append(image)
+            ybatch.append(keypoints)
+        xbatch = np.array(xbatch)
+        if FLAGS.normalize:
+            xbatch = xbatch / 255.0 - 0.5
+        else:
+            xbatch -= 128.0
+        ybatch = np.array(ybatch)
+        batch_gt_heatmap_np = make_heatmaps_from_joints(FLAGS.input_size[0],
+                                                        FLAGS.heatmap_size,
+                                                        FLAGS.joint_gaussian_variance,
+                                                        ybatch)
+        index += 1
+        if index >= nsteps:
+            index = 0
+            random.shuffle(annotations)
+        yield xbatch, ybatch, batch_gt_heatmap_np    
+
+
+        
+        
 class DataGenerator(keras.utils.Sequence):
     'Generates data for Keras'
     def __init__(self, annotations_set, FLAGS):
@@ -26,11 +118,17 @@ class DataGenerator(keras.utils.Sequence):
         xbatch = []
         ybatch = []
         start = index*self.FLAGS.batch_size
-        for i in range(self.FLAGS.batch_size):
+        i = 0
+        while i < self.FLAGS.batch_size:
+            buffer = np.random.choice(self.FLAGS.buffer_range)
             image, keypoints = load_image_keypoints(self.annotations[start + i], 
-                                                    self.FLAGS)
+                                                    self.FLAGS,
+                                                    reshape=True,
+                                                    buffer=buffer)
             xbatch.append(image)
             ybatch.append(keypoints)
+            i += 1
+
         xbatch = np.array(xbatch)
         if self.FLAGS.normalize:
             xbatch = xbatch / 255.0 - 0.5
@@ -84,14 +182,19 @@ def load_image_keypoints(annotation, FLAGS, reshape=True, buffer=100):
     
     # crop the image min / max value
     keypoints = np.array(keypoints)
+    height, width, _ = image.shape
     if FLAGS.crop:
         xs = keypoints[:, 0]
-        min_x, max_x = np.min(xs) - buffer, np.max(xs) + buffer
+        min_x = np.max([np.min(xs) - buffer, 0])
+        max_x = np.min([np.max(xs) + buffer, width])
+        
         ys = keypoints[:, 1]
-        min_y, max_y = np.min(ys) - buffer, np.max(ys) + buffer
+        min_y = np.max([np.min(ys) - buffer, 0])
+        max_y = np.min([np.max(ys) + buffer, height])
 
         #print(min_y,max_y, min_x, max_x)
         image = image[min_y:max_y, min_x:max_x, : ]
+#         print(min_y, min_x)
     else:
         min_x = 0
         min_y = 0
