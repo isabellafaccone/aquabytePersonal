@@ -90,7 +90,7 @@ def main():
         'ANAL_FIN'
     ])
 
-    f = '/root/data/temp/akpd_scorer_model.h5'
+    f = './akpd_scorer_model.h5'
     aps = AKPDPredictionScorer(f, body_parts)
     aps.get_confidence_score(pred_keypoints)
 
