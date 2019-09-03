@@ -1,0 +1,41 @@
+version: '3.1'
+
+services:
+  asaad_research:
+    image: deeplearning
+    command: "sleep 1000h"
+    volumes:
+      - /home/ubuntu/asaad:/root/asaad
+      - /data:/root/data
+    secrets:  
+      - aws_credentials
+      - sql_credentials
+      - prod_sql_credentials
+      - prod_research_sql_credentials
+      - prod_research_write_sql_credentials
+    environment:
+      - AWS_CREDENTIALS=/run/secrets/aws_credentials
+      - SQL_CREDENTIALS=/run/secrets/sql_credentials
+      - PROD_SQL_CREDENTIALS=/run/secrets/prod_sql_credentials
+      - PROD_RESEARCH_SQL_CREDENTIALS=/run/secrets/prod_research_sql_credentials
+      - PROD_RESEARCH_WRITE_SQL_CREDENTIALS=/run/secrets/prod_research_write_sql_credentials
+    ports:
+      - "7777:7777"
+    logging:
+      driver: journald
+      options:
+        tag: "asaad_research"
+    container_name:
+      asaad_research
+
+secrets:
+  aws_credentials:
+    file: ./aws_credentials.json
+  sql_credentials:
+    file: ./sql_credentials.json
+  prod_sql_credentials:
+    file: ./prod_sql_credentials.json
+  prod_research_sql_credentials:
+    file: ./prod_research_sql_credentials.json
+  prod_research_write_sql_credentials:
+    file: ./prod_research_write_sql_credentials.json 
