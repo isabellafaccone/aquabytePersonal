@@ -1,0 +1,8 @@
+{
+    "machine": "x86_64",
+    "node": "lambda-quad",
+    "processor": "x86_64",
+    "release": "4.15.0-50-generic",
+    "system": "Linux",
+    "version": "#54~16.04.1-Ubuntu SMP Wed May 8 15:55:19 UTC 2019"
+}
