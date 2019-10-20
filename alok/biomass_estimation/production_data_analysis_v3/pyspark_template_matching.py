@@ -13,6 +13,7 @@ import datetime
 # SIFT based correction - functions
 
 REGION="eu-west-1"
+OUTPUT_BUCKET="aquabyte-research"
 
 def enhance(image, clip_limit=5):
     # convert image to LAB color model
@@ -61,12 +62,12 @@ def find_matches_and_homography(left_crop_url, right_crop_url, MIN_MATCH_COUNT=1
         dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1, 1, 2)
         H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
         matchesMask = mask.ravel().tolist()
-        H = H.tolist()
+        H = [] if H is None else H.tolist()
     else:
         print("Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT))
         matchesMask = None
 
-    return (good, matchesMask, H)
+    return H
 
 
 def adjust_keypoints(keypoints, H):
@@ -169,21 +170,24 @@ def get_data(sql, db_type):
 if __name__ == '__main__':
     sc = SparkContext(appName="template_matching")
     sqlContext = SQLContext(sc)
-    sql = "select left_crop_url, right_crop_url from prod.crop_annotation where annotation_state_id=1 and service_id=2 and captured_at > now() - interval '1 day' and pen_id=61"
+    sql = "select left_crop_url, right_crop_url from prod.crop_annotation where annotation_state_id=1 and service_id=2 and captured_at between '2019-10-18' and '2019-10-19' and pen_id=61"
     pdf = get_data(sql, "DW_DB_RO")
 
     udfValue = udf(find_matches_and_homography, ArrayType(DoubleType()))
 
-    df = sqlContext.createDataFrame(pdf).repartition(12).withColumn("plane", udfValue("left_crop_url", "right_crop_url")).collect()
-    #tdf = df.rdd.repartition(12).map(find_matches_and_homography)
-    #features = tdf.map(lambda x: (Row(features=x[2])))
-    #sdf = sqlContext.createDataFrame(features)
-    pdf = df.select("*").toPandas()
+    #df = sqlContext.createDataFrame(pdf).withColumn("plane", udfValue("left_crop_url", "right_crop_url")).collect()
+    df = sqlContext.createDataFrame(pdf).withColumn("plane", udfValue("left_crop_url", "right_crop_url")).coalesce(1)
 
-    file_name = "/tmp/output.parquet"
-    pdf.to_parquet(file_name)
+    dt_iso = datetime.datetime.now().isoformat()
+    key = "template-matching/{dt_iso}/output.parquet"
+    df.write.parquet(f"s3://{OUTPUT_BUCKET}/{key}")
 
-    s3_res = boto3.resource('s3', region_name=REGION)
-    output_path = f"s3://aquabyte-research/template-matching/"
-    s3_res.Bucket("aquabyte-research").Object("template-matching/{datetime.datetime.now().isoformat()}/output.parquet").upload_file('/tmp/output.parquet')
-    #df.write.parquet(output_path)
+
+    # Write to pandas parquet
+    #pdf = df.select("*").toPandas()
+
+    #file_name = "/tmp/output.parquet"
+    #pdf.to_parquet(file_name)
+
+    #s3_res = boto3.resource('s3', region_name=REGION)
+    #s3_res.Bucket(OUTPUT_BUCKET).Object(key).upload_file('/tmp/output.parquet')
