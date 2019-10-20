@@ -12,7 +12,7 @@ import pandas as pd
 import datetime
 # SIFT based correction - functions
 
-
+REGION="eu-west-1"
 
 def enhance(image, clip_limit=5):
     # convert image to LAB color model
@@ -137,7 +137,7 @@ def convert_url_to_s3_bk(url):
     return bucket, key
 
 def load_image(url):
-    s3_res = boto3.resource('s3')
+    s3_res = boto3.resource('s3', region_name=REGION)
     b, k = convert_url_to_s3_bk(url)
     obj = s3_res.Object(b, k).get()['Body']
     print("key", k)
@@ -145,7 +145,7 @@ def load_image(url):
     return cv2.imdecode(image, cv2.IMREAD_COLOR)
 
 def get_db_params(db_type):
-    ssm_client = boto3.client('ssm')
+    ssm_client = boto3.client('ssm', REGION)
     param_response = ssm_client.get_parameters(Names=[f'{db_type}_USER',f'{db_type}_PASSWORD',
                                                       f'{db_type}_HOST', f'{db_type}_PORT',f'{db_type}_NAME'], WithDecryption=True)
 
@@ -183,7 +183,7 @@ if __name__ == '__main__':
     file_name = "/tmp/output.parquet"
     pdf.to_parquet(file_name)
 
-    s3_res = boto3.resource('s3')
+    s3_res = boto3.resource('s3', region_name=REGION)
     output_path = f"s3://aquabyte-research/template-matching/"
     s3_res.Bucket("aquabyte-research").Object("template-matching/{datetime.datetime.now().isoformat()}/output.parquet").upload_file('/tmp/output.parquet')
     #df.write.parquet(output_path)
