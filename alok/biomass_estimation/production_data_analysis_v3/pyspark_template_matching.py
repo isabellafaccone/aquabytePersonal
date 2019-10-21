@@ -176,11 +176,11 @@ if __name__ == '__main__':
     udfValue = udf(find_matches_and_homography, ArrayType(DoubleType()))
 
     #df = sqlContext.createDataFrame(pdf).withColumn("plane", udfValue("left_crop_url", "right_crop_url")).collect()
-    df = sqlContext.createDataFrame(pdf).withColumn("plane", udfValue("left_crop_url", "right_crop_url")).coalesce(1)
+    df = sqlContext.createDataFrame(pdf).withColumn("plane", udfValue("left_crop_url", "right_crop_url"))
 
     dt_iso = datetime.datetime.now().isoformat()
-    key = "template-matching/{dt_iso}/output.parquet"
-    df.write.parquet(f"s3://{OUTPUT_BUCKET}/{key}")
+    key = f"template-matching/{dt_iso}/"
+    df.repartition(1).write.parquet(f"s3://{OUTPUT_BUCKET}/{key}")
 
 
     # Write to pandas parquet
