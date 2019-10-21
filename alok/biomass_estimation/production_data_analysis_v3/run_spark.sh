@@ -1,21 +1,25 @@
 #!/bin/bash
 
 EXEC_FILE=pyspark_template_matching.py
-INSTANCE_TYPE=c5.9xlarge
-CODE_LOCATION=s3://aquabyte-research/template-matching/code/main.py
+INSTANCE_TYPE=r5.2xlarge
+#INSTANCE_TYPE=c5.4xlarge
+#INSTANCE_TYPE=m5.4xlarge
+#INSTANCE_TYPE=c5.9xlarge
+CODE_LOCATION=s3://aquabyte-research/template-matching/code/main_repartition.py
 
 #
-NUM_INSTANCES=5
+NUM_INSTANCES=9
+let NUM_INSTANCES_M1=$NUM_INSTANCES-1
 CORES=16
 MEM=64
 NUM_EXEC=5
 let CORES_M1=$CORES-1
-let NUM_CORES=$CORES_M1*$NUM_INSTANCES
+let NUM_CORES=$CORES_M1*$NUM_INSTANCES_M1
 let AVAIL_EXECUTORS=$NUM_CORES/$NUM_EXEC
 let NUM_EXECUTORS=$AVAIL_EXECUTORS-1
 let EXECUTOR_MEM=$MEM/$AVAIL_EXECUTORS
 
-aws s3 cp $EXEC_FILE $CODE_LOCATION
+#aws s3 cp $EXEC_FILE $CODE_LOCATION
 
 aws emr create-cluster --name "Aloks Spicy Cluster" --release-label emr-5.27.0 --applications Name=Spark \
     --instance-type $INSTANCE_TYPE --instance-count $NUM_INSTANCES \
