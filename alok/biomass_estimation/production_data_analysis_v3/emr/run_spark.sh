@@ -1,7 +1,7 @@
 #!/bin/bash
 
 EXEC_FILE=pyspark_template_matching.py
-INSTANCE_TYPE=m5.2xlarge
+INSTANCE_TYPE=m5.4xlarge
 CODE_LOCATION=s3://aquabyte-research/template-matching/code/main_repartition.py
 
 #
