@@ -50,7 +50,7 @@ def find_matches_and_homography(imageL, imageR, MIN_MATCH_COUNT=11, GOOD_PERC=0.
         print("Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT))
         matchesMask = None
 
-    return good, matchesMask, H
+    return good, matchesMask, H, kp1, kp2
 
 
 def adjust_keypoints(keypoints, H):
