@@ -78,6 +78,8 @@ def get_body_keypoints(kp1, kp2, matches, matchesMask, left_crop_metadata, right
             kp = [p1_x_frame, p1_y_frame, p2_x_frame, p2_y_frame]
             kps.append(kp)
         
+    d = np.array(kps)
+    kps = d.tolist()
     return kps
 
 def get_modified_crop_metadata(cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top):
@@ -135,15 +137,15 @@ def find_matches_and_homography(imageL, imageR, keypoints, cm, left_crop_metadat
             H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
             matchesMask = mask.ravel().tolist()
             if H is None:
-                return [[[]], [[]]]
+                return [[[]]]
             H = H.tolist()
             kps = get_body_keypoints(kp1, kp2, good, matchesMask, modified_left_crop_metadata, modified_right_crop_metadata)
             return [H, kps]
 
         else:
             print("Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT))
-            return [[[]], [[]]]
-    return [[[]], [[]]]
+            return [[[]]]
+    return [[[]]]
 
 
 
