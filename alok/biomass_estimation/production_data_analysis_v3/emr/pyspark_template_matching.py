@@ -20,9 +20,6 @@ REGION="eu-west-1"
 OUTPUT_BUCKET="aquabyte-research"
 
 
-from aquabyte.data_access_utils import S3AccessUtils, RDSAccessUtils
-
-
 def enhance(image, clip_limit=5):
     # convert image to LAB color model
     image_lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
