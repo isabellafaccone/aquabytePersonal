@@ -1,3 +1,4 @@
+
 from copy import copy
 import json
 import cv2
@@ -17,7 +18,6 @@ import datetime
 
 REGION="eu-west-1"
 OUTPUT_BUCKET="aquabyte-research"
-
 
 
 from aquabyte.data_access_utils import S3AccessUtils, RDSAccessUtils
@@ -114,6 +114,7 @@ def find_matches_and_homography(imageL, imageR, keypoints, cm, left_crop_metadat
             get_modified_crop_metadata(cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top)
 
         # find template matches
+
         sift = cv2.KAZE_create()
         img1 = enhance(imageL)
         img2 = enhance(imageR)
@@ -127,7 +128,7 @@ def find_matches_and_homography(imageL, imageR, keypoints, cm, left_crop_metadat
         matches = flann.knnMatch(des1,des2, k=2)
         good = []
         matchesMask = []
-        
+
         for m,n in matches:
             if m.distance < GOOD_PERC*n.distance:
                 good.append(m)
@@ -146,6 +147,7 @@ def find_matches_and_homography(imageL, imageR, keypoints, cm, left_crop_metadat
             print("Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT))
             return [[[]], [[]]]
     return [[[]], [[]]]
+
 
 
 DbParams = namedtuple("DbParams", "user password host port db_name")
@@ -225,6 +227,7 @@ if __name__ == '__main__':
     pdf = get_data(sql, "RESEARCH_DB")
 
     udfValue = udf(generate_matches_and_homography, ArrayType(ArrayType(ArrayType(DoubleType()))))
+
 
     #df = sqlContext.createDataFrame(pdf).withColumn("plane", udfValue("left_crop_url", "right_crop_url")).collect()
     df = sqlContext.createDataFrame(pdf).withColumn("plane", \
