@@ -156,7 +156,6 @@ DbParams = namedtuple("DbParams", "user password host port db_name")
 
 def generate_matches_and_homography(left_crop_url, right_crop_url, keypoints, cm, left_crop_metadata, right_crop_metadata):
 
-    left_image_url, right_image_url = df.left_image_url.iloc[0], df.right_image_url.iloc[0]
     imageL = load_image(left_crop_url)
     imageR = load_image(right_crop_url)
     left_crop_metadata = json.loads(left_crop_metadata)
