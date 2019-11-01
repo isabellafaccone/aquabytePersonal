@@ -230,7 +230,7 @@ if __name__ == '__main__':
 
 
     #df = sqlContext.createDataFrame(pdf).withColumn("plane", udfValue("left_crop_url", "right_crop_url")).collect()
-    df = sqlContext.createDataFrame(pdf).withColumn("plane", \
+    df = sqlContext.createDataFrame(pdf).withColumn("homography_and_matches", \
         udfValue("left_image_url", "right_image_url", "keypoints", "camera_metadata", "left_crop_metadata", "right_crop_metadata"))
 
     dt_iso = datetime.datetime.now().isoformat()
