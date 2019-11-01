@@ -1,3 +1,5 @@
+from copy import copy
+import json
 import cv2
 import json
 import numpy as np
@@ -11,10 +13,15 @@ import psycopg2.extras
 import psycopg2
 import pandas as pd
 import datetime
-# SIFT based correction - functions
+
 
 REGION="eu-west-1"
 OUTPUT_BUCKET="aquabyte-research"
+
+
+
+from aquabyte.data_access_utils import S3AccessUtils, RDSAccessUtils
+
 
 def enhance(image, clip_limit=5):
     # convert image to LAB color model
@@ -34,58 +41,93 @@ def enhance(image, clip_limit=5):
     final_image = cv2.cvtColor(merged_channels, cv2.COLOR_LAB2BGR)
     return final_image
 
-
-
-def find_matches_and_homography(left_crop_url, right_crop_url, keypoints, cm, left_crop_metadata, right_crop_metadata, MIN_MATCH_COUNT=11, GOOD_PERC=0.7, FLANN_INDEX_KDTREE=0):
-    imageL = load_image(left_crop_url)
-    imageR = load_image(right_crop_url)
-
+def crop_images(imageL, imageR, left_crop_metadata, right_crop_metadata, left_keypoints_dict, 
+    right_keypoints_dict, PADDING=100):
+    
     # crop the data
+    l_width = left_crop_metadata['width']
+    l_height = left_crop_metadata['height']
+    r_width = right_crop_metadata['width']
+    r_height = right_crop_metadata['height']
+    
+    cropL_x_left = max(min([kp[0] for kp in left_keypoints_dict.values()]) - PADDING, 0)
+    cropL_x_right = min(max([kp[0] for kp in left_keypoints_dict.values()]) + PADDING, l_width)
+    cropL_y_top = max(min([kp[1] for kp in left_keypoints_dict.values()]) - PADDING, 0)
+    cropL_y_bottom = min(max([kp[1] for kp in left_keypoints_dict.values()]) + PADDING, l_height)
 
-    keypoints = json.loads(keypoints)
-    cm = json.loads(cm)
-    left_crop_metadata = json.loads(left_crop_metadata)
-    right_crop_metadata = json.loads(right_crop_metadata)
-    print('Camera Metadata: {}'.format(cm))
+    cropR_x_left = max(min([kp[0] for kp in right_keypoints_dict.values()]) - PADDING, 0)
+    cropR_x_right = min(max([kp[0] for kp in right_keypoints_dict.values()]) + PADDING, r_width)
+    cropR_y_top = max(min([kp[1] for kp in right_keypoints_dict.values()]) - PADDING, 0)
+    cropR_y_bottom = min(max([kp[1] for kp in right_keypoints_dict.values()]) + PADDING, r_height)
+
+    imageL = imageL[cropL_y_top:cropL_y_bottom, cropL_x_left:cropL_x_right]
+    imageR = imageR[cropR_y_top:cropR_y_bottom, cropR_x_left:cropR_x_right]
+
+    return imageL, imageR, cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top
+
+
+def get_body_keypoints(kp1, kp2, matches, matchesMask, left_crop_metadata, right_crop_metadata): 
+    kps = []
+    for i, m in enumerate(matches):
+        # Generate random color for RGB/BGR and grayscale images as needed.            
+        if matchesMask[i] == 1:
+            p1 = tuple(np.round(kp1[m.queryIdx].pt).astype(float))
+            p2 = tuple(np.round(kp2[m.trainIdx].pt).astype(float))
+            p1_x_frame = p1[0] + left_crop_metadata['x_coord']
+            p1_y_frame = p1[1] + left_crop_metadata['y_coord']
+            p2_x_frame = p2[0] + right_crop_metadata['x_coord']
+            p2_y_frame = p2[1] + right_crop_metadata['y_coord']
+            disp = abs(p1_x_frame - p2_x_frame)
+            kp = [p1_x_frame, p1_y_frame, p2_x_frame, p2_y_frame]
+            kps.append(kp)
+        
+    return kps
+
+def get_modified_crop_metadata(cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top):
+    modified_left_crop_metadata = {
+        'x_coord': cropL_x_left,
+        'y_coord': cropL_y_top
+    }
+
+    modified_right_crop_metadata = {
+        'x_coord': cropR_x_left,
+        'y_coord': cropR_y_top
+    }
+
+    return modified_left_crop_metadata, modified_right_crop_metadata
+
+
+
+def find_matches_and_homography(imageL, imageR, keypoints, cm, left_crop_metadata, right_crop_metadata, 
+    MIN_MATCH_COUNT=11, GOOD_PERC=0.7, FLANN_INDEX_KDTREE=0):
+
     if 'leftCrop' in keypoints and 'rightCrop' in keypoints:
         print('Keypoints: {}'.format(keypoints))
         left_keypoints_dict = {item['keypointType']: [item['xCrop'], item['yCrop']] for item in keypoints['leftCrop']}
         right_keypoints_dict = {item['keypointType']: [item['xCrop'], item['yCrop']] for item in keypoints['rightCrop']}
         
-        # crop the data
-        l_width = left_crop_metadata['width']
-        l_height = left_crop_metadata['height']
-        r_width = right_crop_metadata['width']
-        r_height = right_crop_metadata['height']
-        padding = 100
-        cropL_x_left = max(min([kp[0] for kp in left_keypoints_dict.values()]) - padding, 0)
-        cropL_x_right = min(max([kp[0] for kp in left_keypoints_dict.values()]) + padding, l_width)
-        cropL_y_top = max(min([kp[1] for kp in left_keypoints_dict.values()]) - padding, 0)
-        cropL_y_bottom = min(max([kp[1] for kp in left_keypoints_dict.values()]) + padding, l_height)
+        # crop images to speed up the template matching process
+        imageL, imageR, cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top = \
+            crop_images(imageL, imageR, left_crop_metadata, right_crop_metadata, left_keypoints_dict, right_keypoints_dict)
 
-        cropR_x_left = max(min([kp[0] for kp in right_keypoints_dict.values()]) - padding, 0)
-        cropR_x_right = min(max([kp[0] for kp in right_keypoints_dict.values()]) + padding, r_width)
-        cropR_y_top = max(min([kp[1] for kp in right_keypoints_dict.values()]) - padding, 0)
-        cropR_y_bottom = min(max([kp[1] for kp in right_keypoints_dict.values()]) + padding, r_height)
+        modified_left_crop_metadata, modified_right_crop_metadata = \
+            get_modified_crop_metadata(cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top)
 
-        imageL = imageL[cropL_y_top:cropL_y_bottom, cropL_x_left:cropL_x_right]
-        imageR = imageR[cropR_y_top:cropR_y_bottom, cropR_x_left:cropR_x_right]
-
+        # find template matches
         sift = cv2.KAZE_create()
         img1 = enhance(imageL)
         img2 = enhance(imageR)
         kp1, des1 = sift.detectAndCompute(img1, None)
         kp2, des2 = sift.detectAndCompute(img2, None)
 
-        index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-        search_params = dict(checks = 50)
-
+        index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+        search_params = dict(checks=50)
 
         flann = cv2.FlannBasedMatcher(index_params, search_params)
-        matches = flann.knnMatch(des1,des2,k=2)
+        matches = flann.knnMatch(des1,des2, k=2)
         good = []
-        H = [[]]
         matchesMask = []
+        
         for m,n in matches:
             if m.distance < GOOD_PERC*n.distance:
                 good.append(m)
@@ -94,62 +136,33 @@ def find_matches_and_homography(left_crop_url, right_crop_url, keypoints, cm, le
             dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1, 1, 2)
             H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
             matchesMask = mask.ravel().tolist()
-            H = [[]] if H is None else H.tolist()
+            if H is None:
+                return [[[]], [[]]]
+            H = H.tolist()
+            kps = get_body_keypoints(kp1, kp2, good, matchesMask, modified_left_crop_metadata, modified_right_crop_metadata)
+            return [H, kps]
+
         else:
             print("Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT))
-            matchesMask = None
+            return [[[]], [[]]]
+    return [[[]], [[]]]
 
-        return H
-    return [[]]
-
-
-def adjust_keypoints(keypoints, H):
-    left_keypoints_crop = {item['keypointType']: [item['xCrop'], item['yCrop']] for item in keypoints['leftCrop']}
-    right_keypoints_crop = {item['keypointType']: [item['xCrop'], item['yCrop']] for item in keypoints['rightCrop']}
-
-    # adjust left and right keypoints
-    left_keypoints_crop_adjusted, right_keypoints_crop_adjusted = [], []
-    for i, bp in enumerate([item['keypointType'] for item in keypoints['leftCrop']]):
-        kpL = left_keypoints_crop[bp]
-        ptx = np.array([kpL[0], kpL[1], 1])
-        zx = np.dot(H, ptx)
-        kpL2R = [zx[0] / zx[2], zx[1] / zx[2]]
-
-        kpR = right_keypoints_crop[bp]
-        pty = np.array([kpR[0], kpR[1], 1])
-        zy = np.dot(np.linalg.inv(H), pty)
-        kpR2L = [zy[0] / zy[2], zy[1] / zy[2]]
-
-        kpL_adjusted = [(kpL[0] + kpR2L[0]) / 2.0, (kpL[1] + kpR2L[1]) / 2.0]
-        kpR_adjusted = [(kpR[0] + kpL2R[0]) / 2.0, (kpR[1] + kpL2R[1]) / 2.0]
-        item_left = keypoints['leftCrop'][i]
-        item_right = keypoints['rightCrop'][i]
-
-        new_item_left = {
-            'keypointType': bp,
-            'xCrop': kpL_adjusted[0],
-            'xFrame': item_left['xFrame'] - item_left['xCrop'] + kpL_adjusted[0],
-            'yCrop': kpL_adjusted[1],
-            'yFrame': item_left['yFrame'] - item_left['yCrop'] + kpL_adjusted[1]
-        }
-        left_keypoints_crop_adjusted.append(new_item_left)
-
-        new_item_right = {
-            'keypointType': bp,
-            'xCrop': kpR_adjusted[0],
-            'xFrame': item_right['xFrame'] - item_right['xCrop'] + kpR_adjusted[0],
-            'yCrop': kpR_adjusted[1],
-            'yFrame': item_right['yFrame'] - item_right['yCrop'] + kpR_adjusted[1]
-        }
-        right_keypoints_crop_adjusted.append(new_item_right)
-
-    adjusted_keypoints = {
-        'leftCrop': left_keypoints_crop_adjusted,
-        'rightCrop': right_keypoints_crop_adjusted
-    }
-    return adjusted_keypoints
 
 DbParams = namedtuple("DbParams", "user password host port db_name")
+
+
+
+def generate_matches_and_homography(left_crop_url, right_crop_url, keypoints, cm, left_crop_metadata, right_crop_metadata):
+
+    left_image_url, right_image_url = df.left_image_url.iloc[0], df.right_image_url.iloc[0]
+    imageL = load_image(left_crop_url)
+    imageR = load_image(right_crop_url)
+    left_crop_metadata = json.loads(left_crop_metadata)
+    right_crop_metadata = json.loads(right_crop_metadata)
+    cm = json.loads(cm)
+    keypoints = json.loads(keypoints)
+    homography_and_matches = find_matches_and_homography(imageL, imageR, keypoints, cm, left_crop_metadata, right_crop_metadata)
+    return homography_and_matches
 
 
 def convert_url_to_s3_bk(url):
@@ -211,7 +224,7 @@ if __name__ == '__main__':
     # sql = "select left_crop_url, right_crop_url, keypoints, camera_metadata from prod.crop_annotation where annotation_state_id=1 and service_id=2 and captured_at between '2019-10-18' and '2019-10-19' and pen_id=61"
     pdf = get_data(sql, "RESEARCH_DB")
 
-    udfValue = udf(find_matches_and_homography, ArrayType(ArrayType(DoubleType())))
+    udfValue = udf(generate_matches_and_homography, ArrayType(ArrayType(ArrayType(DoubleType()))))
 
     #df = sqlContext.createDataFrame(pdf).withColumn("plane", udfValue("left_crop_url", "right_crop_url")).collect()
     df = sqlContext.createDataFrame(pdf).withColumn("plane", \
