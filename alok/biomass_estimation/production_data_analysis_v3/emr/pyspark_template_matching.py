@@ -38,8 +38,8 @@ def enhance(image, clip_limit=5):
     final_image = cv2.cvtColor(merged_channels, cv2.COLOR_LAB2BGR)
     return final_image
 
-def crop_images(imageL, imageR, left_crop_metadata, right_crop_metadata, left_keypoints_dict, 
-    right_keypoints_dict, PADDING=100):
+def crop_images(imageL, imageR, left_crop_metadata, right_crop_metadata, left_keypoints_dict=None, 
+    right_keypoints_dict=None, PADDING=100):
     
     # crop the data
     l_width = left_crop_metadata['width']
@@ -96,21 +96,24 @@ def get_modified_crop_metadata(cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_
     return modified_left_crop_metadata, modified_right_crop_metadata
 
 
-
-def find_matches_and_homography(imageL, imageR, keypoints, cm, left_crop_metadata, right_crop_metadata, 
+def find_matches_and_homography(imageL, imageR, cm, left_crop_metadata, right_crop_metadata, keypoints=None,
     MIN_MATCH_COUNT=11, GOOD_PERC=0.7, FLANN_INDEX_KDTREE=0):
 
-    if 'leftCrop' in keypoints and 'rightCrop' in keypoints:
-        print('Keypoints: {}'.format(keypoints))
-        left_keypoints_dict = {item['keypointType']: [item['xCrop'], item['yCrop']] for item in keypoints['leftCrop']}
-        right_keypoints_dict = {item['keypointType']: [item['xCrop'], item['yCrop']] for item in keypoints['rightCrop']}
-        
-        # crop images to speed up the template matching process
-        imageL, imageR, cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top = \
-            crop_images(imageL, imageR, left_crop_metadata, right_crop_metadata, left_keypoints_dict, right_keypoints_dict)
+    if keypoints is not None:
+        if 'leftCrop' in keypoints and 'rightCrop' in keypoints:
+            print('Keypoints: {}'.format(keypoints))
+            left_keypoints_dict = {item['keypointType']: [item['xCrop'], item['yCrop']] for item in keypoints['leftCrop']}
+            right_keypoints_dict = {item['keypointType']: [item['xCrop'], item['yCrop']] for item in keypoints['rightCrop']}
+            
+            # crop images to speed up the template matching process
+            imageL, imageR, cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top = \
+                crop_images(imageL, imageR, left_crop_metadata, right_crop_metadata, left_keypoints_dict, right_keypoints_dict)
 
-        modified_left_crop_metadata, modified_right_crop_metadata = \
-            get_modified_crop_metadata(cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top)
+            modified_left_crop_metadata, modified_right_crop_metadata = \
+                get_modified_crop_metadata(cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top)
+
+    else:
+        modified_left_crop_metadata, modified_right_crop_metadata = left_crop_metadata, right_crop_metadata
 
         # find template matches
 
@@ -153,15 +156,16 @@ DbParams = namedtuple("DbParams", "user password host port db_name")
 
 
 
-def generate_matches_and_homography(left_crop_url, right_crop_url, keypoints, cm, left_crop_metadata, right_crop_metadata):
+def generate_matches_and_homography(left_crop_url, right_crop_url, cm, left_crop_metadata, right_crop_metadata, keypoints=None):
 
     imageL = load_image(left_crop_url)
     imageR = load_image(right_crop_url)
     left_crop_metadata = json.loads(left_crop_metadata)
     right_crop_metadata = json.loads(right_crop_metadata)
     cm = json.loads(cm)
-    keypoints = json.loads(keypoints)
-    homography_and_matches = find_matches_and_homography(imageL, imageR, keypoints, cm, left_crop_metadata, right_crop_metadata)
+    if keypoints is not None:
+        keypoints = json.loads(keypoints)
+    homography_and_matches = find_matches_and_homography(imageL, imageR, cm, left_crop_metadata, right_crop_metadata, keypoints=keypoints)
     return homography_and_matches
 
 
@@ -216,20 +220,26 @@ def get_data(sql, db_type):
 if __name__ == '__main__':
     sc = SparkContext(appName="template_matching")
     sqlContext = SQLContext(sc)
-    sql = query = """
-        select left_image_url, right_image_url, keypoints::text, camera_metadata::text, left_crop_metadata::text, right_crop_metadata::text from research.fish_metadata a left join keypoint_annotations b
-        on a.left_url = b.left_image_url 
-        where b.keypoints is not null and b.is_qa = false;
+    sql = """
+        SELECT left_crop_url, right_crop_url, camera_metadata, left_crop_metadata, right_crop_metadata FROM prod.crop_annotation ca
+        INNER JOIN prod.annotation_state pas on pas.id=ca.annotation_state_id
+        WHERE ca.service_id = (SELECT ID FROM prod.service where name='LATI')
+        AND ca.left_crop_url is not null
+        AND ca.right_crop_url is not null
+        AND ca.pen_id = 56
+        AND ca.captured_at >= '2019-10-25' AND ca.captured_at < '2019-11-01'
+        AND (ca.annotation_state_id=6 OR ca.annotation_state_id=7);
     """
+
     # sql = "select left_crop_url, right_crop_url, keypoints, camera_metadata from prod.crop_annotation where annotation_state_id=1 and service_id=2 and captured_at between '2019-10-18' and '2019-10-19' and pen_id=61"
-    pdf = get_data(sql, "RESEARCH_DB")
+    pdf = get_data(sql, "DW_DB_RO")
 
     udfValue = udf(generate_matches_and_homography, ArrayType(ArrayType(ArrayType(DoubleType()))))
 
 
     #df = sqlContext.createDataFrame(pdf).withColumn("plane", udfValue("left_crop_url", "right_crop_url")).collect()
     df = sqlContext.createDataFrame(pdf).withColumn("homography_and_matches", \
-        udfValue("left_image_url", "right_image_url", "keypoints", "camera_metadata", "left_crop_metadata", "right_crop_metadata"))
+        udfValue("left_crop_url", "right_crop_url", "camera_metadata", "left_crop_metadata", "right_crop_metadata"))
 
     dt_iso = datetime.datetime.now().isoformat()
     key = f"template-matching/{dt_iso}/"
