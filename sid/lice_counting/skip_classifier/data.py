@@ -38,3 +38,5 @@ def get_key(url):
         key = "/".join(splitted[4:])
     return bucket, key
 
+if __name__ == '__main__':
+    download_images_to_local_dir()
