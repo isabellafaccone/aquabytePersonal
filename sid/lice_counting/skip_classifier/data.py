@@ -1,27 +1,49 @@
+import os
+import boto3
+from uuid import uuid4
+import json
+from time import time
+
 import pandas as pd
 import torch.nn as nn
-import os
+from tqdm import tqdm
+import numpy as np
 
 # Assume we have a CSV with annotations
 
-PATH = ''
+PATH = '/data/sid/lice_counting_anns/all_pens_since_october.pkl'
 IMAGE_FIELD = 'left_crop_url'
 LABEL_FIELD = 'state'
-DATA_PATH = '/data/sid/lice_count_skips/'
-
+ALLOWED_LABELS = ['QA', 'SKIPPED_ANN'] 
+DATA_PATH = 'data_dir' 
+NUM_SAMPLES = 100000
 
 def download_images_to_local_dir():
+    print('Loading dataframe...')
     s3 = boto3.resource('s3')
-    frame = pd.read_csv(PATH)
+    frame = pd.read_pickle(PATH)
+    frame = frame[frame[LABEL_FIELD].isin(ALLOWED_LABELS) & frame[IMAGE_FIELD].notnull()]
+    print(frame[LABEL_FIELD].unique())
+    print('Building random sample...')
+    frame = frame.sample(n=NUM_SAMPLES)
     image_out_path = os.path.join(DATA_PATH, 'images')
-    for i, row in frame.iterrows():
+
+    for label in ALLOWED_LABELS:
+        os.makedirs(os.path.join(DATA_PATH, label))
+
+    times = []
+    print(f'Downloading dataset of size:{len(frame)}...')
+
+    for i, (_, row) in tqdm(enumerate(frame.iterrows())):
+        start = time()
         image_url = row[IMAGE_FIELD]
+        image_label = row[LABEL_FIELD]
         image_bucket, image_key = get_key(image_url)
-        local_filename = image_key.replace('/', '__SLASH__')
-        s3.download_file(image_bucket, image_key, os.path.join(DATA_PATH, local_filename))
-        print(local_filename)
-        label = row[LABEL_FIELD]
-        break
+        local_filename = os.path.join(DATA_PATH, image_label, (str(uuid4())))
+        s3.meta.client.download_file(image_bucket, image_key,  local_filename + '_crop.jpg')
+        # Save metadata in case we need it
+        row.to_json(local_filename + '_metadata.json')
+        times.append(time()-start)
 
 def get_key(url):
     # old style https://s3.amazonaws.com/<bucket>/<key>
