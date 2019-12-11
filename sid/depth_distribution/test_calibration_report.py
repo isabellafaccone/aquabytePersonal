@@ -16,31 +16,34 @@ def build_keypoint_depth_table():
 def build_parquet_depth_table():
     depths = TemplateMatchingDepths.from_week_date_and_pen_id(
         pen_id=64, week_date='2019-11-25')
-    depths.get_depth_table()
+    depths.get_depth_table(
+        remap={'left_crop_url': 'left_image_url', 
+               'right_crop_url': 'right_image_url',
+               'distance_from_camera': DEPTH_COL}
+    )
+    print(depths.depth_table.columns)
     return depths.depth_table
 
-@pytest.mark.parametrize("depth_table", [
-    #build_keypoint_depth_table()
-    build_parquet_depth_table()
+@pytest.mark.parametrize("depth_table, expected_mean", [
+    [build_keypoint_depth_table(), 1.0859],
+    [build_parquet_depth_table(), 0.8396]
 ])
 class TestCalibrationReport:
 
-    def test_get_distance(self, depth_table, tmpdir):
+    def test_get_distance(self, depth_table, expected_mean, tmpdir):
         save_dir = tmpdir.mkdir(SAVE_DIR)
         calibration_report = CalibrationReport(depth_table, save_dir)
         assert calibration_report.depth_table[DEPTH_COL].isnull().sum() == 0
     
     
-    def test_build_depth_report(self, depth_table, tmpdir):
+    def test_build_depth_report(self, depth_table, expected_mean, tmpdir):
         save_dir = tmpdir.mkdir(SAVE_DIR)
         calibration_report = CalibrationReport(depth_table, save_dir)
         results = calibration_report.build_depth_report()
         assert os.path.exists(os.path.join(save_dir, DEPTH_REPORT_SAVENAME))
-        np.testing.assert_almost_equal(results['mean'], 1.0859345539996017, decimal=2)
-        np.testing.assert_almost_equal(results['median'], 1.0894455899882012, decimal=2)
-        np.testing.assert_almost_equal(results['std'], 0.20423878258196673, decimal=2)
+        np.testing.assert_almost_equal(results['mean'], expected_mean, decimal=2)
     
-    def test_plot_example_images(self, depth_table, tmpdir):
+    def test_plot_example_images(self, depth_table, expected_mean, tmpdir):
         save_dir = tmpdir.mkdir(SAVE_DIR)
         calibration_report = CalibrationReport(depth_table, save_dir)
         calibration_report.plot_example_images(depths=[0.4, 0.6, 0.8], dpi=10)

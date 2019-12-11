@@ -14,13 +14,20 @@ from aquabyte.optics import pixel2world
 SQL_CREDENTIALS = json.load(open(os.environ["PROD_SQL_CREDENTIALS"]))
 DEPTH_COL = 'depth_estimate'
 
+def remap_columns(table, remap):
+    for col in remap:
+        assert col in table.columns, f'didnt find {col}'
+        table[remap[col]] = table[col]
+        table.drop(col, inplace=True, axis=1)
+    return table
+
 class DepthsBase:
 
-     REQUIRED_COLS = [DEPTH_COL, 'captured_at', 'left_image_url', 'right_image_url', 'left_crop_metadata']
+     REQUIRED_COLS = ['left_image_url', 'right_image_url', 'left_crop_metadata', 'right_crop_metadata']
 
      def check_depth_table(self, depth_table: pd.DataFrame) -> None:
          for col in self.REQUIRED_COLS:
-             assert col in depth_table.columns        
+             assert col in depth_table.columns, f'Didnt find {col}'
              assert depth_table[col].isnull().sum() == 0, f'Found null vals for {col}'
 
      def get_depth_estimate(self):
@@ -70,9 +77,11 @@ class KeypointDepths(DepthsBase):
 
         self.keypoint_table[DEPTH_COL] = self.keypoint_table.apply(get_row_dist, axis=1)
 
-    def get_depth_table(self) -> pd.DataFrame:
+    def get_depth_table(self, remap=None) -> pd.DataFrame:
         self.clean_input()
         self.get_depth_estimate()
+        if remap is not None:
+            self.keypoint_table = remap_columns(self.keypoint_table, remap)
         self.check_depth_table(self.keypoint_table)
         self.depth_table = self.keypoint_table
 
@@ -101,14 +110,17 @@ class TemplateMatchingDepths(DepthsBase):
         parquet_paths = [obj.key for obj in b.objects.filter(Prefix=parquet_folder) if obj.key.endswith('.parquet')]
         assert len(parquet_paths) == 1, f'should only be 1 parque file per week, found\n{parquet_paths}'
         parquet_stream = get_stream(bucket, parquet_paths[0])
-        string_io = io.StringIO(parquet_stream.read())
-        df = pd.read_parquet(string_io)
+        buff = io.BytesIO()
+        parquet_stream.download_fileobj(buff)
+        df = pd.read_parquet(buff)
         return cls(df, pen_id)
         
 
     def clean_parquet(self):
         pass 
 
-    def get_depth_table(self):
-        self.check_table(self.parquet_table)
+    def get_depth_table(self, remap=None):
+        if remap is not None:
+            self.parquet_table = remap_columns(self.parquet_table, remap)
+        self.check_depth_table(self.parquet_table)
         self.depth_table = self.parquet_table

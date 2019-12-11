@@ -21,4 +21,4 @@ def get_stream(bucket, key):
     tmp = tempfile.NamedTemporaryFile(delete=False)
     bucket = s3.Bucket(bucket)
     obj = bucket.Object(key)
-    return obj.get()['Body']
+    return obj
