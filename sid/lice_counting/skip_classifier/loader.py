@@ -1,50 +1,47 @@
-from torchvision import datasets, transforms
+from albumentations import Compose, CenterCrop, LongestMaxSize, PadIfNeeded, Resize, Normalize
+from albumentations.pytorch import ToTensor
+from albumentations.pytorch.datasets import AlbumentationsImageFolder
+import cv2
 import torch
 import os
 
 
-DATA_DIR = 'data_dir'
+DATA_DIR = '/root/data/sid/lice_skip_data/'
+NUM_EX = 100000
 
-def load_dataset():
-    transform = transforms.Compose([
-        transforms.RandomResizedCrop(224),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+TRANSFORMS = {
+    'center_crop': Compose([
+        CenterCrop(224, 224),
+        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ToTensor()
+    ]),
+    'pad': Compose([
+        LongestMaxSize(3000),
+        # Using Border constant for padding because partial fish that are not in the center of the crop can look like full fish
+        PadIfNeeded(4096, 3000, border_mode=cv2.BORDER_CONSTANT),
+        Resize(224, 224),
+        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ToTensor()
     ])
-    image_dataset = datasets.ImageFolder(DATA_DIR, transform)
-    
-    dataloader = torch.utils.data.DataLoader(image_dataset, batch_size=4, shuffle=True, num_workers=4)
-    dataset_size = len(image_dataset)
-    class_names = image_dataset.classes
-    print(f'Found Classes: {class_names}')
-    print(f'dataset size: {dataset_size}')
-    # TODO: ensure that the gpu is available
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
-    return dataloader
+}
+CLASS_COUNTS = dict()
+for lab in os.listdir(DATA_DIR):
+    CLASS_COUNTS[lab] = (len(os.listdir(os.path.join(DATA_DIR, lab)))/2)
 
-def show_images():
-    def imshow(inp, title=None):
-        """Imshow for Tensor."""
-        inp = inp.numpy().transpose((1, 2, 0))
-        mean = np.array([0.485, 0.456, 0.406])
-        std = np.array([0.229, 0.224, 0.225])
-        inp = std * inp + mean
-        inp = np.clip(inp, 0, 1)
-        plt.imshow(inp)
-        if title is not None:
-            plt.title(title)
-        plt.pause(0.001)  # pause a bit so that plots are updated
-    
-    
-    # Get a batch of training data
-    inputs, classes = next(iter(dataloader))
-    
-    # Make a grid from batch
-    out = torchvision.utils.make_grid(inputs)
-    
-    imshow(out, title=[class_names[x] for x in classes])
+def get_dataloader(transform, bsz, split_size):
+    print('Loading dataset from directory...')
+    dataset = AlbumentationsImageFolder(DATA_DIR, transform)
+    print('Splitting into folds...')
+    datasets = dict()
+    val_size = (1 - split_size) / 2
+    sizes = [int(NUM_EX*split_size), int(NUM_EX * val_size)]
+    sizes.append(NUM_EX - sum(sizes))
+    datasets['train'], datasets['val'], datasets['test'] = torch.utils.data.random_split(dataset, sizes)
+    print('Building dataloaders...')
+    dataloaders = {split: torch.utils.data.DataLoader(datasets[split], batch_size=bsz, shuffle=True, num_workers=4)
+                   for split in datasets}
+    return dataloaders, dataset.classes
 
 if __name__ == '__main__':
-    dataloader = load_dataset()
-
+    get_dataloader(CENTER_CROP_TRANSFORM)
+    get_dataloader(PAD_TRANSFORM)
