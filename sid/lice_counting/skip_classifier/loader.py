@@ -1,13 +1,14 @@
 from albumentations import Compose, CenterCrop, LongestMaxSize, PadIfNeeded, Resize, Normalize
 from albumentations.pytorch import ToTensor
-from albumentations.pytorch.datasets import AlbumentationsImageFolder
+from image_folder import AlbumentationsImageFolder
 import cv2
 import torch
 import os
+from data import MODEL_DATA_PATH
 
+DATA_FNAME = 'qa_accept_cogito_skips_03-04-2020/images'
 
-DATA_DIR = '/root/data/sid/lice_skip_data/'
-NUM_EX = 100000
+### Image Data Augmentation ###
 
 TRANSFORMS = {
     'center_crop': Compose([
@@ -24,24 +25,37 @@ TRANSFORMS = {
         ToTensor()
     ])
 }
-CLASS_COUNTS = dict()
-for lab in os.listdir(DATA_DIR):
-    CLASS_COUNTS[lab] = (len(os.listdir(os.path.join(DATA_DIR, lab)))/2)
 
-def get_dataloader(transform, bsz, split_size):
+
+def get_dataloader(fname, transform, bsz, split_size):
+    data_dir = os.path.join(MODEL_DATA_PATH, fname, 'images')
     print('Loading dataset from directory...')
-    dataset = AlbumentationsImageFolder(DATA_DIR, transform)
+    dataset = AlbumentationsImageFolder(data_dir, transform)
     print('Splitting into folds...')
     datasets = dict()
     val_size = (1 - split_size) / 2
-    sizes = [int(NUM_EX*split_size), int(NUM_EX * val_size)]
-    sizes.append(NUM_EX - sum(sizes))
-    datasets['train'], datasets['val'], datasets['test'] = torch.utils.data.random_split(dataset, sizes)
+    num_ex = len(dataset.samples)
+    sizes = [int(num_ex*split_size), int(num_ex * val_size)]
+    sizes.append(num_ex - sum(sizes))
+    train, val, test = torch.utils.data.random_split(dataset, sizes)
+    datasets = {
+        'train': train,
+        'val': val,
+        'test': test
+    }
     print('Building dataloaders...')
-    dataloaders = {split: torch.utils.data.DataLoader(datasets[split], batch_size=bsz, shuffle=True, num_workers=4)
-                   for split in datasets}
-    return dataloaders, dataset.classes
+    dataloaders = {
+        split: torch.utils.data.DataLoader(
+            datasets[split], batch_size=bsz, shuffle=True, num_workers=4)
+        for split in datasets
+    }
+    ### Calculate Class Distribution ###
+    class_counts = dict()
+    labels = os.listdir(data_dir)
+    for lab in labels:
+        class_counts[lab] = (len(os.listdir(os.path.join(data_dir, lab)))/2)
+    return dataloaders, dataset.classes, class_counts
 
 if __name__ == '__main__':
-    get_dataloader(CENTER_CROP_TRANSFORM)
-    get_dataloader(PAD_TRANSFORM)
+    get_dataloader(TRANSFORMS['center_crop'], 10, 0.8)
+    get_dataloader(TRANSFORMS['pad'], 10, 0.8)
