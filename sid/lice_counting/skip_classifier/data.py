@@ -11,25 +11,23 @@ import numpy as np
 
 # Assume we have a CSV with annotations
 
-PATH = '/data/sid/lice_counting_anns/all_pens_since_october.pkl'
+SAMPLED_DATA_DIR = '/root/data/sid/skip_classifier_datasets/sampled_datasets/'
+SAMPLED_DATA_FNAME = 'qa_accept_cogito_skips_03-04-2020'
 IMAGE_FIELD = 'left_crop_url'
-LABEL_FIELD = 'state'
-ALLOWED_LABELS = ['QA', 'SKIPPED_ANN'] 
-DATA_PATH = 'data_dir' 
+LABEL_FIELD = 'label'
+ALLOWED_LABELS = ['SKIP', 'ACCEPT']
+MODEL_DATA_PATH = '/root/data/sid/skip_classifier_datasets/model_datasets/'
 NUM_SAMPLES = 100000
 
-def download_images_to_local_dir():
+def download_images_to_local_dir(fname=SAMPLED_DATA_FNAME):
     print('Loading dataframe...')
     s3 = boto3.resource('s3')
-    frame = pd.read_pickle(PATH)
-    frame = frame[frame[LABEL_FIELD].isin(ALLOWED_LABELS) & frame[IMAGE_FIELD].notnull()]
-    print(frame[LABEL_FIELD].unique())
-    print('Building random sample...')
-    frame = frame.sample(n=NUM_SAMPLES)
-    image_out_path = os.path.join(DATA_PATH, 'images')
+    frame = pd.read_csv(os.path.join(SAMPLED_DATA_DIR, fname+ '.csv'))
+    image_out_path = os.path.join(MODEL_DATA_PATH, fname, 'images')
 
     for label in ALLOWED_LABELS:
-        os.makedirs(os.path.join(DATA_PATH, label))
+        path = os.path.join(image_out_path, label)
+        os.makedirs(path, exist_ok=True)
 
     times = []
     print(f'Downloading dataset of size:{len(frame)}...')
@@ -39,7 +37,7 @@ def download_images_to_local_dir():
         image_url = row[IMAGE_FIELD]
         image_label = row[LABEL_FIELD]
         image_bucket, image_key = get_key(image_url)
-        local_filename = os.path.join(DATA_PATH, image_label, (str(uuid4())))
+        local_filename = os.path.join(image_out_path, image_label, (str(uuid4())))
         s3.meta.client.download_file(image_bucket, image_key,  local_filename + '_crop.jpg')
         # Save metadata in case we need it
         row.to_json(local_filename + '_metadata.json')
@@ -61,4 +59,14 @@ def get_key(url):
     return bucket, key
 
 if __name__ == '__main__':
-    download_images_to_local_dir()
+    useful_labels = [
+            'BLURRY',
+            'BAD_CROP',
+            'BAD_ORIENTATION',
+            'OBSTRUCTION',
+            'TOO_DARK'
+    ]
+    for lab in useful_labels:
+        fname = f'qa_accept_{lab}_skips_03-04-2020'
+        download_images_to_local_dir(fname=fname)
+    download_images_to_local_dir('qa_accept_cogito_skips_03-04-2020_100k')
