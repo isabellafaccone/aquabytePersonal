@@ -4,9 +4,12 @@ from image_folder import AlbumentationsImageFolder
 import cv2
 import torch
 import os
+import json
 from data import MODEL_DATA_PATH
+import pickle
 
 DATA_FNAME = 'qa_accept_cogito_skips_03-04-2020/images'
+TRAIN_TEST_SPLIT_PATH = '/root/data/sid/skip_classifier_datasets/splits'
 
 ### Image Data Augmentation ###
 
@@ -31,6 +34,7 @@ def get_dataloader(fname, transform, bsz, split_size):
     data_dir = os.path.join(MODEL_DATA_PATH, fname, 'images')
     print('Loading dataset from directory...')
     dataset = AlbumentationsImageFolder(data_dir, transform)
+    print(dataset[0])
     print('Splitting into folds...')
     datasets = dict()
     val_size = (1 - split_size) / 2
@@ -38,6 +42,16 @@ def get_dataloader(fname, transform, bsz, split_size):
     sizes = [int(num_ex*split_size), int(num_ex * val_size)]
     sizes.append(num_ex - sum(sizes))
     train, val, test = torch.utils.data.random_split(dataset, sizes)
+    dataset_splits = {
+        'original': dataset.samples,
+        'train_indices': train.indices.tolist(),
+        'val_indices': val.indices.tolist(),
+        'test_indices': test.indices.tolist()
+    }
+    split_path = os.path.join(TRAIN_TEST_SPLIT_PATH, f'{fname}_splits.json')
+    with open(split_path, 'w') as f:
+        json.dump(dataset_splits, f)
+
     datasets = {
         'train': train,
         'val': val,

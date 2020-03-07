@@ -6,56 +6,64 @@ import numpy as np
 import argparse
 import os
 import json
+from tqdm import tqdm
+from sklearn.metrics import precision_score, recall_score, roc_auc_score
 
 import torch
-from torchvision import models
 import torch.nn as nn
 import torch.optim as optim
 
-from loader import TRANSFORMS, CLASS_COUNTS, NUM_EX, get_dataloader
+from loader import TRANSFORMS, get_dataloader
+from model import ImageClassifier
 
-CHECKPOINT_PATH = 'checkpoints'
+torch.manual_seed(0)
+ACCEPT_LABEL, SKIP_LABEL = 'ACCEPT', 'SKIP'
+expected = [ACCEPT_LABEL, SKIP_LABEL]
+ACCEPT_LABEL_IDX = expected.index(ACCEPT_LABEL)
+CHECKPOINT_PATH = '/root/data/sid/skip_classifier_checkpoints'
 
-def get_model(class_names, device, savename):
-    print('Building model object...')
-    model_ft = models.resnet18(pretrained=True)
-    num_ftrs = model_ft.fc.in_features
-    model_ft.fc = nn.Linear(num_ftrs, len(class_names))
 
-    model_ft = model_ft.to(device)
-    if state_dict_path is not None:
-        print(f'Loading from {state_dict_path}')
-        model_ft.load_state_dict(torch.load(state_dict_path))
-    return model_ft
-
-def get_metrics(preds: torch.Tensor, labels: torch.Tensor, last_batch, class_idxs=[0, 1]):
+def get_metrics(outputs: torch.Tensor, labels: torch.Tensor, class_idxs=[0, 1]):
     """
-    preds: 1-D tensor
+    outputs: 2-D tensor of probabilities
+    predicted_probs: 1-D tensor
     labels: 1-D tensor
     """
     report = dict()
-    for lab in labels:
-        correct = (preds == labels)
-        report[lab] = {
-            'precision' : torch.mean(correct[preds == lab]).float(),
-            'recall' : torch.mean(correct[labels == lab]).float(),
-            'acc' : torch.mean(correct).float()
-        }
-        # if last_batch:
-        #     for m in report[lab]:
-        #         report[lab][m] = preds.size(0) /
-    return report
 
-def train_model(dataloaders, model_ft, class_names, savename, bsz, device=0, num_epochs=25, phases=['val']):
+    labels = labels.cpu().numpy()
+    labels = labels == ACCEPT_LABEL_IDX
+    _, preds = torch.max(outputs, 1)
+    preds = preds.cpu().numpy()
+    preds = preds == ACCEPT_LABEL_IDX
+    pred_probs = outputs[:, ACCEPT_LABEL_IDX]
+    pred_probs = pred_probs.detach().cpu().numpy()
+    if preds.sum():
+        precision = precision_score(labels, preds)
+    else:
+        print('No pred positives')
+        precision = 1
+    if labels.sum():
+        recall = recall_score(labels, preds)
+    else:
+        print('No true positives')
+        recall = 1
+    try:
+        auc = roc_auc_score(labels, pred_probs)
+    except:
+        auc = 0
+    return {
+        'precision': precision,
+        'recall': recall,
+        'auc': auc
+    }
+
+def train_model(dataloaders, model_ft, class_names, class_counts, savename, bsz, device=0, num_epochs=25, phases=['train', 'val'], log_every=10):
 
     # Weight classes in cross entropy loss function based on relative frequency
     print('Preparing training job...')
-    if class_names == ['QA', 'SKIPPED_ANN']:
-        weight = torch.Tensor([CLASS_COUNTS['SKIPPED_ANN']/CLASS_COUNTS['QA'], 1]).cuda()
-    elif class_names == ['SKIPPED_ANN', 'QA']:
-        weight = torch.Tensor([1, CLASS_COUNTS['SKIPPED_ANN']/CLASS_COUNTS['QA']]).cuda()
-    else:
-        assert False
+    assert class_names == expected, (class_names, expected)
+    weight = torch.Tensor([class_counts[SKIP_LABEL]/class_counts[ACCEPT_LABEL], 1]).cuda()
 
     criterion = nn.CrossEntropyLoss(weight=weight)
     optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
@@ -64,26 +72,29 @@ def train_model(dataloaders, model_ft, class_names, savename, bsz, device=0, num
     since = time.time()
 
     best_model_ft_wts = copy.deepcopy(model_ft.state_dict())
-    best_acc = 0.0
+    best_auc = 0.0
+    epochs_without_improvement = 0
 
     for epoch in range(num_epochs):
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
+        if epochs_without_improvement > 5:
+            break
 
         # Each epoch has a training and validation phase
         for phase in phases:
+            print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+            print(f'Phase: {phase}')
+            print('-' * 10)
             if phase == 'train':
                 model_ft.train()  # Set model_ft to training mode
             else:
                 model_ft.eval()   # Set model_ft to evaluate mode
 
             running_loss = 0.0
-            running_accs = {lab: [] for lab in class_names + ['macro']}
+            all_outputs = None
+            all_labels = None
 
             # Iterate over data.
             for i, (inputs, labels) in enumerate(dataloaders[phase]):
-                if i > 10:
-                    break
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
@@ -94,79 +105,97 @@ def train_model(dataloaders, model_ft, class_names, savename, bsz, device=0, num
                 # track history if only in train
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model_ft(inputs)
-                    _, preds = torch.max(outputs, 1)
                     loss = criterion(outputs, labels)
+
+                    if all_outputs is None:
+                        all_outputs = outputs
+                        all_labs = labels
+                    else:
+                        all_outputs = torch.cat((all_outputs, outputs))
+                        all_labs = torch.cat((all_labs, labels))
 
                     # backward + optimize only if in training phase
                     if phase == 'train':
                         loss.backward()
                         optimizer_ft.step()
 
-                # statistics
                 running_loss += loss.item() * inputs.size(0)
-                last_batch = i == ((NUM_EX // bsz) - 1)
-                start_cal = time()
-                running_metrics.append(get_metrics(preds, labels.data, last_batch))
-                finish_cal = time() - start_cal
-                print(f'Calculated metrics in {finish_cal}')
+                if i % log_every == 0:
+                    print(f'Batch: {i}')
+                    train_acc = get_metrics(outputs, labels.data)
+                    print(f'Metrics: {train_acc}')
+                    # statistics
+                    #last_batch = i == ((NUM_EX // bsz) - 1)
+                    #start_cal = time()
+                    #finish_cal = time() - start_cal
+                    #print(f'Calculated metrics in {finish_cal}')
             # if phase == 'train':
             #     exp_lr_scheduler.step()
 
-            epoch_loss = running_loss / {'train': 80000, 'val': 10000}[phase]
+            print(all_labs.shape[0])
+            epoch_loss = running_loss / all_labs.shape[0]
             epoch_metrics = dict()
-            for i, lab in enumerate(class_names):
-                epoch_acc[lab] = np.mean(running_accs[lab])
 
-            epoch_acc['macro'] = np.mean(list(epoch_acc.values()))
-            epoch_acc['micro'] = np.mean(running_accs['micro'])
+            epoch_acc = get_metrics(all_outputs, all_labs)
 
             print('{} Loss: {:.4f} Acc: {}'.format(
                 phase, epoch_loss, epoch_acc))
 
             # Save results
-            save_dir = f'checkpoints/{savename}/epoch_{epoch}/{phase}/'
+            save_dir = f'{CHECKPOINT_PATH}/{savename}/epoch_{epoch}/{phase}/'
             os.makedirs(save_dir, exist_ok=True)
 
             torch.save(model_ft.state_dict(), os.path.join(save_dir, 'model.pt'))
             json.dump({'acc': epoch_acc, 'loss': epoch_loss}, open(os.path.join(save_dir, 'metrics.json'), 'w'))
 
             # deep copy the model_ft
-            if phase == 'val' and epoch_acc['macro'] > best_acc:
-                best_acc = epoch_acc['macro']
-                best_model_ft_wts = copy.deepcopy(model_ft.state_dict())
+            if phase == 'val':
+                if epoch_acc['auc'] > best_auc:
+                    print('Best Model!')
+                    best_auc = epoch_acc['auc']
+                    best_model_ft_wts = copy.deepcopy(model_ft.state_dict())
+                    epochs_without_improvement = 0
+                else:
+                    epochs_without_improvement += 1
 
         print()
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60))
-    print('Best val Acc: {:4f}'.format(best_acc))
+    print('Best val Auc: {:4f}'.format(best_auc))
 
     # load best model_ft weights
     model_ft.load_state_dict(best_model_ft_wts)
     return model_ft
 
-def run(transform, savename, bsz, split_size, device):
+def run(fname, savename, transform, bsz, split_size, device, state_dict_path):
     torch.cuda.set_device(device)
-    dataloaders, class_names = get_dataloader(transform, bsz, split_size)
-    model = get_model(class_names, device, savename)
-    trained_model = train_model(dataloaders, model, class_names, savename, device)
+    transform = TRANSFORMS[transform]
+    dataloaders, class_names, class_counts = get_dataloader(fname, transform, bsz, split_size)
+    model = ImageClassifier(class_names, savename, state_dict_path)
+    model.to(device)
+    trained_model = train_model(dataloaders, model, class_names, class_counts, savename, device)
     return trained_model
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train a Skip classifier.')
+    parser.add_argument('--fname', type=str)
     parser.add_argument('--device', type=int, default=0)
-    parser.add_argument('--transform', type=str)
-    parser.add_argument('--savename', type=str, default=None)
+    parser.add_argument('--transform', type=str, default='pad')
+    parser.add_argument('--savename', type=str, default='testing123')
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--split_size', type=float, default=0.8)
+    parser.add_argument('--state_dict_path', type=str, default=None)
 
     args = parser.parse_args()
     args.savename = args.savename + '__' + datetime.now(tz=pytz.timezone('US/Pacific')).strftime("%Y-%m-%d__%H-%M-%S")
     run(
-        TRANSFORMS[args.transform],
+        args.fname,
         args.savename,
+        args.transform,
         args.batch_size,
         args.split_size,
-        device=args.device
+        device=args.device,
+        state_dict_path=args.state_dict_path
     )
