@@ -104,7 +104,8 @@ if __name__ == "__main__":
 
             loss, outputs = model(imgs, targets)
             loss.backward()
-
+            torch.cuda.empty_cache()
+            
             if batches_done % opt.gradient_accumulations:
                 # Accumulates gradient before each step
                 optimizer.step()
@@ -155,7 +156,7 @@ if __name__ == "__main__":
                 path=valid_path,
                 iou_thres=0.5,
                 conf_thres=0.5,
-                nms_thres=0.5,
+                nms_thres=0.7,
                 img_size=opt.img_size,
                 batch_size=8,
             )
