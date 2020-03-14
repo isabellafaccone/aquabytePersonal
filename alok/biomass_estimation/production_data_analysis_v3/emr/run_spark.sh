@@ -5,7 +5,7 @@ INSTANCE_TYPE=m5.4xlarge
 CODE_LOCATION=s3://aquabyte-research/template-matching/code/main_repartition.py
 
 #
-NUM_INSTANCES=17
+NUM_INSTANCES=33
 
 aws s3 cp $EXEC_FILE $CODE_LOCATION
 
