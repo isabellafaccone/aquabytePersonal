@@ -325,6 +325,13 @@ def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
 
 ##################### CUSTOM LICE_DECTECTION #####################
 
+def yolobbox2xywh(yolobbox, image_dim):
+    x_center, y_center, w, h, = yolobbox
+    iw, ih = image_dim
+    x = x_center - w / 2
+    y = y_center - h / 2
+    return [x * iw, y * ih, w * iw, h * ih]
+
     
 def xywh2yolobbox(xywh, image_dim):   
     """Convert bouding box from xywh to normalized format for yolo model
@@ -340,8 +347,8 @@ def xywh2yolobbox(xywh, image_dim):
     list: 
         center of rectangle with width and height relative to width and height of image (0.0 to 1.0]
     """
-    x, y, w, h = xywh[0], xywh[1], xywh[2], xywh[3]
-    iw, ih = image_dim[0], image_dim[1]
+    x, y, w, h = xywh
+    iw, ih = image_dim
     x_center = x + w / 2
     y_center = y + h / 2
     return [x_center / iw, y_center / ih, w / iw, h / ih]
