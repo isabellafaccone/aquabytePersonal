@@ -1,4 +1,6 @@
 classes=1
-train=data/train.txt
-valid=data/valid.txt
-names=data/lice_classes.names
+train=./data/train.txt
+valid=./data/valid.txt
+test=./data/test.txt
+names=./data/lice_classes.names
+backup=backup/

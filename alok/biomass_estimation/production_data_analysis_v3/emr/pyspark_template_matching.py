@@ -82,15 +82,15 @@ def get_body_keypoints(kp1, kp2, matches, matchesMask, left_crop_metadata, right
     kps = d.tolist()
     return kps
 
-def get_modified_crop_metadata(cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top):
+def get_modified_crop_metadata(left_crop_metadata, right_crop_metadata, cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top):
     modified_left_crop_metadata = {
-        'x_coord': cropL_x_left,
-        'y_coord': cropL_y_top
+        'x_coord': left_crop_metadata['x_coord'] + cropL_x_left,
+        'y_coord': left_crop_metadata['y_coord'] + cropL_y_top
     }
 
     modified_right_crop_metadata = {
-        'x_coord': cropR_x_left,
-        'y_coord': cropR_y_top
+        'x_coord': right_crop_metadata['x_coord'] + cropR_x_left,
+        'y_coord': right_crop_metadata['y_coord'] + cropR_y_top
     }
 
     return modified_left_crop_metadata, modified_right_crop_metadata
@@ -100,6 +100,7 @@ def find_matches_and_homography(imageL, imageR, cm, left_crop_metadata, right_cr
     MIN_MATCH_COUNT=11, GOOD_PERC=0.7, FLANN_INDEX_KDTREE=0):
 
     if keypoints is not None:
+        print('Keypoints present!')
         if 'leftCrop' in keypoints and 'rightCrop' in keypoints:
             print('Keypoints: {}'.format(keypoints))
             left_keypoints_dict = {item['keypointType']: [item['xCrop'], item['yCrop']] for item in keypoints['leftCrop']}
@@ -110,44 +111,43 @@ def find_matches_and_homography(imageL, imageR, cm, left_crop_metadata, right_cr
                 crop_images(imageL, imageR, left_crop_metadata, right_crop_metadata, left_keypoints_dict, right_keypoints_dict)
 
             modified_left_crop_metadata, modified_right_crop_metadata = \
-                get_modified_crop_metadata(cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top)
+                get_modified_crop_metadata(left_crop_metadata, right_crop_metadata, cropL_x_left, cropL_y_top, cropR_x_left, cropR_y_top)
 
     else:
+        print('Keypoints NOT present!')
         modified_left_crop_metadata, modified_right_crop_metadata = left_crop_metadata, right_crop_metadata
 
-        # find template matches
 
-        sift = cv2.KAZE_create()
-        img1 = enhance(imageL)
-        img2 = enhance(imageR)
-        kp1, des1 = sift.detectAndCompute(img1, None)
-        kp2, des2 = sift.detectAndCompute(img2, None)
+    # find template matches
+    sift = cv2.KAZE_create()
+    img1 = enhance(imageL)
+    img2 = enhance(imageR)
+    kp1, des1 = sift.detectAndCompute(img1, None)
+    kp2, des2 = sift.detectAndCompute(img2, None)
 
-        index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
-        search_params = dict(checks=50)
+    index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+    search_params = dict(checks=50)
 
-        flann = cv2.FlannBasedMatcher(index_params, search_params)
-        matches = flann.knnMatch(des1,des2, k=2)
-        good = []
-        matchesMask = []
-
-        for m,n in matches:
-            if m.distance < GOOD_PERC*n.distance:
-                good.append(m)
-        if len(good)>=MIN_MATCH_COUNT:
-            src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1, 1 ,2)
-            dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1, 1, 2)
-            H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-            matchesMask = mask.ravel().tolist()
-            if H is None:
-                return [[[]]]
-            H = H.tolist()
-            kps = get_body_keypoints(kp1, kp2, good, matchesMask, modified_left_crop_metadata, modified_right_crop_metadata)
-            return [H, kps]
-
-        else:
-            print("Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT))
+    flann = cv2.FlannBasedMatcher(index_params, search_params)
+    matches = flann.knnMatch(des1,des2, k=2)
+    good = []
+    matchesMask = []
+    
+    for m,n in matches:
+        if m.distance < GOOD_PERC*n.distance:
+            good.append(m)
+    if len(good)>=MIN_MATCH_COUNT:
+        src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1, 1 ,2)
+        dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1, 1, 2)
+        H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+        matchesMask = mask.ravel().tolist()
+        if H is None:
             return [[[]]]
+        H = H.tolist()
+        kps = get_body_keypoints(kp1, kp2, good, matchesMask, modified_left_crop_metadata, modified_right_crop_metadata)
+        return [H, kps]
+
+    print("Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT))
     return [[[]]]
 
 
@@ -221,25 +221,24 @@ if __name__ == '__main__':
     sc = SparkContext(appName="template_matching")
     sqlContext = SQLContext(sc)
     sql = """
-        SELECT left_crop_url, right_crop_url, camera_metadata, left_crop_metadata, right_crop_metadata FROM prod.crop_annotation ca
-        INNER JOIN prod.annotation_state pas on pas.id=ca.annotation_state_id
-        WHERE ca.service_id = (SELECT ID FROM prod.service where name='LATI')
-        AND ca.left_crop_url is not null
-        AND ca.right_crop_url is not null
-        AND ca.pen_id = 56
-        AND ca.captured_at >= '2019-10-25' AND ca.captured_at < '2019-11-01'
-        AND (ca.annotation_state_id=6 OR ca.annotation_state_id=7);
+        select left_image_url, right_image_url, camera_metadata::text, left_crop_metadata::text, right_crop_metadata::text, keypoints::text
+        from research.fish_metadata a left join keypoint_annotations b
+        on a.left_url = b.left_image_url 
+        where b.keypoints -> 'leftCrop' is not null
+        and b.keypoints -> 'rightCrop' is not null
+        and b.is_qa = false
+        and b.captured_at < '2019-09-20';
     """
 
     # sql = "select left_crop_url, right_crop_url, keypoints, camera_metadata from prod.crop_annotation where annotation_state_id=1 and service_id=2 and captured_at between '2019-10-18' and '2019-10-19' and pen_id=61"
-    pdf = get_data(sql, "DW_DB_RO")
+    pdf = get_data(sql, "RESEARCH_DB")
 
     udfValue = udf(generate_matches_and_homography, ArrayType(ArrayType(ArrayType(DoubleType()))))
 
 
     #df = sqlContext.createDataFrame(pdf).withColumn("plane", udfValue("left_crop_url", "right_crop_url")).collect()
     df = sqlContext.createDataFrame(pdf).withColumn("homography_and_matches", \
-        udfValue("left_crop_url", "right_crop_url", "camera_metadata", "left_crop_metadata", "right_crop_metadata"))
+        udfValue("left_image_url", "right_image_url", "camera_metadata", "left_crop_metadata", "right_crop_metadata", "keypoints"))
 
     dt_iso = datetime.datetime.now().isoformat()
     key = f"template-matching/{dt_iso}/"

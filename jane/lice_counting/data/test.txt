@@ -1,0 +1,13 @@
+data/lice_crop_images/left_0_761_2484_1834.jpg
+data/lice_crop_images/left_0_188_3654_1411.jpg
+data/lice_crop_images/left_978_522_3734_1598.jpg
+data/lice_crop_images/left_1524_808_4096_1805.jpg
+data/lice_crop_images/left_610_967_3622_2366.jpg
+data/lice_crop_images/left_2_1494_3054_2864.jpg
+data/lice_crop_images/left_338_651_3342_2255.jpg
+data/lice_crop_images/left_858_1735_4046_3000.jpg
+data/lice_crop_images/left_1338_1008_3286_2852.jpg
+data/lice_crop_images/left_0_110_2844_1154.jpg
+data/lice_crop_images/left_1324_462_4096_1570.jpg
+data/lice_crop_images/left_1468_1441_3756_2988.jpg
+data/lice_crop_images/left_1260_444_3756_1734.jpg
