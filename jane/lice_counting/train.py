@@ -21,6 +21,7 @@ from torchvision import datasets
 from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
+import shutil
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -44,7 +45,13 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     os.makedirs("output", exist_ok=True)
-    os.makedirs("checkpoints", exist_ok=True)
+
+    # original code: os.makedirs("checkpoints", exist_ok=True)
+    try:
+      os.makedirs("checkpoints")
+    except FileExistsError:
+      shutil.rmtree("checkpoints") 
+      os.makedirs("checkpoints")
 
     # Get data configuration
     data_config = parse_data_config(opt.data_config)
@@ -156,7 +163,7 @@ if __name__ == "__main__":
                 path=valid_path,
                 iou_thres=0.5,
                 conf_thres=0.5,
-                nms_thres=0.7,
+                nms_thres=0.2,
                 img_size=opt.img_size,
                 batch_size=8,
             )

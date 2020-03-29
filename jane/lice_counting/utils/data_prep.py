@@ -3,6 +3,8 @@ from tqdm import tqdm
 from random import randint, seed
 from PIL import Image
 
+LICE_CATEGORY = ['ADULT_FEMALE', 'MOVING', 'SCOTTISH_ADULT_FEMALE', 'UNSURE']
+
 
 def write_label(class_index, bbox, file_name, path):
     f = open("{}/{}.txt".format(path, file_name), "w+")
@@ -49,12 +51,15 @@ def get_df_ad(df):
     return new_df
 
 
+    
 
-def generate_crops(lice_list, image_dim, crop_dim):
+def generate_crops(lice_list, image_dim, crop_dim, categories = LICE_CATEGORY):
     iw, ih = image_dim
     cw, ch = crop_dim
     crops = {}
     for louse in lice_list:
+        if louse['category'] not in categories:
+            continue
         lp = louse['position'] 
         x, y, w, h = lp["left"], lp["top"], lp["width"], lp["height"]
         # append the louse to the crop that already covers it
