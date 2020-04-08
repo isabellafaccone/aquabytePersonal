@@ -103,5 +103,21 @@ if __name__ == "__main__":
     print("Average Precisions:")
     for i, c in enumerate(ap_class):
         print(f"+ Class '{c}' ({class_names[c]}) - AP: {AP[i]}")
-
     print(f"mAP: {AP.mean()}")
+    
+    print("\nPrecisions:")
+    for i, c in enumerate(ap_class):
+        print(f"+ Class '{c}' ({class_names[c]}) - Precision: {precision[i]}")
+    print(f"mena Precision: {precision.mean()}")
+    
+    print("\nRecall:")
+    for i, c in enumerate(ap_class):
+        print(f"+ Class '{c}' ({class_names[c]}) - recall: {recall[i]}")
+    print(f"mean Recall: {recall.mean()}")
+
+
+    print("\nF1:")
+    for i, c in enumerate(ap_class):
+        print(f"+ Class '{c}' ({class_names[c]}) - f1: {f1[i]}")
+    print(f"mean F1: {f1.mean()}")
+

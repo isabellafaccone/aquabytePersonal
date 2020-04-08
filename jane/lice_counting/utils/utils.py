@@ -11,7 +11,6 @@ from torch.autograd import Variable
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from PIL import Image
 
 def to_cpu(tensor):
     return tensor.detach().cpu()
@@ -354,16 +353,7 @@ def xywh2yolobbox(xywh, image_dim):
     return [x_center / iw, y_center / ih, w / iw, h / ih]
 
 
-def write_label(class_index, bbox, file_name, path):
-    f = open("{}/{}.txt".format(path, file_name), "w+")
-    bbox_str = " ".join([str(i) for i in bbox])
-    f.write("{} {}".format(class_index, bbox_str))
-    f.close() 
 
-    
-def write_image(image, file_name, path):
-    img = Image.fromarray(image , 'RGB')
-    img.save("{}/{}.jpg".format(path, file_name), 'JPEG')
     
     
 

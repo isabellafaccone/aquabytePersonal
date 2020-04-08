@@ -117,7 +117,12 @@ if __name__ == "__main__":
                 box_w = x2 - x1
                 box_h = y2 - y1
 
-                color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
+#                 color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
+                                
+                if classes[int(cls_pred)] == "MOVING":
+                    color = "pink"
+                if classes[int(cls_pred)] == "ADULT_FEMALE":
+                    color = "green"
                 # Create a Rectangle patch
                 bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=1, edgecolor=color, facecolor="none")
                 # Add the bbox to the plot
@@ -126,7 +131,7 @@ if __name__ == "__main__":
 #                 plt.text(
 #                     x1,
 #                     y1,
-#                     s=classes[int(cls_pred)],
+#                     s=classes[int(cls_pred)][0],
 #                     color="white",
 #                     verticalalignment="top",
 #                     bbox={"color": color, "pad": 0},
