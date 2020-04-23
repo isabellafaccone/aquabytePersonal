@@ -13,14 +13,17 @@ services:
       - prod_sql_credentials
       - prod_research_sql_credentials
       - prod_research_write_sql_credentials
+      - data_warehouse_sql_credentials
     environment:
       - AWS_CREDENTIALS=/run/secrets/aws_credentials
       - SQL_CREDENTIALS=/run/secrets/sql_credentials
       - PROD_SQL_CREDENTIALS=/run/secrets/prod_sql_credentials
       - PROD_RESEARCH_SQL_CREDENTIALS=/run/secrets/prod_research_sql_credentials
       - PROD_RESEARCH_WRITE_SQL_CREDENTIALS=/run/secrets/prod_research_write_sql_credentials
+      - DATA_WAREHOUSE_SQL_CREDENTIALS=/run/secrets/data_warehouse_sql_credentials
     ports:
-        - "8866:8866"
+      - "8867:8867"
+      - "6006:6006"
     logging:
       driver: journald
       options:
@@ -39,3 +42,5 @@ secrets:
     file: ./prod_research_sql_credentials.json
   prod_research_write_sql_credentials:
     file: ./prod_research_write_sql_credentials.json 
+  data_warehouse_sql_credentials:
+    file: ./data_warehouse_sql_credentials.json    
