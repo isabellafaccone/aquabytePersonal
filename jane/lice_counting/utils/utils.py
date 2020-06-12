@@ -324,6 +324,17 @@ def build_targets(pred_boxes, pred_cls, target, anchors, ignore_thres):
 
 ##################### CUSTOM LICE_DECTECTION #####################
 
+def xyxy2xywh(p1, p2, k):
+    """
+    p1, p2: np array of length 2
+    k: np array of 2 * 2
+    """    
+    q1, q2 = p1 - k * (p1 - p2)
+    
+    x, y = np.rint(np.minimum(q1, q2)).astype(int)
+    w, h = np.rint(np.abs(q1 - q2)).astype(int)
+    return x, y, w, h 
+
 def yolobbox2xywh(yolobbox, image_dim):
     x_center, y_center, w, h, = yolobbox
     iw, ih = image_dim
@@ -337,7 +348,7 @@ def xywh2yolobbox(xywh, image_dim):
     
     Parameters: 
     ----------
-    xywh : list
+    xywh : list/tuple
         bounding box of top-left corner x, y with width, height
     image_dim : list
         image [width, height]
@@ -352,6 +363,22 @@ def xywh2yolobbox(xywh, image_dim):
     y_center = y + h / 2
     return [x_center / iw, y_center / ih, w / iw, h / ih]
 
+
+def xywh2centriod(xywh):   
+    """Get centriod from bouding box xywh 
+    
+    Parameters: 
+    ----------
+    xywh : list/tuple
+        bounding box of top-left corner x, y with width, height  
+    Returns: 
+    np.array (2,): 
+        center of rectangle
+    """
+    x, y, w, h = xywh
+    x_center = x + w / 2
+    y_center = y + h / 2
+    return np.array([x_center, y_center])
 
 
     

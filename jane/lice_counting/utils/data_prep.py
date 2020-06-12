@@ -3,7 +3,7 @@ from tqdm import tqdm
 from random import randint, seed
 from PIL import Image
 
-LICE_CATEGORY = ['ADULT_FEMALE', 'MOVING', 'SCOTTISH_ADULT_FEMALE', 'UNSURE']
+LICE_CATEGORY = ['ADULT_FEMALE', 'MOVING']
 
 
 def write_label(class_index, bbox, file_name, path):
@@ -25,6 +25,10 @@ def write_image(image, file_name, path):
     img = Image.fromarray(image , 'RGB')
     img.save("{}/{}.jpg".format(path, file_name), 'JPEG')
 
+        
+        
+        
+    
 def get_df_ad(df): 
     """Filter fish crop data that have adult female lice 
 
@@ -51,22 +55,99 @@ def get_df_ad(df):
     return new_df
 
 
+def generate_crop_smart(lice, image_dim, crop_dim):
+    iw, ih = image_dim
+    cw, ch = crop_dim
+
+    lp = lice['position'] 
+    x, y, w, h = lp["left"], lp["top"], lp["width"], lp["height"]    
+    top_buffer = max(100, y + ch - ih)
+    bottom_buffer = max(150, ch - h - y)
     
 
-def generate_crops(lice_list, image_dim, crop_dim, categories = LICE_CATEGORY):
+    left_buffer = min(int(cw / 4), cw - w, x)
+    right_buffer = max(int(cw * 3 / 4), x + cw - iw)
+
+    
+    left_offset_min = max(0, x + cw - iw)
+    left_offset_max = min(x, cw - w)
+    
+    top_offset_min = max(0, y + ch - ih)
+    top_offset_max = min(y, ch - h)
+    
+    if lice['location'] == "TOP":
+        top_offset_max = min(top_offset_max, top_buffer)
+    elif lice['location'] == "BOTTOM":
+        top_offset_min = max(top_offset_min, ch - h - bottom_buffer)
+    else:
+        left_offset_min = max(left_offset_min, left_buffer)
+        left_offset_max = min(left_offset_max, right_buffer)
+        
+    crop_left_offset = randint(left_offset_min, left_offset_max)
+    crop_top_offset = randint(top_offset_min, top_offset_max)
+    crop_left = x - crop_left_offset
+    crop_top = y - crop_top_offset
+    return crop_left, crop_top
+
+
+def generate_crops_smart(lice_list, image_dim, crop_dim, categories = LICE_CATEGORY):
+    """
+    Return:
+    Dictionary key: crop left and top, value: list of lice covered
+    """
+    crops = {}
+    for lice in lice_list:
+        if lice['category'] not in categories:
+            continue
+        covered = False
+        lp = lice['position'] 
+        x, y, w, h = lp["left"], lp["top"], lp["width"], lp["height"]
+        for crop in crops:
+            if is_in_crop([x, y, w, h], list(crop) + crop_dim):
+                crops[crop].append(lice)
+                covered = True
+        if not covered:
+            crop_left, crop_top = generate_crop_smart(lice, image_dim, crop_dim)
+            crops[tuple([crop_left, crop_top])] = [lice]   
+    return crops
+
+
+def generate_lice_cluster(lice_list, crop_dim, categories = LICE_CATEGORY):
+    """
+    Return:
+    Dictionary key: crop left and top, value: list of lice covered
+    """
+    cluster = {}
+    for lice in lice_list:
+        if lice['category'] not in categories:
+            continue
+        covered = False
+        lp = lice['position'] 
+        x, y, w, h = lp["left"], lp["top"], lp["width"], lp["height"]
+        for crop in crops:
+            if is_in_crop([x, y, w, h], list(crop) + crop_dim):
+                crops[crop].append(lice)
+                covered = True
+        if not covered:
+            crop_left, crop_top = generate_crop_smart(lice, image_dim, crop_dim)
+            crops[tuple([crop_left, crop_top])] = [lice]   
+    return crops
+
+
+def generate_crops_uniform(lice_list, image_dim, crop_dim, categories = LICE_CATEGORY):
     iw, ih = image_dim
     cw, ch = crop_dim
     crops = {}
-    for louse in lice_list:
-        if louse['category'] not in categories:
+    for lice in lice_list:
+        if lice['category'] not in categories:
             continue
-        lp = louse['position'] 
+        lp = lice['position'] 
         x, y, w, h = lp["left"], lp["top"], lp["width"], lp["height"]
-        # append the louse to the crop that already covers it
+        # append the lice to the crop that already covers it
         covered = False
         for crop in crops:
             if is_in_crop([x, y, w, h], list(crop) + crop_dim):
-                crops[crop].append(louse)
+                crops[crop].append(lice)
                 covered = True
         if not covered:
             crop_left_offset = randint(max(0, x + cw - iw), min(x, cw - w))
@@ -74,14 +155,14 @@ def generate_crops(lice_list, image_dim, crop_dim, categories = LICE_CATEGORY):
     
             crop_left = x - crop_left_offset
             crop_top = y - crop_top_offset
-            crops[tuple([crop_left, crop_top])] = [louse]
+            crops[tuple([crop_left, crop_top])] = [lice]
     return crops
     
 
-def is_in_crop(louse_xywh, crop_xywh):
+def is_in_crop(lice_xywh, crop_xywh):
     """Check if the bounding box of a lice falls inside the crop
     """
-    x, y, w, h = louse_xywh
+    x, y, w, h = lice_xywh
     crop_left, crop_top, crop_width, crop_height = crop_xywh
     
     crop_right, crop_bottom = crop_left + crop_width, crop_top + crop_height
