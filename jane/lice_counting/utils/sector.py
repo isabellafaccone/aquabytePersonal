@@ -95,9 +95,12 @@ def get_sector(p, kps):
     """
     Parameters: 
     ----------
-    p : np.array 
-        one of the 8 key points
+    p : np.array of point coordinate
     get the sector point p falls into
+    
+    Returns:
+    ----------
+    str: which sector point p is at
     """
     eye = get_kp_location(kps, "EYE")
     tn = get_kp_location(kps, "TAIL_NOTCH")
