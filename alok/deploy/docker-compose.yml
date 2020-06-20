@@ -22,7 +22,7 @@ services:
       - PROD_RESEARCH_WRITE_SQL_CREDENTIALS=/run/secrets/prod_research_write_sql_credentials
       - DATA_WAREHOUSE_SQL_CREDENTIALS=/run/secrets/data_warehouse_sql_credentials
     ports:
-      - "9999:9999"
+      - 9999:9999
     logging:
       driver: journald
       options:
@@ -40,6 +40,6 @@ secrets:
   prod_research_sql_credentials:
     file: ./prod_research_sql_credentials.json
   prod_research_write_sql_credentials:
-    file: ./prod_research_write_sql_credentials.json
+    file: ./prod_research_write_sql_credentials.json 
   data_warehouse_sql_credentials:
-    file: ./data_warehouse_sql_credentials.json
+    file: ./data_warehouse_sql_credentials.json    
