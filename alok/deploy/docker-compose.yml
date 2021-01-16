@@ -29,6 +29,7 @@ services:
         tag: "alok-research"
     container_name:
       alok-research
+    
 
 secrets:
   aws_credentials:
