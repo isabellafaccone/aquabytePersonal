@@ -2,31 +2,31 @@ pen_id_time_ranges = [
     {
         'pen_id': 4,
         'start_date': '2020-07-12',
-        'end_date': '2020-07-19',
+        'end_date': '2020-07-17',
         'tags': ['low_turbidity']
     },
     {
         'pen_id': 173,
         'start_date': '2021-01-01',
-        'end_date': '2021-01-15',
+        'end_date': '2021-01-05',
         'tags': ['low_turbidity', 'small_fish']
     },
     {
         'pen_id': 194,
         'start_date': '2021-01-01',
-        'end_date': '2021-01-20',
+        'end_date': '2021-01-05',
         'tags': ['low_turbidity']
     },
     {
         'pen_id': 56,
         'start_date': '2020-07-06',
-        'end_date': '2020-07-14',
+        'end_date': '2020-07-10',
         'tags': ['medium_turbidity']
     },
     {
         'pen_id': 100,
         'start_date': '2020-07-13',
-        'end_date': '2020-07-21',
+        'end_date': '2020-07-18',
         'tags': ['medium_turbidity']
     },
     {
@@ -50,7 +50,14 @@ pen_id_time_ranges = [
     {
         'pen_id': 114,
         'start_date': '2020-07-12',
-        'end_date': '2020-07-22'
+        'end_date': '2020-07-17',
+        'tags': ['cleaner_fish']
+    },
+    {
+        'pen_id': 144,
+        'start_date': '2021-01-05',
+        'end_date': '2021-01-10',
+        'tags': ['large_fish']
     }
 ]
 
