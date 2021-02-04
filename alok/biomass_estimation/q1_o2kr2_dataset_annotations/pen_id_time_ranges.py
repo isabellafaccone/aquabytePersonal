@@ -47,12 +47,12 @@ pen_id_time_ranges = [
         'end_date': '2020-06-18',
         'tags': ['high_turbidity']
     },
-    {
-        'pen_id': 114,
-        'start_date': '2020-07-12',
-        'end_date': '2020-07-17',
-        'tags': ['cleaner_fish']
-    },
+    # {
+    #     'pen_id': 114,
+    #     'start_date': '2020-07-12',
+    #     'end_date': '2020-07-17',
+    #     'tags': ['cleaner_fish']
+    # },
     {
         'pen_id': 144,
         'start_date': '2021-01-05',

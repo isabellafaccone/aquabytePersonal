@@ -70,7 +70,7 @@ def get_high_density_image_urls_and_crop_metadatas(pen_id, start_date, end_date)
     
     print('Done! Now getting dataframe consisting of corresponding resized thumbnails and crop counts')
     df_resize = get_full_frame_resize_dataset(df_dw)
-    df_resize = df_resize.sort_values('fish_count', ascending=False).head(500)
+    df_resize = df_resize.sort_values('fish_count', ascending=False).head(700)
 
     print('Done! Now extracting crop metadata information and returning image URLs and crop metadatas')
     left_urls, crop_metadatas = [], []

@@ -21,7 +21,7 @@ def get_pen_site_mapping() -> Dict:
 PEN_SITE_MAPPING = get_pen_site_mapping()
 
 
-def get_capture_keys(pen_id: int, start_date: str, end_date: str) -> List:
+def get_capture_keys(pen_id: int, start_date: str, end_date: str, inbound_bucket=INBOUND_BUCKET) -> List:
     """Take pen_id_time_range dataset as an input, and return list of paired_urls and corresponding
     crop_metadatas."""
 
@@ -33,7 +33,7 @@ def get_capture_keys(pen_id: int, start_date: str, end_date: str) -> List:
         s3_prefix = 'environment=production/site-id={}/pen-id={}/date={}'.format(site_id, pen_id,
                                                                                  date)
 
-        generator = s3.get_matching_s3_keys(INBOUND_BUCKET, prefix=s3_prefix,
+        generator = s3.get_matching_s3_keys(inbound_bucket, prefix=s3_prefix,
                                                          subsample=1.0,
                                                          suffixes=['capture.json'])
 
