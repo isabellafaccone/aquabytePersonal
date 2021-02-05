@@ -5,6 +5,8 @@ import random
 from research_lib.utils.data_access_utils import S3AccessUtils, RDSAccessUtils
 from research_lib.utils.datetime_utils import get_dates_in_range
 
+from botocore.exceptions import ClientError
+
 s3 = S3AccessUtils('/root/data')
 rds = RDSAccessUtils()
 
@@ -57,14 +59,18 @@ def get_image_urls_and_crop_metadatas(capture_keys):
 
         # get crop metadata
         crop_key = capture_key.replace('capture.json', 'crops.json')
-        s3.download_from_s3(INBOUND_BUCKET, crop_key, custom_location='/root/data/crops.json')
-        crop_metadata = json.load(open('/root/data/crops.json'))
 
-        anns = crop_metadata['annotations']
-        if anns:
-            left_image_anns = [ann for ann in anns if ann['image_id'] == 1]
-            crop_metadatas.append(left_image_anns)
-        else:
+        try:
+            s3.download_from_s3(INBOUND_BUCKET, crop_key, custom_location='/root/data/crops.json')
+            crop_metadata = json.load(open('/root/data/crops.json'))
+
+            anns = crop_metadata['annotations']
+            if anns:
+                left_image_anns = [ann for ann in anns if ann['image_id'] == 1]
+                crop_metadatas.append(left_image_anns)
+            else:
+                crop_metadatas.append([])
+        except ClientError as err:
             crop_metadatas.append([])
 
     return left_urls, crop_metadatas
