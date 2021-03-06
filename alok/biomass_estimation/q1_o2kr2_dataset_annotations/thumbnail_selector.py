@@ -11,6 +11,7 @@ s3 = S3AccessUtils('/root/data')
 rds = RDSAccessUtils()
 
 INBOUND_BUCKET = 'aquabyte-frames-resized-inbound'
+DAYTIME_HOURS_GMT = list(range(7, 17))
 
 
 def get_pen_site_mapping() -> Dict:
@@ -32,15 +33,16 @@ def get_capture_keys(pen_id: int, start_date: str, end_date: str, inbound_bucket
     capture_keys = []
     for date in dates:
         print('Getting capture keys for pen_id={}, date={}...'.format(pen_id, date))
-        s3_prefix = 'environment=production/site-id={}/pen-id={}/date={}'.format(site_id, pen_id,
-                                                                                 date)
+        for hour in DAYTIME_HOURS_GMT:
+            s3_prefix = 'environment=production/site-id={}/pen-id={}/date={}/hour={}'.format(site_id, pen_id,
+                                                                                    date, hour)
 
-        generator = s3.get_matching_s3_keys(inbound_bucket, prefix=s3_prefix,
-                                                         subsample=1.0,
-                                                         suffixes=['capture.json'])
+            generator = s3.get_matching_s3_keys(inbound_bucket, prefix=s3_prefix,
+                                                            subsample=1.0,
+                                                            suffixes=['capture.json'])
 
-        these_capture_keys = [key for key in generator]
-        capture_keys.extend(these_capture_keys)
+            these_capture_keys = [key for key in generator]
+            capture_keys.extend(these_capture_keys)
 
     return capture_keys
 

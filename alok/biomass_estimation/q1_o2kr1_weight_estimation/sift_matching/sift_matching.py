@@ -60,7 +60,7 @@ def get_homography_and_matches(sift, left_image, right_image,
     return H, kp1, kp2, good, matches_mask
 
 
-def generate_3d_point_cloud(left_crop_url, right_crop_url, ann):
+def generate_point_correspondences(left_crop_url, right_crop_url, ann):
 
     sift = cv2.KAZE_create()
     left_fish_picture = Picture(image_url=left_crop_url)
@@ -71,8 +71,33 @@ def generate_3d_point_cloud(left_crop_url, right_crop_url, ann):
     left_kps = {item['keypointType']: [item['xCrop'], item['yCrop']] for item in ann['leftCrop']}
     right_kps = {item['keypointType']: [item['xCrop'], item['yCrop']] for item in ann['rightCrop']}
 
-    H, kp1, kp2, good, matches_mask = get_homography_and_matches(sift, left_fish_picture.get_image(),
-                                                                 right_fish_picture.get_image(),
+    left_image = left_fish_picture.get_image_arr()
+    right_image = right_fish_picture.get_image_arr()
+
+    H, kp1, kp2, good, matches_mask = get_homography_and_matches(sift, left_image, right_image,
                                                                  left_kps, right_kps)
 
-    return H, kp1, kp2, good, matches_mask
+    left_corner_x = ann['leftCrop'][0]['xFrame'] - ann['leftCrop'][0]['xCrop']
+    left_corner_y = ann['leftCrop'][0]['yFrame'] - ann['leftCrop'][0]['yCrop']
+    right_corner_x = ann['rightCrop'][0]['xFrame'] - ann['rightCrop'][0]['xCrop']
+    right_corner_y = ann['rightCrop'][0]['yFrame'] - ann['rightCrop'][0]['yCrop']
+    left_corner = np.array([left_corner_x, left_corner_y])
+    right_corner = np.array([right_corner_x, right_corner_y])
+
+    
+    left_points, right_points = [], []
+    i = 0
+    for m in good:
+        if matches_mask[i] == 1:
+            p1 = np.round(kp1[m.queryIdx].pt).astype(int) + left_corner
+            p2 = np.round(kp2[m.trainIdx].pt).astype(int) + right_corner
+            left_points.append(p1)
+            right_points.append(p2)
+        i += 1
+    
+    return np.array(left_points), np.array(right_points), left_corner, right_corner
+
+
+# def generate_3d_point_cloud(left_points, right_points, cm):
+
+

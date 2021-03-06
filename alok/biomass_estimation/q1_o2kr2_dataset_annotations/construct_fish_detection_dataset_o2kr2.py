@@ -84,7 +84,7 @@ def process_into_plali_records(df):
 
         values = {
             'id': id,
-            'workflow_id': '00000000-0000-0000-0000-000000000046',
+            'workflow_id': '00000000-0000-0000-0000-000000000048',
             'images': images,
             'metadata': metadata,
             'priority': priority
