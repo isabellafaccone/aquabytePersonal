@@ -39,12 +39,17 @@ def download_frame(_row):
         image_out_path = os.path.join(MODEL_DATA_PATH, SAMPLED_DATA_FNAME, 'images')
         local_filename = os.path.join(image_out_path, image_label, (str(uuid4())))
 
-        local_f, _, _ = s3_access_utils.download_from_url(image_url)
-        copyfile(local_f, local_filename + '_crop.jpg')
+        try:
+            local_f, _, _ = s3_access_utils.download_from_url(image_url)
+            copyfile(local_f, local_filename + '_crop.jpg')
 
-        # Save metadata in case we need it
-        row.to_json(local_filename + '_metadata.json')
-    
+            # Save metadata in case we need it
+            row.to_json(local_filename + '_metadata.json')
+            
+            return True
+        except:
+            return False
+
 def download_images_to_local_dir():
     print('Loading dataframe...')
     
@@ -60,7 +65,9 @@ def download_images_to_local_dir():
     
     pool = Pool(num_processes)
     
-    list(tqdm(pool.imap(download_frame, frame.iterrows()), total=total))
+    results = list(tqdm(pool.imap(download_frame, frame.iterrows()), total=total))
+    
+    print(results)
         
 def get_key(url):
     # old style https://s3.amazonaws.com/<bucket>/<key>
