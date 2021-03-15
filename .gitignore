@@ -2,3 +2,5 @@
 .DS_Store
 .ipynb_checkpoints
 *credentials.json*
+*~
+research-0.1.1.tar.gz
