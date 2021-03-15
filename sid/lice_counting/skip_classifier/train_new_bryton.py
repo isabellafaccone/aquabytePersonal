@@ -17,11 +17,14 @@ import torch.optim as optim
 from loader_new import TRANSFORMS, get_dataloader
 from model_new import ImageClassifier, MultilabelClassifier
 
+from research_api.skip_classifier import add_model
+
 torch.manual_seed(0)
 ACCEPT_LABEL, SKIP_LABEL = 'ACCEPT', 'SKIP'
 expected = [ACCEPT_LABEL, SKIP_LABEL]
 ACCEPT_LABEL_IDX = expected.index(ACCEPT_LABEL)
 CHECKPOINT_PATH = '/root/data/sid/needed_datasets/skip_classifier_checkpoints'
+SAVE_PATH = '/root/data/skip-classifier'
 
 
 def get_metrics(outputs: torch.Tensor, labels: torch.Tensor, class_names, accept_label_idx=ACCEPT_LABEL_IDX, model_type='full_fish'):
@@ -260,7 +263,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     args.savename = args.savename + '__' + datetime.now(tz=pytz.timezone('US/Pacific')).strftime("%Y-%m-%d__%H-%M-%S")
-    run(
+    trained_model = run(
         args.fname,
         args.savename,
         args.transform,
@@ -270,3 +273,10 @@ if __name__ == '__main__':
         device=args.device,
         state_dict_path=args.state_dict_path
     )
+
+    save_file_name = os.path.join(SAVE_PATH, args.savename, 'model.pt')
+
+    torch.save(trained_model.state_dict(), save_file_name)
+
+    add_model(args.savename, save_file_name, True)
+
