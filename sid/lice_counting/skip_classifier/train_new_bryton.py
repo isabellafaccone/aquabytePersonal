@@ -24,7 +24,7 @@ ACCEPT_LABEL, SKIP_LABEL = 'ACCEPT', 'SKIP'
 expected = [ACCEPT_LABEL, SKIP_LABEL]
 ACCEPT_LABEL_IDX = expected.index(ACCEPT_LABEL)
 CHECKPOINT_PATH = '/root/data/sid/needed_datasets/skip_classifier_checkpoints'
-SAVE_PATH = '/root/data/skip-classifier'
+SAVE_PATH = '/root/data/skip-classifier/models'
 
 
 def get_metrics(outputs: torch.Tensor, labels: torch.Tensor, class_names, accept_label_idx=ACCEPT_LABEL_IDX, model_type='full_fish'):
