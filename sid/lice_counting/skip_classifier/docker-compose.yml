@@ -5,7 +5,7 @@ services:
     image: skip-classifier-retraining:v1
     command: "cron -f"
     volumes:
-      - /home/ubuntu/bryton/research-exploration/sid/lice_counting/skip_classifier:/root/skip_classifier
+      - /home/ubuntu/bryton/repos/research-exploration/sid/lice_counting/skip_classifier:/root/skip_classifier
       - /data:/root/data
     secrets:  
       - aws_credentials

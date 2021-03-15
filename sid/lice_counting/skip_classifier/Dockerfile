@@ -35,7 +35,8 @@ RUN crontab /etc/cron.d/crontab
  
 # Create the log file to be able to run tail
 RUN touch /var/log/cron.log
- 
+
+RUN python3 -m pip install --upgrade pip setuptools wheel
 RUN python3 -m pip install -r /root/requirements.txt
 WORKDIR /root/
 

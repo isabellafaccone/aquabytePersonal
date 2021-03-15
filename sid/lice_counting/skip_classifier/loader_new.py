@@ -6,7 +6,7 @@ import cv2
 import torch
 import os
 import json
-from data import MODEL_DATA_PATH, SAMPLED_DATA_DIR
+from data_new_bryton import MODEL_DATA_PATH, SAMPLED_DATA_DIR
 import pickle
 from tqdm import tqdm
 
@@ -96,7 +96,7 @@ def get_dataloader(fname, transform, bsz, split_size, model_type='full_fish'):
     print('Building dataloaders...')
     dataloaders = {
         split: torch.utils.data.DataLoader(
-            datasets[split], batch_size=bsz, shuffle=False, num_workers=0)
+            datasets[split], batch_size=bsz, shuffle=False, num_workers=4)
         for split in datasets
     }
     return dataloaders, dataset.classes, class_counts
