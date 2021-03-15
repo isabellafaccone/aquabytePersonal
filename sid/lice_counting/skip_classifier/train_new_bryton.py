@@ -189,7 +189,7 @@ def train_model(
                 #print('Adding loss...')
                 #running_loss += loss.item() * inputs.size(0)
                 if i % log_every == 0:
-                    print(f'Batch: {i}')
+                    print(f'Batch: {i} out of {len(dataloaders[phase])}')
                     train_acc = get_metrics(outputs, labels.data, class_names, model_type=model_type)
                     print(f'Train Metrics:')
                     pprint(train_acc)
