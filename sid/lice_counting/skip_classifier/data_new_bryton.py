@@ -14,29 +14,29 @@ from shutil import copyfile
 from multiprocessing import Pool
 
 # Assume we have a CSV with annotations
+from config import SKIP_CLASSIFIER_DATASET_DIRECTORY, SKIP_CLASSIFIER_IMAGE_DIRECTORY
 
-SAMPLED_DATA_DIR = '/root/data/sid/needed_data/skip_classifier_datasets/sampled_datasets/'
-SAMPLED_DATA_FNAME = '01152020_bodyparts'
 IMAGE_FIELD = 'url'
 LABEL_FIELD = 'label'
 ALLOWED_LABELS = ['SKIP', 'ACCEPT']
-MODEL_DATA_PATH = '/root/data/sid/needed_data/skip_classifier_datasets/images/'
-DOWNLOADED = SAMPLED_DATA_FNAME + '_downloaded.json'
-if os.path.exists(DOWNLOADED):
-    print('partially downloaded...')
-    DOWNLOADED = json.load(open(DOWNLOADED))
 
 num_processes = 20
-    
-def download_frame(_row):
-    _, row = _row
-    
-    if DOWNLOADED is None or row[IMAGE_FIELD] not in DOWNLOADED:
+
+def download_images_to_local_dir(retraining_name, metadata):
+    print('Loading dataframe...')
+
+    image_out_path = os.path.join(SKIP_CLASSIFIER_IMAGE_DIRECTORY, retraining_name, 'images')
+    dataset_file_name = os.path.join(SKIP_CLASSIFIER_DATASET_DIRECTORY, retraining_name + '.csv')
+
+    frame = pd.read_csv(dataset_file_name)
+
+    def download_frame(_row):
+        _, row = _row
+
         start = time()
         image_url = row[IMAGE_FIELD]
         image_label = row[LABEL_FIELD]
 
-        image_out_path = os.path.join(MODEL_DATA_PATH, SAMPLED_DATA_FNAME, 'images')
         local_filename = os.path.join(image_out_path, image_label, (str(uuid4())))
 
         try:
@@ -45,17 +45,11 @@ def download_frame(_row):
 
             # Save metadata in case we need it
             row.to_json(local_filename + '_metadata.json')
-            
+
             return True
         except:
             return False
 
-def download_images_to_local_dir():
-    print('Loading dataframe...')
-    
-    frame = pd.read_csv(os.path.join(SAMPLED_DATA_DIR, SAMPLED_DATA_FNAME + '.csv'))
-    
-    image_out_path = os.path.join(MODEL_DATA_PATH, SAMPLED_DATA_FNAME, 'images')
     for label in frame['label'].unique():
         path = os.path.join(image_out_path, label)
         os.makedirs(path, exist_ok=True)
@@ -66,8 +60,18 @@ def download_images_to_local_dir():
     pool = Pool(num_processes)
     
     results = list(tqdm(pool.imap(download_frame, frame.iterrows()), total=total))
-    
-    print(results)
+
+    frame = frame[results]
+
+    frame.to_csv(dataset_file_name)
+
+    print('Number of skips', len(frame))
+
+    print('Wrote file', dataset_file_name)
+
+    metadata['num_rows'] = len(frame)
+
+    return dataset_file_name, metadata
         
 def get_key(url):
     # old style https://s3.amazonaws.com/<bucket>/<key>
@@ -85,7 +89,8 @@ def get_key(url):
     return bucket, key
 
 if __name__ == '__main__':
-    download_images_to_local_dir()
+    dataset_file_name, metadata = download_images_to_local_dir()
+
     #useful_labels = [
     #        'BLURRY',
     #        'BAD_CROP',

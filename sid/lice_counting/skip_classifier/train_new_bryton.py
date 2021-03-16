@@ -23,8 +23,8 @@ torch.manual_seed(0)
 ACCEPT_LABEL, SKIP_LABEL = 'ACCEPT', 'SKIP'
 expected = [ACCEPT_LABEL, SKIP_LABEL]
 ACCEPT_LABEL_IDX = expected.index(ACCEPT_LABEL)
-CHECKPOINT_PATH = '/root/data/sid/needed_datasets/skip_classifier_checkpoints'
-SAVE_PATH = '/root/data/skip-classifier/models'
+
+from config import SKIP_CLASSIFIER_CHECKPOINT_MODEL_DIRECTORY, SKIP_CLASSIFIER_MODEL_DIRECTORY
 
 
 def get_metrics(outputs: torch.Tensor, labels: torch.Tensor, class_names, accept_label_idx=ACCEPT_LABEL_IDX, model_type='full_fish'):
@@ -214,7 +214,7 @@ def train_model(
                 phase, epoch_loss, epoch_acc))
 
             # Save results
-            save_dir = f'{CHECKPOINT_PATH}/{savename}/epoch_{epoch}/{phase}/'
+            save_dir = f'{SKIP_CLASSIFIER_CHECKPOINT_MODEL_DIRECTORY}/{savename}/epoch_{epoch}/{phase}/'
             os.makedirs(save_dir, exist_ok=True)
 
             torch.save(model_ft.state_dict(), os.path.join(save_dir, 'model.pt'))
@@ -248,7 +248,9 @@ def run(fname, savename, transform, model_type, bsz, split_size, device, state_d
     transform = TRANSFORMS[transform]
     dataloaders, class_names, class_counts = get_dataloader(fname, transform, bsz, split_size, model_type=model_type)
     trained_model = train_model(dataloaders, state_dict_path, class_names, class_counts, savename, device, weight_decay=weight_decay, model_type=model_type)
-    return trained_model
+    model_file_name = os.path.join(SKIP_CLASSIFIER_MODEL_DIRECTORY, savename, 'model.pt')
+    torch.save(trained_model.state_dict(), model_file_name)
+    return model_file_name
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train a Skip classifier.')
@@ -274,7 +276,7 @@ if __name__ == '__main__':
         state_dict_path=args.state_dict_path
     )
 
-    save_file_name = os.path.join(SAVE_PATH, args.savename, 'model.pt')
+    save_file_name = os.path.join(SKIP_CLASSIFIER_MODEL_DIRECTORY, args.savename, 'model.pt')
 
     torch.save(trained_model.state_dict(), save_file_name)
 
