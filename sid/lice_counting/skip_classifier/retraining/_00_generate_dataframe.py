@@ -172,7 +172,7 @@ def get_dataframe(retraining_name, pen_ids, start_date, end_date):
 
     print('Number of skips', len(skip_dataset))
 
-    print('Wrote file', out_file)
+    print('Wrote file', dataset_file_name)
 
     metadata = {
         'num_rows': len(skip_dataset),
