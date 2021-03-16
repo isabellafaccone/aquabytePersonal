@@ -25,7 +25,7 @@ num_processes = 20
 def download_images_to_local_dir(retraining_name, metadata):
     print('Loading dataframe...')
 
-    image_out_path = os.path.join(SKIP_CLASSIFIER_IMAGE_DIRECTORY, retraining_name, 'images')
+    image_out_path = os.path.join(SKIP_CLASSIFIER_IMAGE_DIRECTORY, retraining_name)
     dataset_file_name = os.path.join(SKIP_CLASSIFIER_DATASET_DIRECTORY, retraining_name + '.csv')
 
     frame = pd.read_csv(dataset_file_name)

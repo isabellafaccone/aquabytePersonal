@@ -6,7 +6,8 @@ import cv2
 import torch
 import os
 import json
-from data_new_bryton import MODEL_DATA_PATH, SAMPLED_DATA_DIR
+
+from config import SKIP_CLASSIFIER_DATASET_DIRECTORY, SKIP_CLASSIFIER_IMAGE_DIRECTORY
 import pickle
 from tqdm import tqdm
 
@@ -32,7 +33,7 @@ TRANSFORMS = {
 }
 
 def get_multlabel_class_counts(fname, bodypart=None):
-    sampled = pd.read_csv(os.path.join(SAMPLED_DATA_DIR, fname +'.csv'))
+    sampled = pd.read_csv(os.path.join(SKIP_CLASSIFIER_DATASET_DIRECTORY, fname + '.csv'))
     ratios = (sampled[BODYPART_COLS].sum() / len(sampled))
     if bodypart is None:
         return (1 / ratios).to_list()
@@ -41,7 +42,7 @@ def get_multlabel_class_counts(fname, bodypart=None):
 
 
 def get_dataloader(fname, transform, bsz, split_size, model_type='full_fish'):
-    data_dir = os.path.join(MODEL_DATA_PATH, fname, 'images')
+    data_dir = os.path.join(SKIP_CLASSIFIER_IMAGE_DIRECTORY, fname)
     print('Loading dataset from directory...')
     if model_type == 'full_fish':
         dataset = AlbumentationsImageFolder(data_dir, transform)
