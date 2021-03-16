@@ -5,7 +5,7 @@ from _00_generate_dataframe import get_dataframe
 from _10_download_data import download_images_to_local_dir
 from _20_train_skip_classifier import run
 
-from research_api.skip_classifier import add_model, add_train_dataset
+from research_api.skip_classifier import add_model, add_train_dataset, add_retraining
 
 if __name__ == '__main__':
 #     three_months_ago = date.today() + relativedelta(months=-3)
@@ -25,12 +25,14 @@ if __name__ == '__main__':
 #     dataset_file_name, metadata = download_images_to_local_dir(retraining_name, metadata)
 
 #     # Add to the train dataset
-#     add_train_dataset(retraining_name, dataset_file_name, metadata)
+    trainDatasetId = add_train_dataset(retraining_name, dataset_file_name, metadata)
 
     retraining_name = '2021-03-16'
 
     # Train the new model
-    model_file_name = run(retraining_name, retraining_name, 'pad', 'full_fish', 64, 0.8, 0, None)
+    model_file_name, metadata = run(retraining_name, retraining_name, 'pad', 'full_fish', 64, 0.8, 0, None)
 
     # Add the new model
-    add_model(retraining_name, model_file_name, True)
+    modelId = add_model(retraining_name, model_file_name, True)
+
+    retrainingId = add_retraining(trainDatasetId, modelId, retraining_name, metadata)

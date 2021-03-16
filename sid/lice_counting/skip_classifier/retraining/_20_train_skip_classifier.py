@@ -135,7 +135,9 @@ def train_model(
 
     best_model_ft_wts = copy.deepcopy(model_ft.state_dict())
     best_auc = 0.0
+    best_acc = {}
     epochs_without_improvement = 0
+    best_epoch = 0
 
     for epoch in range(num_epochs):
         pass
@@ -226,8 +228,10 @@ def train_model(
 #                 if epoch_acc['auc'] > best_auc:
 #                     print('Best Model!')
 #                     best_auc = epoch_acc['auc']
+#                     best_acc = epoch_acc
 #                     best_model_ft_wts = copy.deepcopy(model_ft.state_dict())
 #                     epochs_without_improvement = 0
+#                     best_epoch = epoch
 #                 else:
 #                     epochs_without_improvement += 1
 
@@ -240,7 +244,15 @@ def train_model(
 
     # load best model_ft weights
     model_ft.load_state_dict(best_model_ft_wts)
-    return model_ft
+
+    metadata = {
+        'num_epochs': best_epoch,
+        'auc': best_acc.get('auc'),
+        'precision': best_acc.get('precision'),
+        'recall': best_acc.get('recall')
+    }
+
+    return model_ft, metadata
 
 def run(fname, savename, transform, model_type, bsz, split_size, device, state_dict_path, weight_decay=0):
     torch.cuda.set_device(device)
@@ -248,13 +260,13 @@ def run(fname, savename, transform, model_type, bsz, split_size, device, state_d
     print(torch.cuda.is_available())
     transform = TRANSFORMS[transform]
     dataloaders, class_names, class_counts = get_dataloader(fname, transform, bsz, split_size, model_type=model_type)
-    trained_model = train_model(dataloaders, state_dict_path, class_names, class_counts, savename, device, weight_decay=weight_decay, model_type=model_type)
+    trained_model, metadata = train_model(dataloaders, state_dict_path, class_names, class_counts, savename, device, weight_decay=weight_decay, model_type=model_type)
     model_file_directory = os.path.join(SKIP_CLASSIFIER_MODEL_DIRECTORY, savename)
     model_file_name = os.path.join(SKIP_CLASSIFIER_MODEL_DIRECTORY, savename, 'model.pt')
     os.makedirs(model_file_directory, exist_ok=True)
     
     torch.save(trained_model.state_dict(), model_file_name)
-    return model_file_name
+    return model_file_name, metadata
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train a Skip classifier.')
