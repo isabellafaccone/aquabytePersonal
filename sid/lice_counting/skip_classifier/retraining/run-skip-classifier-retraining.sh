@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TODAY=$(date + "%Y-%m-%d")
+TODAY=$(date "+%Y-%m-%d")
 
 echo "Writing logs to /root/data/skip-classifier/logs/$TODAY"
 
