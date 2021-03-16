@@ -1,1 +1,1 @@
-* * * * * echo "Hello world" >> /var/log/cron.log 2>&1
+0 1 * * * python3 /root/skip_classifier/retraining/skip-classifier-retraining.py >> /var/log/cron.log 2>&1
