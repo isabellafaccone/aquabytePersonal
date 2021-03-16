@@ -5,7 +5,6 @@ from research.utils.data_access_utils import RDSAccessUtils, S3AccessUtils
 
 s3_access_utils = S3AccessUtils('/root/data', json.load(open(os.environ['AWS_CREDENTIALS'])))
 
-import boto3
 from uuid import uuid4
 from time import time
 import pandas as pd
@@ -22,6 +21,26 @@ ALLOWED_LABELS = ['SKIP', 'ACCEPT']
 
 num_processes = 20
 
+def download_frame(_row):
+    _, row = _row
+
+    start = time()
+    image_url = row[IMAGE_FIELD]
+    image_label = row[LABEL_FIELD]
+
+    local_filename = os.path.join(row['image_out_path'], image_label, (str(uuid4())))
+
+    try:
+        local_f, _, _ = s3_access_utils.download_from_url(image_url)
+        copyfile(local_f, local_filename + '_crop.jpg')
+
+        # Save metadata in case we need it
+        row.to_json(local_filename + '_metadata.json')
+
+        return True
+    except:
+        return False
+
 def download_images_to_local_dir(retraining_name, metadata):
     print('Loading dataframe...')
 
@@ -30,25 +49,7 @@ def download_images_to_local_dir(retraining_name, metadata):
 
     frame = pd.read_csv(dataset_file_name)
 
-    def download_frame(_row):
-        _, row = _row
-
-        start = time()
-        image_url = row[IMAGE_FIELD]
-        image_label = row[LABEL_FIELD]
-
-        local_filename = os.path.join(image_out_path, image_label, (str(uuid4())))
-
-        try:
-            local_f, _, _ = s3_access_utils.download_from_url(image_url)
-            copyfile(local_f, local_filename + '_crop.jpg')
-
-            # Save metadata in case we need it
-            row.to_json(local_filename + '_metadata.json')
-
-            return True
-        except:
-            return False
+    frame['image_out_path'] = image_out_path
 
     for label in frame['label'].unique():
         path = os.path.join(image_out_path, label)

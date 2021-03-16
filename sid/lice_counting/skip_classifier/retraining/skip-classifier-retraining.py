@@ -1,14 +1,9 @@
-import os
-import torch
-
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
-from generate_dataframe import get_dataframe
-from data_new_bryton import download_images_to_local_dir
-from train_new_bryton import run
-
-from config import SKIP_CLASSIFIER_MODEL_DIRECTORY
+from _00_generate_dataframe import get_dataframe
+from _10_download_data import download_images_to_local_dir
+from _20_train_skip_classifier import run
 
 from research_api.skip_classifier import add_model, add_train_dataset
 
