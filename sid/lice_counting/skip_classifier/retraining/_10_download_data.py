@@ -1,5 +1,6 @@
 import json
 import os
+from botocore.exceptions import ClientError
 
 from research.utils.data_access_utils import RDSAccessUtils, S3AccessUtils
 
@@ -33,12 +34,12 @@ def download_frame(_row):
     try:
         local_f, _, _ = s3_access_utils.download_from_url(image_url)
         copyfile(local_f, local_filename + '_crop.jpg')
-
-        # Save metadata in case we need it
+        # Save metadata in case we need i
         row.to_json(local_filename + '_metadata.json')
 
         return True
-    except:
+    except ClientError as e:
+        print(e)
         return False
 
 def download_images_to_local_dir(retraining_name, metadata):
@@ -90,7 +91,7 @@ def get_key(url):
     return bucket, key
 
 if __name__ == '__main__':
-    dataset_file_name, metadata = download_images_to_local_dir()
+    dataset_file_name, metadata = download_images_to_local_dir('2021-03-16', {})
 
     #useful_labels = [
     #        'BLURRY',

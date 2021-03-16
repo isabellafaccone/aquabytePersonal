@@ -37,7 +37,7 @@ services:
 
 secrets:
   aws_credentials:
-    file: ~/bryton/docker/credentials/aws_credentials.json
+    file: ~/bryton/docker/credentials/aws_credentials2.json
   sql_credentials:
     file: ~/bryton/docker/credentials/sql_credentials.json
   prod_sql_credentials:
