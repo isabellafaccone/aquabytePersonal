@@ -1,11 +1,6 @@
 import json
 import os
 from botocore.exceptions import ClientError
-
-from research.utils.data_access_utils import RDSAccessUtils, S3AccessUtils
-
-s3_access_utils = S3AccessUtils('/root/data', json.load(open(os.environ['AWS_CREDENTIALS'])))
-
 from uuid import uuid4
 from time import time
 import pandas as pd
@@ -13,8 +8,12 @@ from tqdm import tqdm
 from shutil import copyfile
 from multiprocessing import Pool
 
-# Assume we have a CSV with annotations
+from research.utils.data_access_utils import RDSAccessUtils, S3AccessUtils
 from config import SKIP_CLASSIFIER_DATASET_DIRECTORY, SKIP_CLASSIFIER_IMAGE_DIRECTORY
+
+s3_access_utils = S3AccessUtils('/root/data', json.load(open(os.environ['AWS_CREDENTIALS'])))
+
+# Assume we have a CSV with annotations
 
 IMAGE_FIELD = 'url'
 LABEL_FIELD = 'label'

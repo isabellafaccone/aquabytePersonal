@@ -6,7 +6,7 @@ services:
     command: "cron -f"
     volumes:
       - /home/ubuntu/bryton/repos/research-exploration/sid/lice_counting/skip_classifier:/root/skip_classifier
-      - /data:/root/data
+      - /data8tb:/root/data
     secrets:  
       - aws_credentials
       - sql_credentials
