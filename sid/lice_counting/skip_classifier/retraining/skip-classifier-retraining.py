@@ -77,7 +77,7 @@ if __name__ == '__main__':
 
     print('modelId', modelId)
 
-    testDataset = get_test_dataset(pen_ids, start_date, end_date)
+    testDataset = get_test_dataset(pen_ids, end_date, today)
 
     if testDataset:
         testDatasetId = testDataset.id
