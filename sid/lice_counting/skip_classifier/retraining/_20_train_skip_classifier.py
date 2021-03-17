@@ -94,8 +94,8 @@ def train_model(
         bsz,
         model_type='full_fish',
         device=0,
-        num_epochs=25,
-        phases=['train'],
+        num_epochs=2,
+        phases=['train', 'test'],
         log_every=1,
         weight_decay=0):
 
@@ -140,109 +140,108 @@ def train_model(
     best_epoch = 0
 
     for epoch in range(num_epochs):
-        pass
-#         if epochs_without_improvement > 5:
-#             break
+        if epochs_without_improvement > 5:
+            break
 
-#         # Each epoch has a training and validation phase
-#         for phase in phases:
-#             print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-#             print(f'Phase: {phase}')
-#             print('-' * 10)
-#             if phase == 'train':
-#                 model_ft.train()  # Set model_ft to training mode
-#             else:
-#                 model_ft.eval()   # Set model_ft to evaluate mode
+        # Each epoch has a training and validation phase
+        for phase in phases:
+            print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+            print(f'Phase: {phase}')
+            print('-' * 10)
+            if phase == 'train':
+                model_ft.train()  # Set model_ft to training mode
+            else:
+                model_ft.eval()   # Set model_ft to evaluate mode
 
-#             running_loss = 0.0
-#             all_outputs = None
-#             all_labels = None
+            running_loss = 0.0
+            all_outputs = None
+            all_labels = None
 
-#             # Iterate over data.
-#             for i, (inputs, labels) in enumerate(dataloaders[phase]):
-#                 inputs = inputs.to(device)
-#                 labels = labels.to(device)
+            # Iterate over data.
+            for i, (inputs, labels) in enumerate(dataloaders[phase]):
+                inputs = inputs.to(device)
+                labels = labels.to(device)
 
-#                 # zero the parameter gradients
-#                 optimizer_ft.zero_grad()
+                # zero the parameter gradients
+                optimizer_ft.zero_grad()
 
-#                 # forward
-#                 # track history if only in train
-#                 with torch.set_grad_enabled(phase == 'train'):
-#                     outputs = model_ft(inputs)
-#                     loss = criterion(outputs, labels)
+                # forward
+                # track history if only in train
+                with torch.set_grad_enabled(phase == 'train'):
+                    outputs = model_ft(inputs)
+                    loss = criterion(outputs, labels)
 
-#                     if model_type == 'bodyparts':
-#                         preds = nn.functional.sigmoid(outputs)
-#                     else:
-#                         preds = outputs
+                    if model_type == 'bodyparts':
+                        preds = nn.functional.sigmoid(outputs)
+                    else:
+                        preds = outputs
 
-#                     if all_outputs is None:
-#                         all_outputs = preds
-#                         all_labs = labels
-#                     else:
-#                         all_outputs = torch.cat((all_outputs, preds))
-#                         all_labs = torch.cat((all_labs, labels))
+                    if all_outputs is None:
+                        all_outputs = preds
+                        all_labs = labels
+                    else:
+                        all_outputs = torch.cat((all_outputs, preds))
+                        all_labs = torch.cat((all_labs, labels))
 
-#                     # backward + optimize only if in training phase
-#                     if phase == 'train':
-#                         loss.backward()
-#                         optimizer_ft.step()
+                    # backward + optimize only if in training phase
+                    if phase == 'train':
+                        loss.backward()
+                        optimizer_ft.step()
 
-#                 #print('Adding loss...')
-#                 #running_loss += loss.item() * inputs.size(0)
-#                 if i % log_every == 0:
-#                     print(f'Batch: {i} out of {len(dataloaders[phase])}')
-#                     train_acc = get_metrics(outputs, labels.data, class_names, model_type=model_type)
-#                     print(f'Train Metrics:')
-#                     pprint(train_acc)
-#                     pprint(loss)
+                #print('Adding loss...')
+                #running_loss += loss.item() * inputs.size(0)
+                if i % log_every == 0:
+                    print(f'Batch: {i} out of {len(dataloaders[phase])}')
+                    train_acc = get_metrics(outputs, labels.data, class_names, model_type=model_type)
+                    print(f'Train Metrics:')
+                    pprint(train_acc)
+                    pprint(loss)
 
-#                     # statistics
-#                     #last_batch = i == ((NUM_EX // bsz) - 1)
-#                     #start_cal = time()
-#                     #finish_cal = time() - start_cal
-#                     #print(f'Calculated metrics in {finish_cal}')
-#             # if phase == 'train':
-#             #     exp_lr_scheduler.step()
+                    # statistics
+                    #last_batch = i == ((NUM_EX // bsz) - 1)
+                    #start_cal = time()
+                    #finish_cal = time() - start_cal
+                    #print(f'Calculated metrics in {finish_cal}')
+            # if phase == 'train':
+            #     exp_lr_scheduler.step()
 
-#             print(all_labs.shape[0])
-#             #epoch_loss = running_loss / all_labs.shape[0]
-#             epoch_metrics = dict()
+            print(all_labs.shape[0])
+            #epoch_loss = running_loss / all_labs.shape[0]
+            epoch_metrics = dict()
 
-#             epoch_acc = get_metrics(all_outputs, all_labs, class_names, model_type=model_type)
+            epoch_acc = get_metrics(all_outputs, all_labs, class_names, model_type=model_type)
 
-#             epoch_loss = 0
-#             print('{} Loss: {:.4f} Acc: {}'.format(
-#                 phase, epoch_loss, epoch_acc))
+            epoch_loss = 0
+            print('{} Loss: {:.4f} Acc: {}'.format(
+                phase, epoch_loss, epoch_acc))
 
-#             # Save results
-#             save_dir = f'{SKIP_CLASSIFIER_CHECKPOINT_MODEL_DIRECTORY}/{savename}/epoch_{epoch}/{phase}/'
-#             os.makedirs(save_dir, exist_ok=True)
+            # Save results
+            save_dir = f'{SKIP_CLASSIFIER_CHECKPOINT_MODEL_DIRECTORY}/{savename}/epoch_{epoch}/{phase}/'
+            os.makedirs(save_dir, exist_ok=True)
 
-#             torch.save(model_ft.state_dict(), os.path.join(save_dir, 'model.pt'))
-#             json.dump({'acc': epoch_acc, 'loss': epoch_loss}, open(os.path.join(save_dir, 'metrics.json'), 'w'))
+            torch.save(model_ft.state_dict(), os.path.join(save_dir, 'model.pt'))
+            json.dump({'acc': epoch_acc, 'loss': epoch_loss}, open(os.path.join(save_dir, 'metrics.json'), 'w'))
 
-#             # deep copy the model_ft
-#             if phase == 'val':
-#                 if epoch_acc['auc'] > best_auc:
-#                     print('Best Model!')
-#                     best_auc = epoch_acc['auc']
-#                     best_acc = epoch_acc
-#                     best_model_ft_wts = copy.deepcopy(model_ft.state_dict())
-#                     epochs_without_improvement = 0
-#                     best_epoch = epoch
-#                 else:
-#                     epochs_without_improvement += 1
+            # deep copy the model_ft
+            if phase == 'test':
+                if epoch_acc['auc'] > best_auc:
+                    print('Best Model!')
+                    best_auc = epoch_acc['auc']
+                    best_acc = epoch_acc
+                    best_model_ft_wts = copy.deepcopy(model_ft.state_dict())
+                    epochs_without_improvement = 0
+                    best_epoch = epoch
+                else:
+                    epochs_without_improvement += 1
 
-#         print()
+        print()
 
-    best_epoch = 24
-    best_acc = {
-        'auc': 0.99,
-        'precision': 0.8,
-        'recall': 0.85
-    }
+#     best_epoch = 24
+#     best_acc = {
+#         'auc': 0.99,
+#         'precision': 0.8,
+#         'recall': 0.85
+#     }
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
