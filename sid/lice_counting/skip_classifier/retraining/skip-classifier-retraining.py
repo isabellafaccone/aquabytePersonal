@@ -12,8 +12,8 @@ from research_api.skip_classifier import add_model, add_train_dataset, add_test_
 if __name__ == '__main__':
     print('Running skip classifier retraining')
 
-    three_months_ago = date.today() + relativedelta(months=-3)
-    seven_days_ago = date.today() #+ relativedelta(dats=-7)
+    three_months_ago = date.today() + relativedelta(months = -3)
+    seven_days_ago = date.today() + relativedelta(days = -7)
 
     today = date.today().strftime('%Y-%m-%d')
     start_date = three_months_ago.strftime('%Y-%m-%d')

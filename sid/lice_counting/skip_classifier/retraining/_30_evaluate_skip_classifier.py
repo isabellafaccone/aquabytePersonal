@@ -67,7 +67,7 @@ def download_image(_row, exclude_images=[]):
     return local_path
 
 num_processes = 20
-device = 0
+device = 1
 
 def get_test_dataframe(name, pen_ids, start_date, end_date):
     pen_id_string = ', '.join([str(pen_id) for pen_id in pen_ids])
@@ -142,6 +142,8 @@ def get_test_dataframe(name, pen_ids, start_date, end_date):
 
     downloaded_production_data = production_data_images
     downloaded_production_data['label'] = downloaded_production_data['state'].apply(get_label)
+    
+    # Load the model
 
     downloaded_production_data['production_predicted_accept_prob'] = \
         downloaded_production_data.apply(lambda row:
@@ -168,7 +170,7 @@ def get_test_dataframe(name, pen_ids, start_date, end_date):
 
 def evaluate(name):
     path = os.path.join(SKIP_CLASSIFIER_MODEL_DIRECTORY, name, 'model.pt')
-    new_model = ImageClassifier(['ACCEPT', 'SKIP'], device, savename=None)
+    new_model = ImageClassifier(['ACCEPT', 'SKIP'], savename=None)
     new_model.load_state_dict(torch.load(path))
     new_model.to(device)
     new_model.cuda()
@@ -182,6 +184,8 @@ def evaluate(name):
     test_dataset_path = os.path.join(SKIP_CLASSIFIER_TEST_DATASET_DIRECTORY, name + '.csv')
     downloaded_production_data = pd.read_csv(test_dataset_path)
 
+    tqdm.pandas()
+    
     downloaded_production_data['new_model_predicted_accept_prob'] = downloaded_production_data[
         'local_path'].progress_apply(
         path2newmodelpredictions)

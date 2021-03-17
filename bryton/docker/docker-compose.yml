@@ -6,7 +6,7 @@ services:
     command: "jupyter notebook --allow-root --port 8887 --ip 0.0.0.0"
     volumes:
       - /home/ubuntu/bryton/repos/research-exploration:/root/bryton
-      - /data:/root/data8tb
+      - /data8tb:/root/data
     secrets:  
       - aws_credentials
       - sql_credentials
