@@ -15,7 +15,7 @@ from sklearn.metrics import precision_score, recall_score, roc_auc_score
 IMG_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp')
 
 from research.utils.data_access_utils import RDSAccessUtils
-from config import SKIP_CLASSIFIER_TEST_IMAGE_DIRECTORY, SKIP_CLASSIFIER_MODEL_DIRECTORY
+from config import SKIP_CLASSIFIER_TEST_IMAGE_DIRECTORY, SKIP_CLASSIFIER_MODEL_DIRECTORY, SKIP_CLASSIFIER_TEST_DATASET_DIRECTORY
 from model_new import ImageClassifier
 
 rds_access_utils = RDSAccessUtils(json.load(open(os.environ['DATA_WAREHOUSE_SQL_CREDENTIALS'])))
@@ -69,10 +69,20 @@ def download_image(_row, exclude_images=[]):
 num_processes = 20
 device = 0
 
-def evaluate(name, start_date):
-    query = """SELECT pen_id, annotation_state_id, base_key, url_key, left_crop_url, right_crop_url, 
-        left_crop_metadata, right_crop_metadata, annotation FROM prod.crop_annotation WHERE (service_id=1) 
-        AND (annotation_state_id IN (4, 6, 7)) AND captured_at > '%s'""" % (start_date, )
+def get_test_dataframe(name, pen_ids, start_date, end_date):
+    pen_id_string = ', '.join([str(pen_id) for pen_id in pen_ids])
+
+    query = '''SELECT pen_id, annotation_state_id, base_key, url_key, left_crop_url, right_crop_url, 
+        left_crop_metadata, right_crop_metadata, annotation FROM prod.crop_annotation
+        WHERE pen_id IN (%s)
+        AND captured_at >= '%s'
+        AND captured_at <= '%s'
+        AND (annotation_state_id IN (4, 6, 7)) AND (service_id=1)
+    ''' % (pen_id_string, start_date, end_date)
+
+    print(query)
+
+    # Get the annotations
 
     production_data = rds_access_utils.extract_from_database(query)
 
@@ -133,6 +143,30 @@ def evaluate(name, start_date):
     downloaded_production_data = production_data_images
     downloaded_production_data['label'] = downloaded_production_data['state'].apply(get_label)
 
+    downloaded_production_data['production_predicted_accept_prob'] = \
+        downloaded_production_data.apply(lambda row:
+                                         row['left_crop_metadata']['quality_score'] if row['left_crop_metadata']
+                                         else row['right_crop_metadata']['quality_score'], axis=1)
+
+    # Write the skip dataset to a file
+    dataset_file_name = os.path.join(SKIP_CLASSIFIER_TEST_DATASET_DIRECTORY, name + '.csv')
+
+    downloaded_production_data.to_csv(dataset_file_name)
+
+    print('Number of skips', len(downloaded_production_data))
+
+    print('Wrote file', dataset_file_name)
+
+    metadata = {
+        'num_rows': len(skip_dataset),
+        'pen_ids': pen_ids,
+        'start_date': start_date,
+        'end_date': end_date
+    }
+
+    return dataset_file_name, metadata
+
+def evaluate(name):
     path = os.path.join(SKIP_CLASSIFIER_MODEL_DIRECTORY, name, 'model.pt')
     new_model = ImageClassifier(['ACCEPT', 'SKIP'], device, savename=None)
     new_model.load_state_dict(torch.load(path))
@@ -145,10 +179,8 @@ def evaluate(name, start_date):
         cuda_inputs = torch.unsqueeze(image.to(device), dim=0)
         return new_model(cuda_inputs)
 
-    downloaded_production_data['production_predicted_accept_prob'] = \
-        downloaded_production_data.apply(lambda row:
-                                         row['left_crop_metadata']['quality_score'] if row['left_crop_metadata']
-                                         else row['right_crop_metadata']['quality_score'], axis=1)
+    test_dataset_path = os.path.join(SKIP_CLASSIFIER_TEST_DATASET_DIRECTORY, name + '.csv')
+    downloaded_production_data = pd.read_csv(test_dataset_path)
 
     downloaded_production_data['new_model_predicted_accept_prob'] = downloaded_production_data[
         'local_path'].progress_apply(

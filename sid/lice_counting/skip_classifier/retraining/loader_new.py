@@ -11,8 +11,8 @@ from config import SKIP_CLASSIFIER_DATASET_DIRECTORY, SKIP_CLASSIFIER_IMAGE_DIRE
 import pickle
 from tqdm import tqdm
 
-DATA_FNAME = 'qa_accept_cogito_skips_03-04-2020/images'
-TRAIN_TEST_SPLIT_PATH = '/root/data/sid/needed_data/skip_classifier_datasets/splits'
+# DATA_FNAME = 'qa_accept_cogito_skips_03-04-2020/images'
+# TRAIN_TEST_SPLIT_PATH = '/root/data/sid/needed_data/skip_classifier_datasets/splits'
 
 ### Image Data Augmentation ###
 
@@ -85,7 +85,7 @@ def get_dataloader(fname, transform, bsz, split_size, model_type='full_fish'):
        ex, labs = train[idx]
        print(labs)
     print({k:[type(v), v[:10]] for k,v in dataset_splits.items()})
-    split_path = os.path.join(TRAIN_TEST_SPLIT_PATH, f'{fname}_splits.json')
+    split_path = os.path.join(SKIP_CLASSIFIER_DATASET_DIRECTORY, f'{fname}_splits.json')
     with open(split_path, 'w') as f:
         json.dump(dataset_splits, f)
 

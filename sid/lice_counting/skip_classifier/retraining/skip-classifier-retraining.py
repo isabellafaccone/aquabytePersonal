@@ -4,9 +4,10 @@ from dateutil.relativedelta import relativedelta
 from _00_generate_training_dataframe import get_dataframe
 from _10_download_training_data import download_images_to_local_dir
 from _20_train_skip_classifier import run
-from _30_evaluate_skip_classifier import evaluate
+from _30_evaluate_skip_classifier import get_test_dataframe, evaluate
 
-from research_api.skip_classifier import add_model, add_train_dataset, add_retraining, get_train_dataset
+from research_api.skip_classifier import add_model, add_train_dataset, add_test_dataset, add_evaluation, add_retraining,\
+    get_train_dataset, get_test_dataset
 
 if __name__ == '__main__':
     print('Running skip classifier retraining')
@@ -67,6 +68,25 @@ if __name__ == '__main__':
 
     print('Completed skip classifier retraining')
 
-    metrics = evaluate(retraining_name, end_date)
+    testDataset = get_test_dataset(pen_ids, start_date, end_date)
 
-    print('Metrics', metrics)
+    if testDataset:
+        testDatasetId = testDataset.id
+    else:
+        # Get the dataframe
+        test_dataset_file_name, metadata = get_test_dataframe(retraining_name, pen_ids, start_date, end_date)
+
+        print('test_dataset_file_name', metadata)
+
+        # Add to the train dataset
+        testDatasetId = add_test_dataset(retraining_name, test_dataset_file_name, metadata)
+
+    print('testDatasetId', testDatasetId)
+
+    metadata = evaluate(retraining_name)
+
+    print('Metadata', metadata)
+
+    evaluationId = add_evaluation(testDatasetId, modelId, metadata)
+
+    print('evaluationId', evaluationId)
