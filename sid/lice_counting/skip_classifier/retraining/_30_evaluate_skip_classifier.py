@@ -67,7 +67,7 @@ def download_image(_row, exclude_images=[]):
     return local_path
 
 num_processes = 20
-device = 0
+device = 1
 
 def evaluate(name, start_date):
     query = """SELECT pen_id, annotation_state_id, base_key, url_key, left_crop_url, right_crop_url, 
@@ -132,9 +132,11 @@ def evaluate(name, start_date):
 
     downloaded_production_data = production_data_images
     downloaded_production_data['label'] = downloaded_production_data['state'].apply(get_label)
+    
+    # Load the model
 
     path = os.path.join(SKIP_CLASSIFIER_MODEL_DIRECTORY, name, 'model.pt')
-    new_model = ImageClassifier(['ACCEPT', 'SKIP'], device, savename=None)
+    new_model = ImageClassifier(['ACCEPT', 'SKIP'], savename=None)
     new_model.load_state_dict(torch.load(path))
     new_model.to(device)
     new_model.cuda()
@@ -150,6 +152,8 @@ def evaluate(name, start_date):
                                          row['left_crop_metadata']['quality_score'] if row['left_crop_metadata']
                                          else row['right_crop_metadata']['quality_score'], axis=1)
 
+    tqdm.pandas()
+    
     downloaded_production_data['new_model_predicted_accept_prob'] = downloaded_production_data[
         'local_path'].progress_apply(
         path2newmodelpredictions)
