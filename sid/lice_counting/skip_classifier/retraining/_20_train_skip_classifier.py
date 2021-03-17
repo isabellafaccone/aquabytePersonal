@@ -9,6 +9,7 @@ import json
 from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, roc_auc_score
 from pprint import pprint
+import gc
 
 import torch
 import torch.nn as nn
@@ -94,7 +95,7 @@ def train_model(
         bsz,
         model_type='full_fish',
         device=0,
-        num_epochs=2,
+        num_epochs=25,
         phases=['train', 'test'],
         log_every=1,
         weight_decay=0):
@@ -281,7 +282,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_type', type=str, default='full_fish')
     parser.add_argument('--transform', type=str, default='pad')
     parser.add_argument('--savename', type=str, default='testing123')
-    parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--split_size', type=float, default=0.8)
     parser.add_argument('--state_dict_path', type=str, default=None)
 

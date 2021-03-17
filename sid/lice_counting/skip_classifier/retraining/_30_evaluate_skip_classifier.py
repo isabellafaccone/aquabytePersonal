@@ -67,7 +67,7 @@ def download_image(_row, exclude_images=[]):
     return local_path
 
 num_processes = 20
-device = 1
+device = 0
 
 def get_test_dataframe(name, pen_ids, start_date, end_date):
     pen_id_string = ', '.join([str(pen_id) for pen_id in pen_ids])
@@ -160,7 +160,7 @@ def get_test_dataframe(name, pen_ids, start_date, end_date):
     print('Wrote file', dataset_file_name)
 
     metadata = {
-        'num_rows': len(skip_dataset),
+        'num_rows': len(downloaded_production_data),
         'pen_ids': pen_ids,
         'start_date': start_date,
         'end_date': end_date
@@ -176,26 +176,34 @@ def evaluate(name):
     new_model.cuda()
     new_model.eval()
 
-    def path2newmodelpredictions(file_path):
-        image = image_to_array(file_path)
-        cuda_inputs = torch.unsqueeze(image.to(device), dim=0)
-        return new_model(cuda_inputs)
-
     test_dataset_path = os.path.join(SKIP_CLASSIFIER_TEST_DATASET_DIRECTORY, name + '.csv')
     downloaded_production_data = pd.read_csv(test_dataset_path)
-
-    tqdm.pandas()
     
-    downloaded_production_data['new_model_predicted_accept_prob'] = downloaded_production_data[
-        'local_path'].progress_apply(
-        path2newmodelpredictions)
+    bsz = 64
+    dataloader = torch.utils.data.DataLoader(downloaded_production_data['local_path'], batch_size=bsz, 
+                                             shuffle=False, num_workers=4)
+    results = []
+    
+    for i, filenames in enumerate(dataloader):
+        print(i, len(dataloader))
+        
+        torch.cuda.empty_cache()
+              
+        images = [ image_to_array(filename) for filename in filenames ]
+        
+        with torch.no_grad():
+            for image in images:
+                output = new_model(torch.unsqueeze(image.to(device), dim=0))
+                results.append(output)
 
+    downloaded_production_data['new_model_predicted_accept_prob'] = results
+        
     accept_label_idx = 0
 
     output = downloaded_production_data['new_model_predicted_accept_prob'].values
     labels = downloaded_production_data['label'].values
 
-    outputs = torch.cat(list(output.values))
+    outputs = torch.cat(list(output))
     _, preds = torch.max(outputs, 1)
     preds = preds.cpu().numpy()
     preds = preds == accept_label_idx
