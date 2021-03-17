@@ -1,12 +1,12 @@
 version: '3.3'
 
 services:
-  skip-classifier-retraining:
-    image: skip-classifier-retraining:v1
-    command: "cron -f"
+  bryton-research:
+    image: bryton-research:v1
+    command: "jupyter notebook --allow-root --port 8887 --ip 0.0.0.0"
     volumes:
-      - /home/ubuntu/bryton/repos/research-exploration/sid/lice_counting/skip_classifier:/root/skip_classifier
-      - /data8tb:/root/data
+      - /home/ubuntu/bryton/repos/research-exploration:/root/bryton
+      - /data:/root/data8tb
     secrets:  
       - aws_credentials
       - sql_credentials
@@ -24,11 +24,10 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
     ports:
-      - "7777:7777"
+      - "8887:8887"
     container_name:
-      skip-classifier-retraining
+      bryton-research
     ipc: host
-    shm_size: 256m
     deploy:
       resources:
         reservations:
@@ -37,14 +36,14 @@ services:
 
 secrets:
   aws_credentials:
-    file: ~/bryton/repos/research-exploration/bryton/docker/credentials/aws_credentials2.json
+    file: ./credentials/aws_credentials2.json
   sql_credentials:
-    file: ~/bryton/repos/research-exploration/bryton/docker/credentials/sql_credentials.json
+    file: ./credentials/sql_credentials.json
   prod_sql_credentials:
-    file: ~/bryton/repos/research-exploration/bryton/docker/credentials/prod_sql_credentials.json
+    file: ./credentials/prod_sql_credentials.json
   prod_research_sql_credentials:
-    file: ~/bryton/repos/research-exploration/bryton/docker/credentials/prod_research_sql_credentials.json
+    file: ./credentials/prod_research_sql_credentials.json
   prod_research_write_sql_credentials:
-    file: ~/bryton/repos/research-exploration/bryton/docker/credentials/prod_research_write_sql_credentials.json
+    file: ./credentials/prod_research_write_sql_credentials.json
   data_warehouse_sql_credentials:
-    file: ~/bryton/repos/research-exploration/bryton/docker/credentials/data_warehouse_sql_credentials.json
+    file: ./credentials/data_warehouse_sql_credentials.json 
