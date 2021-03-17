@@ -66,3 +66,7 @@ if __name__ == '__main__':
     print('retrainingId', retrainingId)
 
     print('Completed skip classifier retraining')
+
+    metrics = evaluate(retraining_name, end_date)
+
+    print('Metrics', metrics)
