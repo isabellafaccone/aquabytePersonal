@@ -7,7 +7,7 @@ from _20_train_skip_classifier import run
 from _30_evaluate_skip_classifier import get_test_dataframe, evaluate
 
 from research_api.skip_classifier import add_model, add_train_dataset, add_test_dataset, add_evaluation, add_retraining,\
-    get_train_dataset, get_test_dataset
+    get_train_dataset, get_test_dataset, get_model
 
 if __name__ == '__main__':
     print('Running skip classifier retraining')
@@ -35,6 +35,8 @@ if __name__ == '__main__':
 
     if trainDataset:
         trainDatasetId = trainDataset.id
+
+        print('Train dataset already exists')
     else:
         # Get the dataframe
         dataset_file_name, metadata = get_dataframe(retraining_name, pen_ids, start_date, end_date)
@@ -51,27 +53,36 @@ if __name__ == '__main__':
 
     print('trainDatasetId', trainDatasetId)
 
-    # Train the new model
-    model_file_name, metadata = run(retraining_name, retraining_name, 'pad', 'full_fish', 64, 0.8, 0, None)
+    model = get_model(retraining_name)
 
-    print('model_file_name', model_file_name)
-    print('metadata', metadata)
+    if model:
+        modelId = model.id
 
-    # Add the new model
-    modelId = add_model(retraining_name, model_file_name, True)
+        print('Model already exists, no need to retrain')
+    else:
+        # Train the new model
+        model_file_name, metadata = run(retraining_name, retraining_name, 'pad', 'full_fish', 64, 0.8, 0, None)
+
+        print('model_file_name', model_file_name)
+        print('metadata', metadata)
+
+        # Add the new model
+        modelId = add_model(retraining_name, model_file_name, True)
+
+        retrainingId = add_retraining(trainDatasetId, modelId, retraining_name, metadata)
+
+        print('retrainingId', retrainingId)
+
+        print('Completed skip classifier retraining')
 
     print('modelId', modelId)
-
-    retrainingId = add_retraining(trainDatasetId, modelId, retraining_name, metadata)
-
-    print('retrainingId', retrainingId)
-
-    print('Completed skip classifier retraining')
 
     testDataset = get_test_dataset(pen_ids, start_date, end_date)
 
     if testDataset:
         testDatasetId = testDataset.id
+
+        print('Test dataset already exists')
     else:
         # Get the dataframe
         test_dataset_file_name, metadata = get_test_dataframe(retraining_name, pen_ids, start_date, end_date)
@@ -83,6 +94,8 @@ if __name__ == '__main__':
 
     print('testDatasetId', testDatasetId)
 
+    print('Running model evaluation')
+
     metadata = evaluate(retraining_name)
 
     print('Metadata', metadata)
@@ -90,3 +103,5 @@ if __name__ == '__main__':
     evaluationId = add_evaluation(testDatasetId, modelId, metadata)
 
     print('evaluationId', evaluationId)
+
+    print('Completed model evaluation')
