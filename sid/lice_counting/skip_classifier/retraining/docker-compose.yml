@@ -3,7 +3,7 @@ version: '3.3'
 services:
   skip-classifier-retraining:
     image: skip-classifier-retraining:v1
-    command: "cron -f"
+    command: bash -c "printenv >> /etc/environment && cron -f"
     volumes:
       - /home/ubuntu/bryton/repos/research-exploration/sid/lice_counting/skip_classifier:/root/skip_classifier
       - /data8tb:/root/data
