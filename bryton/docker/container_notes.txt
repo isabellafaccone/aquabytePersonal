@@ -1,0 +1,8 @@
+# build container from file
+docker build . -t bryton-research:v1
+
+# run container
+docker run -p 8887:8887  -v /home/ubuntu/bryton/:/root/bryton -v /data:/root/data --gpus all --name bryton-research bryton-research:reformatted_v1 sleep 1000h
+# docker run -p 8887:8887  -v /home/ubuntu/bryton/repos/research-exploration:/root/bryton -v /data:/root/data --gpus all --name bryton-research bryton-research:v1 sleep 1000h
+
+jupyter notebook --allow-root --port 8887 --ip 0.0.0.0

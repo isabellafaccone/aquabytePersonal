@@ -6,12 +6,13 @@ import cv2
 import torch
 import os
 import json
-from data import MODEL_DATA_PATH, SAMPLED_DATA_DIR
+
+from config import SKIP_CLASSIFIER_DATASET_DIRECTORY, SKIP_CLASSIFIER_IMAGE_DIRECTORY
 import pickle
 from tqdm import tqdm
 
-DATA_FNAME = 'qa_accept_cogito_skips_03-04-2020/images'
-TRAIN_TEST_SPLIT_PATH = '/root/data/sid/needed_data/skip_classifier_datasets/splits'
+# DATA_FNAME = 'qa_accept_cogito_skips_03-04-2020/images'
+# TRAIN_TEST_SPLIT_PATH = '/root/data/sid/needed_data/skip_classifier_datasets/splits'
 
 ### Image Data Augmentation ###
 
@@ -32,7 +33,7 @@ TRANSFORMS = {
 }
 
 def get_multlabel_class_counts(fname, bodypart=None):
-    sampled = pd.read_csv(os.path.join(SAMPLED_DATA_DIR, fname +'.csv'))
+    sampled = pd.read_csv(os.path.join(SKIP_CLASSIFIER_DATASET_DIRECTORY, fname + '.csv'))
     ratios = (sampled[BODYPART_COLS].sum() / len(sampled))
     if bodypart is None:
         return (1 / ratios).to_list()
@@ -41,7 +42,7 @@ def get_multlabel_class_counts(fname, bodypart=None):
 
 
 def get_dataloader(fname, transform, bsz, split_size, model_type='full_fish'):
-    data_dir = os.path.join(MODEL_DATA_PATH, fname, 'images')
+    data_dir = os.path.join(SKIP_CLASSIFIER_IMAGE_DIRECTORY, fname)
     print('Loading dataset from directory...')
     if model_type == 'full_fish':
         dataset = AlbumentationsImageFolder(data_dir, transform)
@@ -84,7 +85,7 @@ def get_dataloader(fname, transform, bsz, split_size, model_type='full_fish'):
        ex, labs = train[idx]
        print(labs)
     print({k:[type(v), v[:10]] for k,v in dataset_splits.items()})
-    split_path = os.path.join(TRAIN_TEST_SPLIT_PATH, f'{fname}_splits.json')
+    split_path = os.path.join(SKIP_CLASSIFIER_DATASET_DIRECTORY, f'{fname}_splits.json')
     with open(split_path, 'w') as f:
         json.dump(dataset_splits, f)
 
@@ -96,7 +97,7 @@ def get_dataloader(fname, transform, bsz, split_size, model_type='full_fish'):
     print('Building dataloaders...')
     dataloaders = {
         split: torch.utils.data.DataLoader(
-            datasets[split], batch_size=bsz, shuffle=False, num_workers=0)
+            datasets[split], batch_size=bsz, shuffle=False, num_workers=4)
         for split in datasets
     }
     return dataloaders, dataset.classes, class_counts

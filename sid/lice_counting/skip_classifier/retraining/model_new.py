@@ -3,7 +3,7 @@ import torch.nn as nn
 from torchvision import models
 
 class ImageClassifier(nn.Module):
-    def __init__(self, class_names, device, savename, state_dict_path=None):
+    def __init__(self, class_names, savename, state_dict_path=None):
         super(ImageClassifier, self).__init__()
         self.model_ft = models.resnet18(pretrained=True)
         if state_dict_path is not None:

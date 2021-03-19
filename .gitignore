@@ -2,3 +2,9 @@
 .DS_Store
 .ipynb_checkpoints
 *credentials.json*
+*~
+research-0.1.1.tar.gz
+__pycache__
+.idea/
+*credentials*
+ground_truth_slaughter_reports

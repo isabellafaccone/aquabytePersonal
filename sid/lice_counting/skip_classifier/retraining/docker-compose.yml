@@ -1,0 +1,50 @@
+version: '3.3'
+
+services:
+  skip-classifier-retraining:
+    image: skip-classifier-retraining:v1
+    command: bash -c "printenv >> /etc/environment && cron -f"
+    volumes:
+      - /home/ubuntu/bryton/repos/research-exploration/sid/lice_counting/skip_classifier:/root/skip_classifier
+      - /data8tb:/root/data
+    secrets:  
+      - aws_credentials
+      - sql_credentials
+      - prod_sql_credentials
+      - prod_research_sql_credentials
+      - prod_research_write_sql_credentials
+      - data_warehouse_sql_credentials
+    environment:
+      - AWS_CREDENTIALS=/run/secrets/aws_credentials
+      - SQL_CREDENTIALS=/run/secrets/sql_credentials
+      - PROD_SQL_CREDENTIALS=/run/secrets/prod_sql_credentials
+      - PROD_RESEARCH_SQL_CREDENTIALS=/run/secrets/prod_research_sql_credentials
+      - PROD_RESEARCH_WRITE_SQL_CREDENTIALS=/run/secrets/prod_research_write_sql_credentials
+      - DATA_WAREHOUSE_SQL_CREDENTIALS=/run/secrets/data_warehouse_sql_credentials
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    ports:
+      - "7777:7777"
+    container_name:
+      skip-classifier-retraining
+    ipc: host
+    shm_size: 256m
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]    
+
+secrets:
+  aws_credentials:
+    file: ~/bryton/repos/research-exploration/bryton/docker/credentials/aws_credentials2.json
+  sql_credentials:
+    file: ~/bryton/repos/research-exploration/bryton/docker/credentials/sql_credentials.json
+  prod_sql_credentials:
+    file: ~/bryton/repos/research-exploration/bryton/docker/credentials/prod_sql_credentials.json
+  prod_research_sql_credentials:
+    file: ~/bryton/repos/research-exploration/bryton/docker/credentials/prod_research_sql_credentials.json
+  prod_research_write_sql_credentials:
+    file: ~/bryton/repos/research-exploration/bryton/docker/credentials/prod_research_write_sql_credentials.json
+  data_warehouse_sql_credentials:
+    file: ~/bryton/repos/research-exploration/bryton/docker/credentials/data_warehouse_sql_credentials.json

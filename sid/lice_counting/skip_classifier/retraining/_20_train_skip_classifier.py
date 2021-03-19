@@ -9,6 +9,7 @@ import json
 from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, roc_auc_score
 from pprint import pprint
+import gc
 
 import torch
 import torch.nn as nn
@@ -17,11 +18,14 @@ import torch.optim as optim
 from loader_new import TRANSFORMS, get_dataloader
 from model_new import ImageClassifier, MultilabelClassifier
 
+from research_api.skip_classifier import add_model
+
 torch.manual_seed(0)
 ACCEPT_LABEL, SKIP_LABEL = 'ACCEPT', 'SKIP'
 expected = [ACCEPT_LABEL, SKIP_LABEL]
 ACCEPT_LABEL_IDX = expected.index(ACCEPT_LABEL)
-CHECKPOINT_PATH = '/root/data/sid/needed_datasets/skip_classifier_checkpoints'
+
+from config import SKIP_CLASSIFIER_CHECKPOINT_MODEL_DIRECTORY, SKIP_CLASSIFIER_MODEL_DIRECTORY
 
 
 def get_metrics(outputs: torch.Tensor, labels: torch.Tensor, class_names, accept_label_idx=ACCEPT_LABEL_IDX, model_type='full_fish'):
@@ -92,7 +96,7 @@ def train_model(
         model_type='full_fish',
         device=0,
         num_epochs=25,
-        phases=['train'],
+        phases=['train', 'test'],
         log_every=1,
         weight_decay=0):
 
@@ -132,7 +136,9 @@ def train_model(
 
     best_model_ft_wts = copy.deepcopy(model_ft.state_dict())
     best_auc = 0.0
+    best_acc = {}
     epochs_without_improvement = 0
+    best_epoch = 0
 
     for epoch in range(num_epochs):
         if epochs_without_improvement > 5:
@@ -186,7 +192,7 @@ def train_model(
                 #print('Adding loss...')
                 #running_loss += loss.item() * inputs.size(0)
                 if i % log_every == 0:
-                    print(f'Batch: {i}')
+                    print(f'Batch: {i} out of {len(dataloaders[phase])}')
                     train_acc = get_metrics(outputs, labels.data, class_names, model_type=model_type)
                     print(f'Train Metrics:')
                     pprint(train_acc)
@@ -211,23 +217,32 @@ def train_model(
                 phase, epoch_loss, epoch_acc))
 
             # Save results
-            save_dir = f'{CHECKPOINT_PATH}/{savename}/epoch_{epoch}/{phase}/'
+            save_dir = f'{SKIP_CLASSIFIER_CHECKPOINT_MODEL_DIRECTORY}/{savename}/epoch_{epoch}/{phase}/'
             os.makedirs(save_dir, exist_ok=True)
 
             torch.save(model_ft.state_dict(), os.path.join(save_dir, 'model.pt'))
             json.dump({'acc': epoch_acc, 'loss': epoch_loss}, open(os.path.join(save_dir, 'metrics.json'), 'w'))
 
             # deep copy the model_ft
-            if phase == 'val':
+            if phase == 'test':
                 if epoch_acc['auc'] > best_auc:
                     print('Best Model!')
                     best_auc = epoch_acc['auc']
+                    best_acc = epoch_acc
                     best_model_ft_wts = copy.deepcopy(model_ft.state_dict())
                     epochs_without_improvement = 0
+                    best_epoch = epoch
                 else:
                     epochs_without_improvement += 1
 
         print()
+
+#     best_epoch = 24
+#     best_acc = {
+#         'auc': 0.99,
+#         'precision': 0.8,
+#         'recall': 0.85
+#     }
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
@@ -236,7 +251,15 @@ def train_model(
 
     # load best model_ft weights
     model_ft.load_state_dict(best_model_ft_wts)
-    return model_ft
+
+    metadata = {
+        'num_epochs': best_epoch,
+        'auc': best_acc.get('auc'),
+        'precision': best_acc.get('precision'),
+        'recall': best_acc.get('recall')
+    }
+
+    return model_ft, metadata
 
 def run(fname, savename, transform, model_type, bsz, split_size, device, state_dict_path, weight_decay=0):
     torch.cuda.set_device(device)
@@ -244,8 +267,13 @@ def run(fname, savename, transform, model_type, bsz, split_size, device, state_d
     print(torch.cuda.is_available())
     transform = TRANSFORMS[transform]
     dataloaders, class_names, class_counts = get_dataloader(fname, transform, bsz, split_size, model_type=model_type)
-    trained_model = train_model(dataloaders, state_dict_path, class_names, class_counts, savename, device, weight_decay=weight_decay, model_type=model_type)
-    return trained_model
+    trained_model, metadata = train_model(dataloaders, state_dict_path, class_names, class_counts, savename, device, weight_decay=weight_decay, model_type=model_type)
+    model_file_directory = os.path.join(SKIP_CLASSIFIER_MODEL_DIRECTORY, savename)
+    model_file_name = os.path.join(SKIP_CLASSIFIER_MODEL_DIRECTORY, savename, 'model.pt')
+    os.makedirs(model_file_directory, exist_ok=True)
+    
+    torch.save(trained_model.state_dict(), model_file_name)
+    return model_file_name, metadata
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train a Skip classifier.')
@@ -254,13 +282,13 @@ if __name__ == '__main__':
     parser.add_argument('--model_type', type=str, default='full_fish')
     parser.add_argument('--transform', type=str, default='pad')
     parser.add_argument('--savename', type=str, default='testing123')
-    parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--split_size', type=float, default=0.8)
     parser.add_argument('--state_dict_path', type=str, default=None)
 
     args = parser.parse_args()
     args.savename = args.savename + '__' + datetime.now(tz=pytz.timezone('US/Pacific')).strftime("%Y-%m-%d__%H-%M-%S")
-    run(
+    trained_model = run(
         args.fname,
         args.savename,
         args.transform,
@@ -270,3 +298,10 @@ if __name__ == '__main__':
         device=args.device,
         state_dict_path=args.state_dict_path
     )
+
+    save_file_name = os.path.join(SKIP_CLASSIFIER_MODEL_DIRECTORY, args.savename, 'model.pt')
+
+    torch.save(trained_model.state_dict(), save_file_name)
+
+    add_model(args.savename, save_file_name, True)
+

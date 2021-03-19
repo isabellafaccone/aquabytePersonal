@@ -1,0 +1,49 @@
+version: '3.3'
+
+services:
+  bryton-research:
+    image: bryton-research:v1
+    command: "jupyter notebook --allow-root --port 8887 --ip 0.0.0.0"
+    volumes:
+      - /home/ubuntu/bryton/repos/research-exploration:/root/bryton
+      - /data8tb:/root/data
+    secrets:  
+      - aws_credentials
+      - sql_credentials
+      - prod_sql_credentials
+      - prod_research_sql_credentials
+      - prod_research_write_sql_credentials
+      - data_warehouse_sql_credentials
+    environment:
+      - AWS_CREDENTIALS=/run/secrets/aws_credentials
+      - SQL_CREDENTIALS=/run/secrets/sql_credentials
+      - PROD_SQL_CREDENTIALS=/run/secrets/prod_sql_credentials
+      - PROD_RESEARCH_SQL_CREDENTIALS=/run/secrets/prod_research_sql_credentials
+      - PROD_RESEARCH_WRITE_SQL_CREDENTIALS=/run/secrets/prod_research_write_sql_credentials
+      - DATA_WAREHOUSE_SQL_CREDENTIALS=/run/secrets/data_warehouse_sql_credentials
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    ports:
+      - "8887:8887"
+    container_name:
+      bryton-research
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]    
+
+secrets:
+  aws_credentials:
+    file: ./credentials/aws_credentials2.json
+  sql_credentials:
+    file: ./credentials/sql_credentials.json
+  prod_sql_credentials:
+    file: ./credentials/prod_sql_credentials.json
+  prod_research_sql_credentials:
+    file: ./credentials/prod_research_sql_credentials.json
+  prod_research_write_sql_credentials:
+    file: ./credentials/prod_research_write_sql_credentials.json
+  data_warehouse_sql_credentials:
+    file: ./credentials/data_warehouse_sql_credentials.json 
