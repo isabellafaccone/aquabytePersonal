@@ -34,8 +34,10 @@ def get_capture_keys(pen_id: int, start_date: str, end_date: str, inbound_bucket
     for date in dates:
         print('Getting capture keys for pen_id={}, date={}...'.format(pen_id, date))
         for hour in DAYTIME_HOURS_GMT:
+            hr = str(hour).zfill(2)
             s3_prefix = 'environment=production/site-id={}/pen-id={}/date={}/hour={}'.format(site_id, pen_id,
-                                                                                    date, hour)
+                                                                                    date, hr)
+
 
             generator = s3.get_matching_s3_keys(inbound_bucket, prefix=s3_prefix,
                                                             subsample=1.0,
