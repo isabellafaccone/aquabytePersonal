@@ -5,6 +5,9 @@ import pycuda.driver as cuda
 import tensorrt as trt
 import torch
 import time
+from datetime import datetime,timedelta
+
+AKPD_MIN = AKPD_OPTIMAL = AKPD_MAX = (1, 512, 512, 3)
 
 class AkpdTRT(object):
     def __init__(self, model_path, config_path, device=0, fp16=False):
@@ -40,10 +43,13 @@ class AkpdTRT(object):
         self._parser = trt.OnnxParser(self._network, self._trt_logger).__enter__() 
 
         self._builder.max_workspace_size = 1 << 30
+
+        if self._fp16:
+            assert self._builder.platform_has_fast_fp16, 'Cannot optimize for FP16 on this'
         self._builder.fp16_mode = self._fp16
     
         self._profile = self._builder.create_optimization_profile()
-        self._profile.set_shape(self._config['input_name'], (1, 512, 512, 3), (1, 512, 512, 3), (1, 512, 512, 3)) 
+        self._profile.set_shape(self._config['input_name'], AKPD_MIN, AKPD_OPTIMAL, AKPD_MAX) 
         self._trt_config = self._builder.create_builder_config()
         self._trt_config.add_optimization_profile(self._profile)
 
@@ -89,11 +95,14 @@ class AkpdTRT(object):
             self._network.__exit__(exc_type,exc_value,traceback)
         if self._builder:
             self._builder.__exit__(exc_type,exc_value,traceback)
+        if self._context:
+            self._context.pop()
         
         self.is_active = False
 
     def _process(self, image):
         assert self.is_active, 'AKPD model not loaded'
+        start_t = datetime.now()
         host_input = np.array(image, dtype=np.float32, order='C')
         cuda.memcpy_htod_async(self._device_input, host_input, self._stream)
         self._session.execute_async(bindings=[int(self._device_input), int(self._device_output)], stream_handle=self._stream.handle)
@@ -102,9 +111,10 @@ class AkpdTRT(object):
         output_data = torch.Tensor(self._host_output).reshape([int(i) for i in self._output_shape])
         final_stage_heatmap = output_data.squeeze()
         hm = final_stage_heatmap.cpu().detach().numpy().copy()
-        return hm
+        tf_time = (datetime.now() - start_t).total_seconds()
+        return hm, tf_time
 
     def process(self, left_image, right_image):
-        left_hm = self._process(left_image)
-        right_hm = self._process(right_image)
-        return left_hm, right_hm
+        left_hm, l_t = self._process(left_image)
+        right_hm, r_t = self._process(right_image)
+        return left_hm, right_hm, [l_t,r_t]

@@ -48,7 +48,7 @@ class Keypoints(object):
         heightR, widthR, _ = imageR.shape
         imageR = image_resize(imageR, self.FLAGS)
 
-        hmL,hmR = self._akpd.process(imageL,imageR)
+        hmL,hmR, run_times = self._akpd.process(imageL,imageR)
 
         kp_l = []
         kp_r = []
@@ -66,4 +66,4 @@ class Keypoints(object):
                 'url': imageR_url,
                 'kp': kp_r
             }
-        }
+        },run_times

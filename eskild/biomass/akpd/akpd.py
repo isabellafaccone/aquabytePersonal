@@ -2,6 +2,8 @@
 import json
 import cv2
 import tensorflow as tf
+from datetime import datetime,timedelta
+
 
 class Akpd(object):
     def __init__(self, model_path, config_path, device='/gpu:0'):
@@ -55,11 +57,13 @@ class Akpd(object):
         
     def _process(self, image):
         assert self.is_active, 'AKPD model not loaded'
+        start_t = datetime.now()
         final_stage_heatmap = self._session.run(self._config['output_name'], feed_dict = {self._config['input_name']: image})
         hm = final_stage_heatmap.squeeze()
-        return hm
+        tf_time = (datetime.now() - start_t).total_seconds()
+        return hm,tf_time
 
     def process(self, left_image, right_image):
-        left_hm = self._process(left_image)
-        right_hm = self._process(right_image)
-        return left_hm, right_hm
+        left_hm, l_t = self._process(left_image)
+        right_hm, r_t = self._process(right_image)
+        return left_hm, right_hm,[l_t,r_t]
