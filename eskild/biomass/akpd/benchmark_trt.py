@@ -22,7 +22,7 @@ def benchmark(data_path, tf_model_path, trt_model_path, config_path, rows=-1):
     test_data =  pd.read_pickle(str(data_path))
     l = len(test_data) if rows < 0 else rows
 
-    tf_run=[0,0,0]
+    tf_run=[]
     kps_tf = []
     tf_time = None
 
@@ -45,9 +45,9 @@ def benchmark(data_path, tf_model_path, trt_model_path, config_path, rows=-1):
                 break
         tf_time = datetime.now() - start_t
 
-    trt_fp32_run=[0,0,0]
+    trt_fp32_run=[]
     kps_trt_fp32 = []
-    trt_time = None
+    trt_fp32_time = None
     print('Creating TRT FP32 Engine...')
     with AkpdTRT(trt_model_path, config_path) as engine:
         assert engine, 'No TRT Engine created'
@@ -65,11 +65,11 @@ def benchmark(data_path, tf_model_path, trt_model_path, config_path, rows=-1):
             if i >= rows and rows>=0:
                 print(f'AKPD_TRT {i} of {l} Done.')
                 break
-        trt_time = datetime.now() - start_t
+        trt_fp32_time = datetime.now() - start_t
 
     trt_fp16_run = []
     kps_trt_fp16 = []
-    trt_time = None
+    trt_fp16_time = None
     print('Creating TRT FP16 Engine...')
     with AkpdTRT(trt_model_path, config_path, fp16=True) as engine:
         assert engine, 'No TRT Engine created'
@@ -87,7 +87,7 @@ def benchmark(data_path, tf_model_path, trt_model_path, config_path, rows=-1):
             if i >= rows and rows>=0:
                 print(f'AKPD_TRT {i} of {l} Done.')
                 break
-        trt_time = datetime.now() - start_t
+        trt_fp16_time = datetime.now() - start_t
     
     delta_fp32 = delta_frame(kps_tf, kps_trt_fp32)
     d_fp32 = [x['point'] for d in delta_fp32 for x in d]
@@ -110,7 +110,7 @@ def benchmark(data_path, tf_model_path, trt_model_path, config_path, rows=-1):
         },
         'trt_fp32':{
             'runtime':{
-                'bench_time': str(trt_time),
+                'bench_time': str(trt_fp32_time),
                 'avg':np.average(trt_fp32_run),
                 'max':np.max(trt_fp32_run),
                 'min':np.min(trt_fp32_run),
@@ -128,7 +128,7 @@ def benchmark(data_path, tf_model_path, trt_model_path, config_path, rows=-1):
         },
          'trt_fp16':{
             'runtime':{
-                'bench_time': str(trt_time),
+                'bench_time': str(trt_fp16_time),
                 'avg':np.average(trt_fp16_run),
                 'max':np.max(trt_fp16_run),
                 'min':np.min(trt_fp16_run),
