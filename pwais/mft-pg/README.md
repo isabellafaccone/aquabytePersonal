@@ -15,6 +15,8 @@ detection
 tracking
 tube-scorer
 
+this convert to onnx https://github.com/jkjung-avt/tensorrt_demos 
+
 tracker tests
  ** test detector drop rate!  and how tracker is robust to it!!
  ** test FPS ablation rate with that too
