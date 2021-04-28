@@ -29,8 +29,8 @@ host# nvidia-docker run -it -v ~/mft-pg:/opt/mft-pg -w /opt/mft-pg mft-pg-infere
 indocker$ cd /opt/mft-pg/detection/inference/models/
 
 # This may take several minutes:
-indocker$ python3 /opt/tensorrt_demos/yolo_to_onnx.py -m yolo4.fish-head
-indocker$ python3 /opt/tensorrt_demos/onnx_to_tensorrt.py -m yolo4.fish-head
+indocker$ python3 /opt/tensorrt_demos/yolo/yolo_to_onnx.py -m yolov3-416 -c 2
+indocker$ python3 /opt/tensorrt_demos/yolo/onnx_to_tensorrt.py -v -m yolov3-416 -c 2
 
 indocker$ python3 /opt/mft-pg/detection/inference/test_trt.py yolo4.fish-head
 ```

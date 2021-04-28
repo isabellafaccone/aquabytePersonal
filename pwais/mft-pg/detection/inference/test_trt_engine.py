@@ -41,11 +41,16 @@ def run_trt_yolo(
   import pycuda.autoinit  # This is needed for initializing CUDA driver
   from utils.yolo_with_plugins import TrtYOLO
 
+  class MyTrtYOLO(TrtYOLO):
+    def _load_engine(self):
+      import tensorrt as trt
+      with open(trt_engine_path, 'rb') as f, trt.Runtime(self.trt_logger) as runtime:
+        return runtime.deserialize_cuda_engine(f.read())
 
   start = time.time()
   print('loading %s' % trt_engine_path)
-  trt_yolo = TrtYOLO(
-    trt_engine_path.replace('.trt', ''), # ctor adds this suffix
+  trt_yolo = MyTrtYOLO(
+    '', # ignored in our subclass
     model_hw,
     category_num=model_num_categories)
   engine_load_time = time.time() - start
