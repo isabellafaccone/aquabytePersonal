@@ -5,6 +5,12 @@ FROM $BASE_IMAGE AS builder
 
 ENV DEBIAN_FRONTEND noninteractive
 
+# Identify this image as the darknet training image
+RUN touch /opt/i_am_darknet_trainer
+
+# Create an empty scratch dir; on the lambda quads use the 8TB drive
+RUN mkdir -p /opt/mft-pg-scratch
+
 RUN apt-get update \
       && apt-get install --no-install-recommends --no-install-suggests -y gnupg2 ca-certificates \
             git build-essential libopencv-dev \
@@ -46,5 +52,11 @@ RUN apt-get update \
 
 RUN curl -sSL https://bootstrap.pypa.io/pip/3.5/get-pip.py -o get-pip.py && \
       python3 get-pip.py "pip < 21.0" "setuptools < 50.0" "wheel < 1.0"
-RUN pip install imageio pandas imageio-ffmpeg
+RUN pip install \
+      imageio \
+      pandas \
+      imageio-ffmpeg \
+      click \
+      mlflow==1.16.0
 
+ENV PYTHONPATH $PYTHONPATH:/opt/mft-pg/mft_utils
