@@ -126,17 +126,21 @@ DATASET_NAME_TO_ITER_FACTORY = {
 def run_yolo_detect(
       config_path='yolov3-fish.cfg',
       weight_path='/outer_root/data8tb/pwais/yolo_fish_second/yolov3-fish_last.weights',
-      meta_path='fish.data',
-      class_to_id={b'idk': 0, b'FISH': 1},
+      meta_path='fish.data', # Needed for class names
       img_paths=[]):
   
+  # This import (typically) comes from /opt/darknet in the
+  # dockerized environment
   import darknet
-  import imageio
+  
   import time
 
   ## Based on darknet.performDetect()
 
-  net = darknet.load_net_custom(config_path.encode("ascii"), weight_path.encode("ascii"), 0, 1)  # batch size = 1
+  net = darknet.load_net_custom(
+                  config_path.encode("ascii"),
+                  weight_path.encode("ascii"),
+                  0, 1)  # batch size = 1
   meta = darknet.load_meta(meta_path.encode("ascii"))
   thresh = 0.25
   
@@ -149,7 +153,7 @@ def run_yolo_detect(
     latency_ms = 1e-3 * (time.time() - start)
     boxes = []
     for detection in detections:
-      label = detection[0]
+      pred_class = detection[0]
       confidence = detection[1]
       bounds = detection[2]
       # h, w = img.shape[:2]
@@ -163,17 +167,14 @@ def run_yolo_detect(
       xCoord = int(bounds[0] - bounds[2]/2)
       yCoord = int(bounds[1] - bounds[3]/2)
 
-      boxes.append({
-        'label': label,
-        'class_id': class_to_id[label],
-        'confidence': confidence,
-        
-        # Use a format friendly to motrackers package
-        'x_min_pixels': xCoord,
-        'y_min_pixels': yCoord,
-        'width_pixels': xEntent,
-        'height_pixels': yExtent,
-      })
+      boxes.append(
+        BBox2D(
+          category_name=pred_class,
+          x=xCoord,
+          y=yCoord,
+          width=xEntent,
+          height=yExtent,
+          score=confidence))
     rows.append({
       'img_path': path,
       'boxes': boxes,
@@ -181,7 +182,7 @@ def run_yolo_detect(
     })
 
     if (i % 100) == 0:
-      print('detected', i)
+      print('detected', i+1, ' of ', len(img_paths))
 
   df = pd.DataFrame(rows)
 
@@ -198,19 +199,26 @@ class DarknetRunner(DetectorRunner):
     self._artifact_dir = artifact_dir
 
   def __call__(self, iter_img_gts):
-    config_path = ''
-    weight_path = ''
-    meta_path = ''
-    class_to_id = {}
+    config_path = os.path.join(self._artifact_dir, 'yolov3.cfg')
+    weight_path = os.path.join(self._artifact_dir, 'yolov3_final.weights')
+
+    # Make a fake meta file that just references the names file we need
+    names_path = os.path.join(self._artifact_dir, 'names.names')
+
+    import tempfile
+    meta_path = tempfile.NamedTemporaryFile(suffix='.darknet.meta').name
+    with open(meta_path, 'w') as f:
+      f.write("names=" + names_path + '\n')
+    
     df = run_yolo_detect(
           config_path=config_path,
           weight_path=weight_path,
           meta_path=meta_path,
-          class_to_id=class_to_id,
-          img_paths=(o.img_path for o in iter_img_gts))
+          img_paths=[o.img_path for o in iter_img_gts])
     return df
 
 def create_runner_from_artifacts(artifact_dir):
+  assert False, (os.path.join(artifact_dir, 'yolov3_final.weights'), os.path.exists(os.path.join(artifact_dir, 'yolov3_final.weights')))
   if os.path.exists(os.path.join(artifact_dir, 'yolov3_final.weights')):
     return DarknetRunner(artifact_dir)
   else:
@@ -233,12 +241,15 @@ def create_runner_from_artifacts(artifact_dir):
   help="Use the model artifacts at this directory path (optional)")
 @click.option("--detect_on_dataset", default="gopro1_fish_test",
   help="Create a detection fixture using this input")
+@click.option("--detect_limit", default=-1,
+  help="For testing, only run detection on this many samples")
 @click.option("--save_to", default="", 
   help="Leave blank to write to a tempfile & log via mlflow")
 def create_detection_fixture(
       use_model_run_id,
       use_model_artifact_dir,
       detect_on_dataset,
+      detect_limit,
       save_to):
   
   if use_model_run_id and not use_model_artifact_dir:
@@ -254,13 +265,18 @@ def create_detection_fixture(
   iter_factory = DATASET_NAME_TO_ITER_FACTORY[detect_on_dataset]
   iter_img_gts = iter_factory()
 
+  if detect_limit >= 0:
+    import itertools
+    iter_img_gts = itertools.islice(iter_img_gts, detect_limit)
+
   detector_runner = create_runner_from_artifacts(use_model_artifact_dir)
   
   with mlflow.start_run() as mlrun:
     import time
     print('running detector ...')
+    start = time.time()
     df = detector_runner(iter_img_gts)
-    d_time = time.time() - stat
+    d_time = time.time() - start
     print('done running in', d_time)
     mlflow.log_param('total_detection_time_sec', d_time)
 
