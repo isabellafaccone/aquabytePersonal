@@ -10,31 +10,33 @@ entry_points:
   
   build_docker_envs_x86:
     command: >
-      cd detection/inference/docker_x86 && 
-        docker build -t mft-pg-inference-x86 .
-      cd detection/training/darknet/docker && 
-        docker build -t mft-pg-darknet-train .
+      cd detection/inference/docker_x86 && \
+        docker build -t mft-pg-inference-x86 . && \
+      cd - && \
+      cd detection/training/darknet/docker && \
+        docker build -t mft-pg-darknet-train . && \
+      cd -
   
   build_docker_envs_arm:
     command: >
-      cd detection/inference/docker_jetson && 
+      cd detection/inference/docker_jetson && \
         docker build -t mft-pg-inference-jetson .
 
   train_yolo_darknet:
     parameters:
       scratch_dir: {type: string, default: /opt/mft-pg-scratch}
-      dataset_name: {type: string, default: gopro1_fish}
-      width: {type: int, default: 416}
-      height: {type: int, default: 416}
+      dataset_name: {type: string, default: gopro1_fish_train}
+      input_width: {type: int, default: 416}
+      input_height: {type: int, default: 416}
       max_batches: {type: int, default: 300000}
       finetune_from_imagenet: {type: bool, default: True}
     command: >
-      python3 detection/training/darknet/train.py 
-        --scratch_dir {scratch_dir}
-        --dataset_name {dataset_name}
-        --width {width}
-        --height {height}
-        --max_batches {max_batches}
+      python3 detection/training/darknet/train.py \
+        --scratch_dir {scratch_dir} \
+        --dataset_name {dataset_name} \
+        --width {input_width} \
+        --height {input_height} \
+        --max_batches {max_batches} \
         --finetune_from_imagenet {finetune_from_imagenet}
 
 

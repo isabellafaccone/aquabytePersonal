@@ -52,11 +52,16 @@ RUN apt-get update \
 
 RUN curl -sSL https://bootstrap.pypa.io/pip/3.5/get-pip.py -o get-pip.py && \
       python3 get-pip.py "pip < 21.0" "setuptools < 50.0" "wheel < 1.0"
-RUN pip install \
+RUN pip3 install \
       imageio \
       pandas \
+      ipython \
       imageio-ffmpeg \
       click \
-      mlflow==1.16.0
+      mlflow==1.14.1
+
+# Thanks alot click
+ENV LC_ALL C.UTF-8
+ENV LANG C.UTF-8
 
 ENV PYTHONPATH $PYTHONPATH:/opt/mft-pg/mft_utils

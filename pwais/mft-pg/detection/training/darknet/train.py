@@ -1,9 +1,12 @@
-import tempfile
 import os
+
 import mlflow
 import click
 
-from mtf_utils import misc as mft_misc
+from mft_utils import misc as mft_misc
+
+
+PRETRAINED_WEIGHTS_DEFAULT_PATH = '/tmp/darknet53.conv.74'
 
 
 def convert_to_yolo_format(
@@ -32,7 +35,8 @@ def convert_to_yolo_format(
   print("Saving to %s" % out_yolo_dir)
   mft_misc.mkdir(out_yolo_dir)
 
-  # Read and cache the image path only once
+  # Read and cache the image dims only once; they're from a video so all
+  # the same
   h = None
   w = None
 
@@ -89,26 +93,30 @@ def convert_to_yolo_format(
     dest = os.path.join(out_yolo_dir, dest_label_fname)
     with open(dest, 'w') as f:
       f.write('\n'.join(yolo_label_lines))
-    print('saved', dest)
+    # print('saved', dest)
 
   with open(out_train_txt_path, 'w') as f:
     f.write('\n'.join(train_txt_lines))
   print('saved', out_train_txt_path)
 
   with open(out_names_path, 'w') as f:
-    f.write('bkg')            # Class 0
-    f.write(positive_class)   # Class 1
+    f.write('\n'.join((
+      'bkg',          # Class 0
+      positive_class  # Class 1
+    )))
   print('saved', out_names_path)
 
   with open(out_data_path, 'w') as f:
     train_fname = os.path.basename(out_train_txt_path)
     names_fname = os.path.basename(out_names_path)
-    f.write('classes=2')
-    f.write('train=' + train_fname)
-    f.write('valid=' + train_fname)  # IDK if this does anything
-    f.write('eval=' + train_fname)   # I think this makes it compute mAP on the training set?
-    f.write('names=' + names_fname)  # I think it needs this for debug images
-    # f.write('backup='+ )
+    f.write('\n'.join((
+      'classes=2',
+      'train=' + train_fname,
+      'valid=' + train_fname, # I think this makes it compute mAP on the training set?
+      # 'eval=' + train_fname,  # IDK if this does anything
+      'names=' + names_fname, # I think it needs this for debug images
+      'backup=.',
+    )))
   print('saved', out_data_path)
 
 def create_model_config_str(
@@ -124,11 +132,11 @@ def create_model_config_str(
     config_txt = f.read()
 
   if 'width' in model_params:
-    config_txt.replace('width=416', 'width=' + str(model_params['width']))
+    config_txt = config_txt.replace('width=416', 'width=' + str(model_params['width']))
   if 'height' in model_params:
-    config_txt.replace('height=416', 'height=' + str(model_params['height']))
+    config_txt = config_txt.replace('height=416', 'height=' + str(model_params['height']))
   if 'max_batches' in model_params:
-    config_txt.replace('max_batches = 500200', 'max_batches=' + str(model_params['max_batches']))
+    config_txt = config_txt.replace('max_batches = 500200', 'max_batches=' + str(model_params['max_batches']))
 
   return config_txt
 
@@ -140,18 +148,28 @@ def install_dataset(mlflow, model_workdir, dataset_name):
     else:
       positive_class = 'HEAD'
     
+    assert 'train' in dataset_name
+
+    out_names_path = os.path.join(model_workdir, 'names.names')
     cparams = dict(
       in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/train/gopro_fish_head_anns.csv',
       imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/',
       out_yolo_dir=os.path.join(model_workdir, 'gopro_fish_head_anns.csv.yolov3.annos'),
       out_train_txt_path=os.path.join(model_workdir, 'train.txt'),
-      out_names_path=os.path.join(model_workdir, 'names.names'),
+      out_names_path=out_names_path,
       out_data_path=os.path.join(model_workdir, 'data.data'),
       positive_class=positive_class,
     )
     for k, v in cparams.items():
       mlflow.log_param('convert_to_yolo_format.' + k, v)
+    
+    import time
+    start = time.time()
     convert_to_yolo_format(**cparams)
+    mlflow.log_param('convert_to_yolo_format_time_sec', time.time() - start)
+
+    # Need this for inference... it's not in the model config
+    mlflow.log_artifact(out_names_path)
 
   else:
     raise ValueError("Don't know how to train on %s" % dataset_name)
@@ -170,16 +188,23 @@ def install_model_config(
   dest = os.path.join(model_workdir, 'yolov3.cfg')
   with open(dest, 'w') as f:
     f.write(config_txt)
+  print("saved model config", dest)
+  mlflow.log_artifact(dest)
   
   if model_params.get('finetune_from_imagenet'):
-    mft_misc.run_cmd(
-      "cd {model_workdir} && wget {weights_url}".format(
-        model_workdir=model_workdir,
+    if not os.path.exists(PRETRAINED_WEIGHTS_DEFAULT_PATH):
+      mft_misc.run_cmd(
+        "cd /tmp && wget {weights_url}".format(
+          model_workdir=model_workdir,
 
-        # From https://github.com/AlexeyAB/darknet/tree/Yolo_v3#pre-trained-models-for-different-cfg-files-can-be-downloaded-from-smaller---faster--lower-quality
-        # Maybe this is mscoco actually? IDK
-        weights_url='https://pjreddie.com/media/files/darknet53.conv.74',
-      ))
+          # From https://github.com/AlexeyAB/darknet/tree/Yolo_v3#pre-trained-models-for-different-cfg-files-can-be-downloaded-from-smaller---faster--lower-quality
+          # Maybe this is mscoco actually? IDK
+          weights_url='https://pjreddie.com/media/files/darknet53.conv.74',
+        ))
+    mft_misc.run_cmd(
+      "ln -s %s %s" % (
+        PRETRAINED_WEIGHTS_DEFAULT_PATH,
+        os.path.join(model_workdir, 'darknet53.conv.74')))
 
   
 
@@ -192,33 +217,39 @@ def run_darknet_training(mlflow, model_workdir):
 
   cmd = """
     cd {model_workdir} &&
-      darknet detector train data.data yolov3.cfg {pretrained_weights_path} -map -dont_show test.mp4  > train_log.txt 2>&1
+      darknet detector train data.data yolov3.cfg {pretrained_weights_path} -map -dont_show test.mp4  > train_log.txt
     """.format(
       model_workdir=model_workdir,
       pretrained_weights_path=pretrained_weights_path)
 
   mlflow.log_param('train_cmd', cmd)
+  print('Starting training in', model_workdir)
+  import time
+  start = time.time()
   mft_misc.run_cmd(cmd)
+  mlflow.log_param('training_time_sec', time.time() - start)
 
   mlflow.log_artifact(os.path.join(model_workdir, 'chart.png'))
   mlflow.log_artifact(os.path.join(model_workdir, 'train_log.txt'))
-  mlflow.log_artifact(os.path.join(model_workdir, 'yolov3_last.weights'))
+  mlflow.log_artifact(os.path.join(model_workdir, 'yolov3_final.weights'))
 
 
 @click.command(help="Train a Yolo fish (or fish head) detector using Darknet")
 @click.option("--scratch_dir", default="/tmp")
-@click.option("--dataset_name", default="gopro1_fish")
+@click.option("--dataset_name", default="gopro1_fish_train")
 @click.option("--width", default=416)
 @click.option("--height", default=416)
 @click.option("--max_batches", default=30000)
 @click.option("--finetune_from_imagenet", default=True)
+@click.option("--clean_scratch", default=True)
 def train_darknet_mlflow(
       scratch_dir,
       dataset_name,
       width,
       height,
       max_batches,
-      finetune_from_imagenet):
+      finetune_from_imagenet,
+      clean_scratch):
 
   assert os.path.exists('/opt/i_am_darknet_trainer'), \
     "This script may break if run outside of the darketn training container"
@@ -246,6 +277,10 @@ def train_darknet_mlflow(
       finetune_from_imagenet=finetune_from_imagenet)
     
     run_darknet_training(mlflow, model_workdir)
+  
+  if clean_scratch:
+    mft_misc.run_cmd("rm -rf %s" % model_workdir)
+    print("Cleaned scratch dir %s" % model_workdir)
 
 if __name__ == "__main__":
   train_darknet_mlflow()

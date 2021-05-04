@@ -14,7 +14,7 @@ that has CUDA 9 (e.g. the Lambda Quad machines).  We don't bother pushing
 the image to ECR because we anticipate we'll throw it away soon.
 
 ```
-cd $HOME/research-exploration/pwais/mft-pg/detection/training/darknet/docker
+cd detection/training/darknet/docker
 docker build -t mft-pg-darknet-train .
 ```
 
@@ -24,13 +24,14 @@ This command trains a model and saves the weights and debug assets to
 this source tree.
 
 ```
-cd $HOME/research-exploration/pwais/mft-pg/detection/training/darknet/
 nvidia-docker run --rm -it \
-  -v`pwd`/models/fish-body-v1:/opt/mft-pg-train  \
-  -v`pwd`/../../../datasets:/opt/datasets \
-  -w /opt/mft-pg-train \
+  --name=pwais-train-test \
+  -v/data8tb/pwais/mft-pg-scratch:/opt/mft-pg-scratch \
+  -v`pwd`:/opt/mft-pg \
+  -w /opt/mft-pg \
   -e CUDA_VISIBLE_DEVICES=3 \
-    mft-pg-darknet-train train.sh
+    mft-pg-darknet-train \
+      mlflow run . --no-conda -e train_yolo_darknet -Pmax_batches=20
 ```
 
 ## Generate a fixture of detection bounding boxes

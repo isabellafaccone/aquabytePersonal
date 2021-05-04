@@ -4,7 +4,10 @@ import attr
 import click
 import mlflow
 
-from mft_pg.bbox2d import BBox2D
+import pandas as pd
+
+from mft_utils import misc as mft_misc
+from mft_utils.bbox2d import BBox2D
 
 
 @attr.s(slots=True, eq=True)
@@ -17,9 +20,13 @@ class ImgWithBoxes(object):
   """bboxes: A list of `BBox2D` instances"""
 
 
+###############################################################################
+## Datasets
+
 def iter_gopro1_img_gts(
       in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/train/gopro_fish_head_anns.csv',
-      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/'):
+      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/',
+      only_classes=[]):
 
   # NB: adapted from convert_to_yolo_format() in mft-pg
   # Some day mebbe refactor to join them...
@@ -54,7 +61,9 @@ def iter_gopro1_img_gts(
     annos_raw = ast.literal_eval(row['annotation'])
     bboxes = []
     for anno in annos_raw['annotations']:
-      
+      if only_classes and anno['category'] not in only_classes:
+        continue
+
       if 'xCrop' not in anno:
         print('bad anno %s' % (row,))
         continue
@@ -67,7 +76,6 @@ def iter_gopro1_img_gts(
       bboxes.append(
         BBox2D(
           category_name=anno['category'],
-          
           x=x_pixels,
           y=y_pixels,
           width=w_pixels,
@@ -77,6 +85,43 @@ def iter_gopro1_img_gts(
 
     yield ImgWithBoxes(img_path=img_path, bboxes=bboxes)
 
+
+DATASET_NAME_TO_ITER_FACTORY = {
+  'gopro1_test': (lambda:
+    iter_gopro1_img_gts(
+      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/test/gopro_fish_head_anns.csv',
+      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/test/images/',
+      only_classes=[])),
+  'gopro1_train': (lambda:
+    iter_gopro1_img_gts(
+      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/train/gopro_fish_head_anns.csv',
+      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/',
+      only_classes=[])),
+  'gopro1_fish_test': (lambda:
+    iter_gopro1_img_gts(
+      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/test/gopro_fish_head_anns.csv',
+      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/test/images/',
+      only_classes=['FISH'])),
+  'gopro1_fish_train': (lambda:
+    iter_gopro1_img_gts(
+      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/train/gopro_fish_head_anns.csv',
+      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/',
+      only_classes=['FISH'])),
+  'gopro1_head_test': (lambda:
+    iter_gopro1_img_gts(
+      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/test/gopro_fish_head_anns.csv',
+      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/test/images/',
+      only_classes=['HEAD'])),
+  'gopro1_head_train': (lambda:
+    iter_gopro1_img_gts(
+      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/train/gopro_fish_head_anns.csv',
+      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/',
+      only_classes=['HEAD'])),
+}
+
+
+###############################################################################
+## Detection Runners
 
 def run_yolo_detect(
       config_path='yolov3-fish.cfg',
@@ -138,27 +183,63 @@ def run_yolo_detect(
     if (i % 100) == 0:
       print('detected', i)
 
-  import pandas as pd
   df = pd.DataFrame(rows)
 
   print("df['latency_ms'].mean()", df['latency_ms'].mean())
 
   return df
 
+class DetectorRunner(object):
+  def __call__(self, iter_img_gts):
+    return pd.DataFrame([])
+
+class DarknetRunner(DetectorRunner):
+  def __init__(self, artifact_dir):
+    self._artifact_dir = artifact_dir
+
+  def __call__(self, iter_img_gts):
+    config_path = ''
+    weight_path = ''
+    meta_path = ''
+    class_to_id = {}
+    df = run_yolo_detect(
+          config_path=config_path,
+          weight_path=weight_path,
+          meta_path=meta_path,
+          class_to_id=class_to_id,
+          img_paths=(o.img_path for o in iter_img_gts))
+    return df
+
+def create_runner_from_artifacts(artifact_dir):
+  if os.path.exists(os.path.join(artifact_dir, 'yolov3_final.weights')):
+    return DarknetRunner(artifact_dir)
+  else:
+    raise ValueError("Could not resolve detector for %s" % artifact_dir)
+
+
+
+# todo lets use this https://github.com/rafaelpadilla/review_object_detection_metrics
+
+
+
+
+
+
+
 @click.command(help="Run a detector and save detections as a Pandas Dataframe")
 @click.option("--use_model_run_id", default="",
   help="Use the model with this mlflow run ID (optional)")
 @click.option("--use_model_artifact_dir", default="",
   help="Use the model artifacts at this directory path (optional)")
-@click.option("--detect_on_dataset", default="gopro1_fish",
+@click.option("--detect_on_dataset", default="gopro1_fish_test",
   help="Create a detection fixture using this input")
-@click.option("--output", default="", 
+@click.option("--save_to", default="", 
   help="Leave blank to write to a tempfile & log via mlflow")
 def create_detection_fixture(
       use_model_run_id,
       use_model_artifact_dir,
       detect_on_dataset,
-      output):
+      save_to):
   
   if use_model_run_id and not use_model_artifact_dir:
     run = mlflow.get_run(use_model_run_id)
@@ -166,9 +247,30 @@ def create_detection_fixture(
   
   assert use_model_artifact_dir, "Need some model artifacts to run a model"
 
+  assert detect_on_dataset in DATASET_NAME_TO_ITER_FACTORY, \
+    "Requested %s but only have %s" % (
+      detect_on_dataset, DATASET_NAME_TO_ITER_FACTORY.keys())
 
+  iter_factory = DATASET_NAME_TO_ITER_FACTORY[detect_on_dataset]
+  iter_img_gts = iter_factory()
 
-    
+  detector_runner = create_runner_from_artifacts(use_model_artifact_dir)
+  
+  with mlflow.start_run() as mlrun:
+    import time
+    print('running detector ...')
+    df = detector_runner(iter_img_gts)
+    d_time = time.time() - stat
+    print('done running in', d_time)
+    mlflow.log_param('total_detection_time_sec', d_time)
+
+    if save_to:
+      df.to_csv(save_to)
+    else:
+      import tempfile
+      save_to = os.path.join(tempfile.gettempdir(), mlrun.info.run_id)
+      df.to_csv(save_to)
+      mlflow.log_artifact(save_to)
 
 if __name__ == "__main__":
   create_detection_fixture()
