@@ -218,7 +218,6 @@ class DarknetRunner(DetectorRunner):
     return df
 
 def create_runner_from_artifacts(artifact_dir):
-  assert False, (os.path.join(artifact_dir, 'yolov3_final.weights'), os.path.exists(os.path.join(artifact_dir, 'yolov3_final.weights')))
   if os.path.exists(os.path.join(artifact_dir, 'yolov3_final.weights')):
     return DarknetRunner(artifact_dir)
   else:
@@ -255,6 +254,9 @@ def create_detection_fixture(
   if use_model_run_id and not use_model_artifact_dir:
     run = mlflow.get_run(use_model_run_id)
     use_model_artifact_dir = run.info.artifact_uri
+    assert 'file://' in use_model_artifact_dir, \
+      "Only support local artifacts for now ..."
+    use_model_artifact_dir = use_model_artifact_dir.replace('file://', '')
   
   assert use_model_artifact_dir, "Need some model artifacts to run a model"
 
