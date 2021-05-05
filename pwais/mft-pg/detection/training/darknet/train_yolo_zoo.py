@@ -28,6 +28,8 @@ class TrainTask(object):
           entry_point="train_yolo_darknet",
           parameters=self.train_yolo_darknet_params,
           use_conda=False)
+
+      # Why do we have to log these again ..?
       mlflow.log_params(self.train_yolo_darknet_params)
       # succeeded = p.wait()
       # assert succeeded
