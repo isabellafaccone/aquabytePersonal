@@ -25,6 +25,19 @@ tracker tests
  ** test FPS ablation rate with that too
 
 
+want:
+ * yolo models for all sizes multiple-of-16; just run small max batch for now
+ * compute average recall for all of them
+ * compute mean inference for all of them
+ * train in parallel (eventually)
+
+ * a prediction script that does tensorRT
+
+ * note: can do scripts as separate runs or all in one run!!
+ 
+
+
+
 ### Tickets
 
   * https://aquabyte.atlassian.net/browse/ENGALL-2424

@@ -26,6 +26,7 @@ this source tree.
 ```
 nvidia-docker run --rm -it \
   --name=pwais-train-test \
+  --net=host \
   -v/data8tb/pwais/mft-pg-scratch:/opt/mft-pg-scratch \
   -v`pwd`:/opt/mft-pg \
   -w /opt/mft-pg \

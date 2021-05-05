@@ -30,6 +30,7 @@ entry_points:
       input_height: {type: int, default: 416}
       max_batches: {type: int, default: 300000}
       finetune_from_imagenet: {type: bool, default: True}
+      gpu_id: {type: int, default: -1}
     command: >
       python3 detection/training/darknet/train.py \
         --scratch_dir {scratch_dir} \
@@ -37,6 +38,40 @@ entry_points:
         --width {input_width} \
         --height {input_height} \
         --max_batches {max_batches} \
-        --finetune_from_imagenet {finetune_from_imagenet}
+        --finetune_from_imagenet {finetune_from_imagenet} \
+        --gpu_id {gpu_id}
 
+  create_detection_fixture:
+    parameters:
+      use_model_run_id: {type: string, default: ''}
+      use_model_artifact_dir: {type: string, default: ''}
+      detect_on_dataset: {type: string, default: gopro1_fish_test}
+      gpu_id: {type: int, default: -1}
+    command: >
+      python3 detection/inference/create_detection_fixture.py \
+        --use_model_run_id {use_model_run_id} \
+        --use_model_artifact_dir {use_model_artifact_dir} \
+        --detect_on_dataset {detect_on_dataset} \
+        --gpu_id {gpu_id}
+
+  train_yolo_zoo:
+    parameters:
+      scratch_dir: {type: string, default: /opt/mft-pg-scratch}
+      train_dataset_name: {type: string, default: gopro1_fish_train}
+      test_dataset_name: {type: string, default: gopro1_fish_test}
+      min_width: {type: int, default: 160}
+      max_width: {type: int, default: 1040}
+      width_step: {type: int, default: 32}
+      max_batches: {type: int, default: 100}
+      finetune_from_imagenet: {type: bool, default: True}
+    command: >
+      python3 detection/training/darknet/train_yolo_zoo.py \
+        --scratch_dir {scratch_dir} \
+        --train_dataset_name {train_dataset_name} \
+        --test_dataset_name {test_dataset_name} \
+        --min_width {min_width} \
+        --max_width {max_width} \
+        --width_step {width_step} \
+        --max_batches {max_batches} \
+        --finetune_from_imagenet {finetune_from_imagenet}
 

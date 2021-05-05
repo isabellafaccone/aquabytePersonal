@@ -150,7 +150,7 @@ def run_yolo_detect(
   for i, path in enumerate(img_paths):
     start = time.time()
     detections = darknet.detect(net, meta, path.encode("ascii"), thresh)
-    latency_ms = 1e-3 * (time.time() - start)
+    latency_sec = time.time() - start
     boxes = []
     for detection in detections:
       pred_class = detection[0]
@@ -161,6 +161,14 @@ def run_yolo_detect(
       # xExtent = int(x * bounds[2] / 100)
       # y = shape[0]
       # yExtent = int(y * bounds[3] / 100)
+      
+      # Sometimes weekly-trained models spit out invalid boxes
+      has_invalid = any(
+        (b in (float('inf'), float('-inf'), float('nan')))
+        for b in bounds)
+      if has_invalid:
+        continue
+
       yExtent = int(bounds[3])
       xEntent = int(bounds[2])
       # Coordinates are around the center
@@ -178,15 +186,15 @@ def run_yolo_detect(
     rows.append({
       'img_path': path,
       'boxes': boxes,
-      'latency_ms': latency_ms,
+      'latency_sec': latency_sec,
     })
 
-    if (i % 100) == 0:
+    if ((i+1) % 100) == 0:
       print('detected', i+1, ' of ', len(img_paths))
 
   df = pd.DataFrame(rows)
 
-  print("df['latency_ms'].mean()", df['latency_ms'].mean())
+  print("df['latency_sec'].mean()", df['latency_sec'].mean())
 
   return df
 
@@ -244,12 +252,15 @@ def create_runner_from_artifacts(artifact_dir):
   help="For testing, only run detection on this many samples")
 @click.option("--save_to", default="", 
   help="Leave blank to write to a tempfile & log via mlflow")
+@click.option("--gpu_id", default=-1,
+  help="Use this GPU (default: unrestricted)")
 def create_detection_fixture(
       use_model_run_id,
       use_model_artifact_dir,
       detect_on_dataset,
       detect_limit,
-      save_to):
+      save_to,
+      gpu_id):
   
   if use_model_run_id and not use_model_artifact_dir:
     run = mlflow.get_run(use_model_run_id)
@@ -273,22 +284,33 @@ def create_detection_fixture(
 
   detector_runner = create_runner_from_artifacts(use_model_artifact_dir)
   
+  if gpu_id > 0:
+    import os
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
+
   with mlflow.start_run() as mlrun:
+    mlflow.log_param('parent_run_id', use_model_run_id)
+
     import time
     print('running detector ...')
     start = time.time()
     df = detector_runner(iter_img_gts)
     d_time = time.time() - start
     print('done running in', d_time)
-    mlflow.log_param('total_detection_time_sec', d_time)
+    
+    mlflow.log_metric('mean_latency_ms', 1e3 * df['latency_sec'].mean())
+
+    mlflow.log_metric('total_detection_time_sec', d_time)
 
     if save_to:
-      df.to_csv(save_to)
+      df.to_pickle(save_to)
     else:
       import tempfile
-      save_to = os.path.join(tempfile.gettempdir(), mlrun.info.run_id)
-      df.to_csv(save_to)
+      fname = str(mlrun.info.run_id) + '_detections_df.pkl'
+      save_to = os.path.join(tempfile.gettempdir(), fname)
+      df.to_pickle(save_to)
       mlflow.log_artifact(save_to)
+    print('saved', save_to)
 
 if __name__ == "__main__":
   create_detection_fixture()

@@ -2,6 +2,7 @@ attrs
 click
 imageio
 imageio-ffmpeg
+jupyter
 mlflow==1.14.1
 pandas
-
+pycuda

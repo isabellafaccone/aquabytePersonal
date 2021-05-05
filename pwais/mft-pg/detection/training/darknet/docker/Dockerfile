@@ -55,9 +55,11 @@ RUN curl -sSL https://bootstrap.pypa.io/pip/3.5/get-pip.py -o get-pip.py && \
 RUN pip3 install \
       imageio \
       pandas \
+      pycuda \
       ipython \
       imageio-ffmpeg \
       click \
+      jupyter \
       mlflow==1.14.1
 
 # Thanks alot click

@@ -166,7 +166,7 @@ def install_dataset(mlflow, model_workdir, dataset_name):
     import time
     start = time.time()
     convert_to_yolo_format(**cparams)
-    mlflow.log_param('convert_to_yolo_format_time_sec', time.time() - start)
+    mlflow.log_metric('convert_to_yolo_format_time_sec', time.time() - start)
 
     # Need this for inference... it's not in the model config
     mlflow.log_artifact(out_names_path)
@@ -208,7 +208,7 @@ def install_model_config(
 
   
 
-def run_darknet_training(mlflow, model_workdir):
+def run_darknet_training(mlflow, model_workdir, gpu_id):
   
   pretrained_weights_path = ''
   if os.path.exists(os.path.join(model_workdir, 'darknet53.conv.74')):
@@ -217,17 +217,18 @@ def run_darknet_training(mlflow, model_workdir):
 
   cmd = """
     cd {model_workdir} &&
-      darknet detector train data.data yolov3.cfg {pretrained_weights_path} -map -dont_show test.mp4  > train_log.txt
+      {gpu_prefix} darknet detector train data.data yolov3.cfg {pretrained_weights_path} -map -dont_show test.mp4  > train_log.txt
     """.format(
       model_workdir=model_workdir,
-      pretrained_weights_path=pretrained_weights_path)
+      pretrained_weights_path=pretrained_weights_path,
+      gpu_prefix="CUDA_VISIBLE_DEVICES=%s" % gpu_id if gpu_id >= 0 else "")
 
   mlflow.log_param('train_cmd', cmd)
   print('Starting training in', model_workdir)
   import time
   start = time.time()
   mft_misc.run_cmd(cmd)
-  mlflow.log_param('training_time_sec', time.time() - start)
+  mlflow.log_metric('training_time_sec', time.time() - start)
 
   mlflow.log_artifact(os.path.join(model_workdir, 'chart.png'))
   mlflow.log_artifact(os.path.join(model_workdir, 'train_log.txt'))
@@ -242,6 +243,7 @@ def run_darknet_training(mlflow, model_workdir):
 @click.option("--max_batches", default=30000)
 @click.option("--finetune_from_imagenet", default=True)
 @click.option("--clean_scratch", default=True)
+@click.option("--gpu_id", default=-1)
 def train_darknet_mlflow(
       scratch_dir,
       dataset_name,
@@ -249,7 +251,8 @@ def train_darknet_mlflow(
       height,
       max_batches,
       finetune_from_imagenet,
-      clean_scratch):
+      clean_scratch,
+      gpu_id):
 
   assert os.path.exists('/opt/i_am_darknet_trainer'), \
     "This script may break if run outside of the darketn training container"
@@ -276,7 +279,7 @@ def train_darknet_mlflow(
       max_batches=max_batches,
       finetune_from_imagenet=finetune_from_imagenet)
     
-    run_darknet_training(mlflow, model_workdir)
+    run_darknet_training(mlflow, model_workdir, gpu_id)
   
   if clean_scratch:
     mft_misc.run_cmd("rm -rf %s" % model_workdir)
