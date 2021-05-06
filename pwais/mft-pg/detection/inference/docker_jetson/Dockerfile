@@ -1,8 +1,16 @@
-
-# doh !!! this one is missing tensorRT headers:
-FROM nvcr.io/nvidia/l4t-ml:r32.5.0-py3
+FROM nvcr.io/nvidia/l4t-ml:r32.4.3-py3
 
 ENV DEBIAN_FRONTEND noninteractive
+
+# doh !!! this one is missing tensorRT headers:
+RUN \
+  apt-get update && apt-get install -y software-properties-common && \
+  apt-key adv --fetch-key https://repo.download.nvidia.com/jetson/jetson-ota-public.asc && \
+  echo "deb https://repo.download.nvidia.com/jetson/common r32.4 main" > /etc/apt/sources.list.d/nvidia-l4t-apt-source.list && \
+  echo "deb https://repo.download.nvidia.com/jetson/t186 r32.4 main" >> /etc/apt/sources.list.d/nvidia-l4t-apt-source.list && \
+  apt-get update && \
+  apt-get install -y libnvinfer-dev libnvinfer-plugin-dev python3-libnvinfer-dev
+
 RUN \
   apt-get update && apt-get install -y \
     sudo wget curl vim git 
