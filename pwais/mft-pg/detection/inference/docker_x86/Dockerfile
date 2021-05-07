@@ -26,4 +26,4 @@ ENV PYTHONPATH $PYTHONPATH:/opt/tensorrt_demos
 RUN \
   echo "need to edit tensorrt_demos have /opt/tensorrt_demos/plugins/libyolo_layer.so instead of ./plugins/libyolo_layer.so :(" && \
   sed -i 's/\.\/plugins\/libyolo_layer\.so/\/opt\/tensorrt_demos\/plugins\/libyolo_layer\.so/g' /opt/tensorrt_demos/utils/yolo_with_plugins.py && \
-  sed -i 's/\.\/plugins\/libyolo_layer\.so/\/opt\/tensorrt_demos\/plugins\/libyolo_layer\.so/g' /opt/tensorrt_demos/yolo/plugins.py && \
+  sed -i 's/\.\.\/plugins\/libyolo_layer\.so/\/opt\/tensorrt_demos\/plugins\/libyolo_layer\.so/g' /opt/tensorrt_demos/yolo/plugins.py

@@ -72,6 +72,8 @@ sudo apt-get install \
   cuda-curand-dev-10-2 \
   cuda-toolkit-10-2 \
   cuda-tools-10-2
+  python3-libnvinfer-dev \
+  python3-opencv
 ```
 
 Test that you have some needed CUDA libs on the host:

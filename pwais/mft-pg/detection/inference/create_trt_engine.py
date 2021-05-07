@@ -11,6 +11,7 @@ def create_trt_from_darknet_yolo(
 
   # parse the conf and get the width height and do yolov3-WxH.cfg
   # yolo_to_onnx.py --category_num={yolo_num_categories} -m {yolo_conf_path}
+  # python3 /opt/tensorrt_demos/yolo/yolo_to_onnx.py --category_num=2 -m yolov3-416
 
   # rename the weights to match {yolo_conf_path} !
   # onnx_to_tensorrt.py -v --category_num={yolo_num_categories} -m {yolo_conf_path}

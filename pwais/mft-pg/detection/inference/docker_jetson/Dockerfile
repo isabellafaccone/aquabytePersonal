@@ -2,19 +2,27 @@ FROM nvcr.io/nvidia/l4t-ml:r32.4.3-py3
 
 ENV DEBIAN_FRONTEND noninteractive
 
-# doh !!! this one is missing tensorRT headers:
+# NOTE:
+# Your host needs things like: libnvinfer
+# If you can't build this container, it might actually be your host
+# that is missing dependencies.
+
+# Doh, the base image is missing OpenCV
 RUN \
-  apt-get update && apt-get install -y software-properties-common && \
-  apt-key adv --fetch-key https://repo.download.nvidia.com/jetson/jetson-ota-public.asc && \
-  echo "deb https://repo.download.nvidia.com/jetson/common r32.4 main" > /etc/apt/sources.list.d/nvidia-l4t-apt-source.list && \
-  echo "deb https://repo.download.nvidia.com/jetson/t186 r32.4 main" >> /etc/apt/sources.list.d/nvidia-l4t-apt-source.list && \
   apt-get update && \
-  apt-get install -y libnvinfer-dev libnvinfer-plugin-dev python3-libnvinfer-dev
+  apt-get install -y --no-install-recommends  python3-opencv
+
+# # Doh, the base image is missing libnvToolsExt.so
+# # FMI https://forums.developer.nvidia.com/t/how-can-i-install-the-pytorch/108038/9
+# RUN \
+
 
 RUN \
   apt-get update && apt-get install -y \
     sudo wget curl vim git 
 RUN python3 -m pip install --upgrade pip
+RUN pip3 install imageio
+
 
 RUN \
   mkdir -p /opt && cd /opt && \
@@ -23,7 +31,33 @@ RUN \
 RUN \
   cd /opt/tensorrt_demos && \
   cd ssd && ./install_pycuda.sh && cd - && \
-  pip3 install onnx==1.4.1 && \
-  cd plugins && make && cd -
-ENV PYTHONPATH $PYTHONPATH:/opt/tensorrt_demos
+  pip3 install onnx==1.4.1
 
+# Doh, the base image is missing python tensorRT headers as well as the 
+# python tensorrt package
+RUN \
+  apt-get update && apt-get install -y software-properties-common && \
+  apt-key adv --fetch-key https://repo.download.nvidia.com/jetson/jetson-ota-public.asc && \
+  apt-get update && \
+  echo "deb https://repo.download.nvidia.com/jetson/common r32.4 main" > /etc/apt/sources.list.d/nvidia-l4t-apt-source.list && \
+  echo "deb https://repo.download.nvidia.com/jetson/t186 r32.4 main" >> /etc/apt/sources.list.d/nvidia-l4t-apt-source.list && \
+  apt-get update && \
+  (apt-get install -y --no-install-recommends python3-libnvinfer-dev || true)
+# blarg the above dies with
+# unable to remove newly-extracted version of '/usr/lib/python3.6/dist-packages/tensorrt/__init__.py': Read-only file system
+
+# Note this won't work for arm / jetson :(
+# RUN \
+#   pip3 install nvidia-pyindex && \
+#   pip3 install --upgrade nvidia-tensorrt
+
+RUN \
+  cd /opt/tensorrt_demos && \
+  cd plugins && make && cd -
+
+RUN \
+  echo "need to edit tensorrt_demos have /opt/tensorrt_demos/plugins/libyolo_layer.so instead of ./plugins/libyolo_layer.so :(" && \
+  sed -i 's/\.\/plugins\/libyolo_layer\.so/\/opt\/tensorrt_demos\/plugins\/libyolo_layer\.so/g' /opt/tensorrt_demos/utils/yolo_with_plugins.py && \
+  sed -i 's/\.\.\/plugins\/libyolo_layer\.so/\/opt\/tensorrt_demos\/plugins\/libyolo_layer\.so/g' /opt/tensorrt_demos/yolo/plugins.py
+
+ENV PYTHONPATH $PYTHONPATH:/opt/tensorrt_demos
