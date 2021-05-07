@@ -292,11 +292,9 @@ def create_detection_fixture(
     mlflow.log_param('parent_run_id', use_model_run_id)
 
     import time
-    print('running detector ...')
     start = time.time()
     df = detector_runner(iter_img_gts)
     d_time = time.time() - start
-    print('done running in', d_time)
     
     mlflow.log_metric('mean_latency_ms', 1e3 * df['latency_sec'].mean())
 

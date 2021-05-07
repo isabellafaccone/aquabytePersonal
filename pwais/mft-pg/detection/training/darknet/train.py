@@ -283,7 +283,6 @@ def train_darknet_mlflow(
   
   if clean_scratch:
     mft_misc.run_cmd("rm -rf %s" % model_workdir)
-    print("Cleaned scratch dir %s" % model_workdir)
 
 if __name__ == "__main__":
   train_darknet_mlflow()
