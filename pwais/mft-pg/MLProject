@@ -28,6 +28,7 @@ entry_points:
       dataset_name: {type: string, default: gopro1_fish_train}
       input_width: {type: int, default: 416}
       input_height: {type: int, default: 416}
+      batch_size: {type: int, default: 4}
       max_batches: {type: int, default: 300000}
       finetune_from_imagenet: {type: bool, default: True}
       gpu_id: {type: int, default: -1}
@@ -37,6 +38,7 @@ entry_points:
         --dataset_name {dataset_name} \
         --width {input_width} \
         --height {input_height} \
+        --batch_size {batch_size} \
         --max_batches {max_batches} \
         --finetune_from_imagenet {finetune_from_imagenet} \
         --gpu_id {gpu_id}
@@ -60,9 +62,10 @@ entry_points:
       train_dataset_name: {type: string, default: gopro1_fish_train}
       test_dataset_name: {type: string, default: gopro1_fish_test}
       min_width: {type: int, default: 160}
-      max_width: {type: int, default: 1040}
+      max_width: {type: int, default: 1024}
       width_step: {type: int, default: 32}
-      max_batches: {type: int, default: 100}
+      batch_size: {type: int, default: 4}
+      max_batches: {type: int, default: 10000}
       finetune_from_imagenet: {type: bool, default: True}
     command: >
       python3 detection/training/darknet/train_yolo_zoo.py \
@@ -72,6 +75,7 @@ entry_points:
         --min_width {min_width} \
         --max_width {max_width} \
         --width_step {width_step} \
+        --batch_size {batch_size} \
         --max_batches {max_batches} \
         --finetune_from_imagenet {finetune_from_imagenet}
 

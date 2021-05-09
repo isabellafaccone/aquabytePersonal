@@ -6,29 +6,6 @@ import mlflow
 
 from mft_utils import misc as mft_misc
 
-def _get_group_0(re_s, s):
-  import re
-  try:
-    return re.search(re_s, s).groups()[0]
-  except Exception as e:
-    raise Exception("%s %s %s" % (re_s, s, e))
-
-def _get_yolo_input_wh(yolo_config_path):
-  w, h = (None, None)
-  with open(yolo_config_path) as f:
-    for line in f.readlines():
-      if w is None and 'width' in line:
-        w = int(_get_group_0(r"width\W?=\W?(\d+)", line))
-      if h is None and 'height' in line:
-        h = int(_get_group_0(r"height\W?=\W?(\d+)", line))
-  return w, h
-
-def _get_yolo_category_num(yolo_config_path):
-  with open(yolo_config_path) as f:
-    for line in f.readlines():
-      if 'classes' in line:
-        category_num = int(_get_group_0(r"classes\W?=\W?(\d+)", line))
-        return category_num
 
 def create_trt_from_darknet_yolo(
       yolo_config_path="yolov3.cfg",
@@ -40,8 +17,8 @@ def create_trt_from_darknet_yolo(
   # with the name pattern `yolov3-WxH.cfg` where W and H are the
   # input image size.  Rather than hack up the scripts, we'll
   # just use symlinks to organize the inputs into an expected format.
-  w, h = _get_yolo_input_wh(yolo_config_path)
-  category_num = _get_yolo_category_num(yolo_config_path)
+  w, h = mft_misc.darknet_get_yolo_input_wh(yolo_config_path)
+  category_num = mft_misc.darknet_get_yolo_category_num(yolo_config_path)
 
   if 'yolov3' in yolo_config_path:
     mname = 'yolov3-%sx%s' % (w, h)

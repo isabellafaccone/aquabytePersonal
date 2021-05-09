@@ -32,6 +32,8 @@ def run_trt_yolo(
       model_hw=(416, 416),
       model_num_categories=2):
 
+
+
   import time
 
   import cv2

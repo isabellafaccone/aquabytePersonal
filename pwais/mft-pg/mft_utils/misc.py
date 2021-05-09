@@ -46,7 +46,7 @@ def run_cmd(cmd, collect=False, nolog=False):
   duration = time.time() - start
 
   if (not nolog) and (duration > 1):
-    log.info("... done ({:.2f} sec) with %s " % (cmd, duration))
+    log.info("... done ({:.2f} sec) with {} ".format(duration, cmd))
   return out
 
 @contextmanager
@@ -61,3 +61,43 @@ def error_friendly_tempdir(**kwargs):
   finally:
     import shutil
     shutil.rmtree(dirpath)
+
+def futures_threadpool_safe_pmap(f, iargs, threadpool_kwargs):
+  from concurrent.futures import ThreadPoolExecutor
+  from concurrent.futures import as_completed
+
+  futures = []
+  with ThreadPoolExecutor(**threadpool_kwargs) as executor:
+    for arg in iargs:
+      futures.append(executor.submit(f, arg))
+    for future in as_completed(futures):
+      yield future.result()
+      
+def foreach_threadpool_safe_pmap(f, iargs, threadpool_kwargs):
+  return list(futures_threadpool_safe_pmap(f, iargs, threadpool_kwargs))
+
+
+
+def _get_group_0(re_s, s):
+  import re
+  try:
+    return re.search(re_s, s).groups()[0]
+  except Exception as e:
+    raise Exception("%s %s %s" % (re_s, s, e))
+
+def darknet_get_yolo_input_wh(yolo_config_path):
+  w, h = (None, None)
+  with open(yolo_config_path) as f:
+    for line in f.readlines():
+      if w is None and 'width' in line:
+        w = int(_get_group_0(r"width\W?=\W?(\d+)", line))
+      if h is None and 'height' in line:
+        h = int(_get_group_0(r"height\W?=\W?(\d+)", line))
+  return w, h
+
+def darknet_get_yolo_category_num(yolo_config_path):
+  with open(yolo_config_path) as f:
+    for line in f.readlines():
+      if 'classes' in line:
+        category_num = int(_get_group_0(r"classes\W?=\W?(\d+)", line))
+        return category_num

@@ -36,7 +36,7 @@ def iter_gopro1_img_gts(
   with open(in_csv_path, newline='') as f:
     rows = list(csv.DictReader(f))
 
-  print('Read %s rows from %s' % (len(rows), in_csv_path))
+  mft_misc.log.info('Read %s rows from %s' % (len(rows), in_csv_path))
 
   # Read and cache the image dims only once; they're from a video so all
   # the same
@@ -54,7 +54,7 @@ def iter_gopro1_img_gts(
       img = imageio.imread(img_path)
       h, w = img.shape[:2]
       
-      print("Images have dimensions width %s height %s" % (w, h))
+      mft_misc.log.info("Images have dimensions width %s height %s" % (w, h))
 
     # LOL those annotations aren't JSONs, they're string-ified python dicts :(
     import ast
@@ -121,7 +121,7 @@ DATASET_NAME_TO_ITER_FACTORY = {
 
 
 ###############################################################################
-## Detection Runners
+## Core Detection
 
 def run_yolo_detect(
       config_path='yolov3-fish.cfg',
@@ -190,17 +190,127 @@ def run_yolo_detect(
     })
 
     if ((i+1) % 100) == 0:
-      print('detected', i+1, ' of ', len(img_paths))
+      mft_misc.log.info('detected %s of %s' % (i+1, len(img_paths)))
 
   df = pd.DataFrame(rows)
 
-  print("df['latency_sec'].mean()", df['latency_sec'].mean())
-
   return df
+
+
+class YoloAVTTRTDetector(object):
+  """Wraps a TensorRT engine instance and provides basic inference
+  functionality.
+  """
+  
+  def __init__(self, trt_engine_path, input_hw, num_categories):
+    self._trt_yolo = None
+    self._engine_load_time_sec = -1.
+    self._input_hw = tuple(input_hw[0], input_hw[1])
+
+    import time
+    import os
+
+    assert os.path.exists('/opt/tensorrt_demos'), \
+      "This runner designed to work with https://github.com/jkjung-avt/tensorrt_demos"
+
+    import pycuda.autoinit  # This is needed for initializing CUDA driver
+    from utils.yolo_with_plugins import TrtYOLO
+      # From /opt/tensorrt_demos/utils/yolo_with_plugins.py
+
+    class MyTrtYOLO(TrtYOLO):
+      def _load_engine(self):
+        import tensorrt as trt
+        with open(trt_engine_path, 'rb') as f:
+          with trt.Runtime(self.trt_logger) as runtime:
+            return runtime.deserialize_cuda_engine(f.read())
+    
+    start = time.time()
+    mft_misc.log.info('Loading TRT engine %s' % trt_engine_path)
+    self._trt_yolo = MyTrtYOLO(
+        '', # ignored in our subclass
+        self._input_hw,
+        category_num=num_categories)
+    self._engine_load_time_sec = time.time() - start
+    mft_misc.log.info('Loaded TRT engine in %s' % self._engine_load_time_sec)
+
+  @property
+  def engine_load_time_sec(self):
+    return self._engine_load_time_sec
+  
+  def detect(
+        self,
+        img_or_path,
+        auto_resize=True,
+        confidence_thresh=0.25):
+    
+    import time
+
+    img = img_or_path
+    if not hasattr(img, 'shape'):
+      import imageio
+      img = imageio.imread(img)
+    
+    resize_time_sec = -1.
+    orig_input_hw = img.shape[:2]
+    if img.shape[:2] != self._input_hw:
+      # We will only resize the input if asked to do so
+      assert auto_resize, (img.shape[:2], '!=', self._input_hw)
+
+      import cv2
+      h, w = self._input_hw
+      start_resize = time.time()
+      img = cv2.resize(img, (w, h))
+      resize_time_sec = time.time() - start_resize
+
+    assert self._trt_yolo is not None
+
+    inf_start = time.time()
+    conf_th = 0.25
+    boxes, confs, clss = self._trt_yolo.detect(img, confidence_thresh)
+    inf_time = time.time() - inf_start
+
+    boxes = []
+    for bb, score, clazz in zip(boxes, confs, clss):
+      # These are all in units of pixels! :)
+      x_min, y_min, x_max, y_max = bb[0], bb[1], bb[2], bb[3]
+
+      if orig_input_hw != self._input_hw:
+        scale_y = orig_input_hw[0] / self._input_hw[0]
+        scale_x = orig_input_hw[1] / self._input_hw[1]
+        x_min = x_min * scale_x
+        y_min = y_min * scale_y
+        x_max = x_max * scale_x
+        y_max = y_max * scale_y
+
+      clazz = int(clazz)
+
+      boxes.append(
+        BBox2D(
+          category_name=str(clazz),
+          x=x_min,
+          y=y_min,
+          width=x_max - x_min + 1,
+          height=y_max - y_min + 1,
+          im_width=orig_input_hw[1],
+          im_height=orig_input_hw[0],
+          score=score,
+          extra={
+            'confidence_thresh': str(confidence_thresh),
+            'inference_time_sec': str(inf_time),
+            'resize_time_sec': str(resize_time_sec)
+          }))
+
+    return boxes
+
+
+
+###############################################################################
+## Detector Interface and Hooks
 
 class DetectorRunner(object):
   def __call__(self, iter_img_gts):
     return pd.DataFrame([])
+
 
 class DarknetRunner(DetectorRunner):
   def __init__(self, artifact_dir):
@@ -225,8 +335,52 @@ class DarknetRunner(DetectorRunner):
           img_paths=[o.img_path for o in iter_img_gts])
     return df
 
+
+class YoloTRTRunner(DetectorRunner):
+  def __init__(self, artifact_dir):
+    self._artifact_dir = artifact_dir
+
+  def __call__(self, iter_img_gts):
+    trt_engine_path = os.path.join(self._artifact_dir, 'yolov3.trt')
+    yolo_config_path = os.path.join(self._artifact_dir, 'yolov3.cfg')
+    
+    w, h = mft_misc.darknet_get_yolo_input_wh(yolo_config_path)
+    category_num = mft_misc.darknet_get_yolo_category_num(yolo_config_path)
+
+    detector = YoloAVTTRTDetector(trt_engine_path, (h, w), category_num)
+    
+    engine_load_time_sec = detector.engine_load_time_sec
+    mlflow.log_metric('trt_engine_load_time_sec', engine_load_time_sec)
+
+    rows = []
+    img_gts = list(iter_img_gts)
+    for i, o in enumerate(iter_img_gts):
+      img_path = o.img_path
+      boxes = detector.detect(img_path)
+
+      latency_sec = -1.
+      if boxes:
+        latency_sec = float(boxes[0].extra['inference_time_sec'])
+
+      rows.append({
+        'img_path': img_path,
+        'boxes': boxes,
+        'latency_sec': latency_sec,
+      })
+
+    if ((i+1) % 100) == 0:
+      mft_misc.log.info('Detected %s of %s' % (i+1, len(img_gts)))
+
+    df = pd.DataFrame(rows)
+    df['trt_engine_load_time_sec'] = engine_load_time_sec
+    return df
+
+
+
 def create_runner_from_artifacts(artifact_dir):
-  if os.path.exists(os.path.join(artifact_dir, 'yolov3_final.weights')):
+  if os.path.exists(os.path.join(artifact_dir, 'yolov3.trt')):
+    return YoloTRTRunner(artifact_dir)
+  elif os.path.exists(os.path.join(artifact_dir, 'yolov3_final.weights')):
     return DarknetRunner(artifact_dir)
   else:
     raise ValueError("Could not resolve detector for %s" % artifact_dir)
@@ -308,7 +462,8 @@ def create_detection_fixture(
       save_to = os.path.join(tempfile.gettempdir(), fname)
       df.to_pickle(save_to)
       mlflow.log_artifact(save_to)
-    print('saved', save_to)
+    mft_misc.log.info('Saved %s' % save_to)
+
 
 if __name__ == "__main__":
   create_detection_fixture()

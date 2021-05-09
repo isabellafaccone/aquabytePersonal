@@ -3,11 +3,11 @@ mlflow run --no-conda . --entry-point=train_yolo_zoo
 
 """
 
-from concurrent.futures import ThreadPoolExecutor
-
 import attr
 import click
 import mlflow
+
+from mft_utils import misc as mft_misc
 
 def get_num_gpus():
   import pycuda.autoinit
@@ -58,12 +58,13 @@ class TrainTask(object):
 @click.option("--train_dataset_name", default="gopro1_fish_train")
 @click.option("--test_dataset_name", default="gopro1_fish_test")
 @click.option("--min_width", default=16*10)
-@click.option("--max_width", default=16*65)
+@click.option("--max_width", default=16*64)
 @click.option("--width_step", default=16*2)
-@click.option("--skip_eval", default=False)
-@click.option("--max_batches", default=100)
+@click.option("--batch_size", default=1) # Save memory on 1080Tis
+@click.option("--max_batches", default=10000)
 @click.option("--finetune_from_imagenet", default=True)
 @click.option("--leave_gpu0_free", default=True)
+@click.option("--skip_eval", default=False)
 @click.option("--parallel", default=True)
 def train_yolo_zoo(
       scratch_dir,
@@ -72,10 +73,11 @@ def train_yolo_zoo(
       min_width,
       max_width,
       width_step,
-      skip_eval,
+      batch_size,
       max_batches,
       finetune_from_imagenet,
       leave_gpu0_free,
+      skip_eval,
       parallel):
   
   # We will round-robin assign GPUS
@@ -101,8 +103,9 @@ def train_yolo_zoo(
           scratch_dir=scratch_dir,
           dataset_name=train_dataset_name,
           input_width=width,
-          input_height=width, # For now we just do one aspect ratio
+          input_height=width,       # For now we just do one aspect ratio
           max_batches=max_batches,
+          batch_size=batch_size,    
           finetune_from_imagenet=finetune_from_imagenet,
           gpu_id=six.next(iter_gpu_ids),
         ),
@@ -120,10 +123,15 @@ def train_yolo_zoo(
 
     print('num tasks', len(tasks))
     # x = [t.run() for t in tasks]
-    with ThreadPoolExecutor(max_workers=n_workers) as executor:
-      _ = executor.map(lambda t: t.run(), tasks)
+    mft_misc.foreach_threadpool_safe_pmap(
+      lambda t: t.run(),
+      tasks,
+      {'max_workers': n_workers})
 
-    mlflow.log_metric('total_zoo_time', time.time() - start)
+    # with ThreadPoolExecutor(max_workers=n_workers) as executor:
+    #   _ = executor.map(lambda t: t.run(), tasks)
+
+    mlflow.log_metric('total_zoo_train_time', time.time() - start)
 
 if __name__ == "__main__":
   train_yolo_zoo()

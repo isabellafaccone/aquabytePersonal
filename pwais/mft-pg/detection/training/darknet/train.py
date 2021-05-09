@@ -135,6 +135,10 @@ def create_model_config_str(
     config_txt = config_txt.replace('width=416', 'width=' + str(model_params['width']))
   if 'height' in model_params:
     config_txt = config_txt.replace('height=416', 'height=' + str(model_params['height']))
+  if 'batch_size' in model_params:
+    config_txt = config_txt.replace('batch=4', 'batch=' + str(model_params['batch_size']))
+    config_txt = config_txt.replace('subdivisions=1', 'subdivisions=' + str(model_params['batch_size']))
+      # Save memory
   if 'max_batches' in model_params:
     config_txt = config_txt.replace('max_batches = 500200', 'max_batches=' + str(model_params['max_batches']))
 
@@ -240,6 +244,7 @@ def run_darknet_training(mlflow, model_workdir, gpu_id):
 @click.option("--dataset_name", default="gopro1_fish_train")
 @click.option("--width", default=416)
 @click.option("--height", default=416)
+@click.option("--batch_size", default=4)
 @click.option("--max_batches", default=30000)
 @click.option("--finetune_from_imagenet", default=True)
 @click.option("--clean_scratch", default=True)
@@ -249,6 +254,7 @@ def train_darknet_mlflow(
       dataset_name,
       width,
       height,
+      batch_size,
       max_batches,
       finetune_from_imagenet,
       clean_scratch,
@@ -276,6 +282,7 @@ def train_darknet_mlflow(
       model_workdir,
       width=width,
       height=height,
+      batch_size=batch_size,
       max_batches=max_batches,
       finetune_from_imagenet=finetune_from_imagenet)
     
