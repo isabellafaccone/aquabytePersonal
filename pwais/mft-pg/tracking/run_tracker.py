@@ -17,7 +17,7 @@ from mft_utils.bbox2d import BBox2D
 #   from motrackers import CentroidTracker, CentroidKF_Tracker, SORT, IOUTracker
 #   from motrackers.utils import draw_tracks
 
-#   tracker = SORT(max_lost=3, tracker_output_format='mot_challenge', iou_threshold=0.3)
+#   tracker = SORT(max_lost=3, trakcer_output_format='mot_challenge', iou_threshold=0.3)
 
 #   writer = imageio.get_writer(debug_video_dest, fps=10)
 #   detections_df.sort_values('img_path')
