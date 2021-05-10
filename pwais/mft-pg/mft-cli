@@ -41,6 +41,45 @@ def run_cmd(cmd, collect=False):
   return out
 
 
+def enter_dockerized_shell(
+        image_name,
+        container_name='',
+        src_root='',
+        mnt_local_host_root=True,
+        start_only=False):
+  
+  if not container_name:
+    container_name = (
+      os.environ.get('USER', 'anon') + '-' + image_name)
+  local_mounts = ''
+  if src_root:
+    local_mounts = (
+      local_mounts + ' -v {src_root}:/opt/mft-pg:z'.format(src_root=src_root))
+  if mnt_local_host_root:
+    local_mounts = (local_mounts + ' -v /:/outer_root')
+
+  CMD = """
+      docker run
+        --runtime=nvidia
+        --name {container_name}
+        -d -it -P --net=host
+        -w /opt/mft-pg
+        {local_mounts}
+          {docker_image} sleep infinity || docker start {container_name} || true
+    """.format(
+          container_name=container_name,
+          local_mounts=local_mounts,
+          docker_image=image_name)
+  run_cmd(CMD)
+  
+  log.info(
+    "To delete this container, use: $ docker rm -f %s" % container_name)
+  
+  if not start_only:
+    EXEC_CMD = 'docker exec -it %s bash' % container_name
+    os.execvp("docker", EXEC_CMD.split(' '))
+  return container_name
+
 def create_arg_parser():
   import argparse
   
@@ -60,6 +99,15 @@ def create_arg_parser():
   parser.add_argument(
     '--build-docker', default=False, action='store_true',
     help='Build all available Docker environments')
+
+  parser.add_argument(
+    '--shell-inference', default=False, action='store_true',
+    help='Drop into a containerized inference shell')
+
+  parser.add_argument(
+    '--mlflow-ui', default='',
+    help='Start the MLFlow UI on the given port number.  Serves the '
+         'local `mlruns` directory')
 
   return parser
 
@@ -106,11 +154,37 @@ def main(args=None):
 
             cd detection/training/darknet/docker && \
             docker build -t mft-pg-darknet-train . && \
-            cd -
+            cd - 
+
         """.format(src_root=args.root))
+        # cd /tmp && \
+        #     git clone https://github.com/mlflow/mlflow mlflow && \
+        #     cd mlflow && \
+        #     git checkout v1.17.0 && \
+        #     docker build -t mft-pg-mlflow-ui .
     else:
       raise ValueError("Don't know how to build for %s" % host_arch)
 
+  if args.shell_inference:
+    host_arch = run_cmd("dpkg --print-architecture", collect=True)
+    host_arch = host_arch.strip()
+    
+    if host_arch == 'arm64':
+      enter_dockerized_shell('mft-pg-inference-arm64', src_root=args.root)
+    elif host_arch in ('amd64', 'x86_64'):
+      enter_dockerized_shell('mft-pg-inference-x86', src_root=args.root)
+  
+  elif args.mlflow_ui:
+    container_name = os.environ.get('USER', 'anon') + '-' + 'mlflow-ui'
+    container_name = enter_dockerized_shell(
+                        'mft-pg-inference-x86',
+                        container_name=container_name,
+                        src_root=args.root,
+                        start_only=True)
+    run_cmd("""
+        docker exec -it {container_name} nohup mlflow ui --port={port}
+      """.format(container_name=container_name, port=args.mlflow_ui))
+    
 
 if __name__ == '__main__':
   main()

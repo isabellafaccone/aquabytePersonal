@@ -11,6 +11,20 @@ RUN \
     python3-pip python3-opencv
 RUN python3 -m pip install --upgrade pip
 
+RUN pip3 install \
+      imageio \
+      pandas \
+      pycuda \
+      ipython \
+      imageio-ffmpeg \
+      click \
+      jupyter \
+      mlflow==1.14.1
+
+# Thanks alot click
+ENV LC_ALL C.UTF-8
+ENV LANG C.UTF-8
+
 # Install TRT demo stuff for yolo
 RUN \
   mkdir -p /opt && cd /opt && \

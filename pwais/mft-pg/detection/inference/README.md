@@ -106,7 +106,7 @@ sudo nvpmodel -m 2
 sudo /usr/bin/jetson_clocks --show
 ```
 
-### jtop for Jetson
+### Optional: jtop for Jetson
 
 Install `jtop` and python3 on the host:
 
@@ -117,6 +117,13 @@ sudo systemctl restart jetson_stats.service
 ```
 (You'll need to `sudo reboot`).
 
+### Optional: NFS-mount host code to TX2
+
+Since the TX2 only has 32GBytes of built-in disk, it can make development
+easier to mount the your code and artifacts on your x86 dev machine
+to the TX2.  This guide works (at the time of writing) for setting up
+an NFS export on an x86 host and consuming that export as a TX2 client:
+https://www.digitalocean.com/community/tutorials/how-to-set-up-an-nfs-mount-on-ubuntu-20-04
 
 
 
