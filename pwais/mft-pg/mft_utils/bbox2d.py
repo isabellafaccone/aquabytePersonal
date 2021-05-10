@@ -206,27 +206,29 @@ class BBox2D(object):
     c, r, w, h = self.x, self.y, self.width, self.height
     return img[r:r+h, c:c+w, :]
 
-  # def draw_in_image(self, img, color=None, thickness=2, category=None):
-  #   """Draw a bounding box in `np_image`.
+  def draw_in_image(
+        self,
+        img,
+        identify_by='category_name',
+        thickness=2):
+    """Draw a bounding box in `np_image`.
 
-  #   Args:
-  #     img (numpy.ndarray): Draw in this image.
-  #     color (tuple): an (r, g, b) tuple specifying the border color; by
-  #       default use a category-determined color.
-  #     thickness (int): thickness of the line in pixels.
-  #     category (str): override the label text drawn for this box; otherwise
-  #       use the `category` attribute; omit label text if either is empty
-  #   """
+    Args:
+      img (numpy.ndarray): Draw in this image.
+      identify_by (str): Auto-pick color and text by this attribute of
+        this instance.
+      thickness (int): Thickness of the line in pixels.
+    """
 
-  #   assert self.im_height == img.shape[0], (self.im_height, img.shape)
-  #   assert self.im_width == img.shape[1], (self.im_width, img.shape)
+    assert self.im_height == img.shape[0], (self.im_height, img.shape)
+    assert self.im_width == img.shape[1], (self.im_width, img.shape)
 
-  #   category = category or self.category_name
-  #   if not color:
-  #     from oarphpy.plotting import hash_to_rbg
-  #     color = hash_to_rbg(category)
+    id_value = getattr(self, identify_by)
 
-  #   from psegs.util.plotting import draw_bbox_in_image
-  #   draw_bbox_in_image(
-  #     img, self, color=color, thickness=thickness, label_txt=category)
+    from mft_utils.plotting import hash_to_rbg
+    color = hash_to_rbg(id_value)
+
+    from mft_utils.plotting import draw_bbox_in_image
+    draw_bbox_in_image(
+      img, self, color=color, thickness=thickness, label_txt=str(id_value))
 
