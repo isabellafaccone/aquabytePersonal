@@ -1,0 +1,116 @@
+#!/usr/bin/env python
+# vim: tabstop=2 shiftwidth=2 expandtab
+
+DESC = """
+mft-cli - This tool serves to both automate and document the MFT-PG
+development workflow.  This tool is designed to work on any host
+with Python 2.7, and on either an x86 host or an Arm host (e.g. Jetson TX2).
+
+## Example Usage
+$ ./mft-cli --pull-s3-artifacts
+Ensure the latest version of all S3 data & model artifacts are available.
+
+$ ./mft-cli --build-docker
+Build all available dockerized environments
+
+"""
+
+import os
+import subprocess
+import sys
+
+## Logging
+import logging
+LOG_FORMAT = "%(asctime)s\t%(name)-4s %(process)d : %(message)s"
+log = logging.getLogger("op")
+log.setLevel(logging.INFO)
+console_handler = logging.StreamHandler(sys.stderr)
+console_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+log.addHandler(console_handler)
+
+
+def run_cmd(cmd, collect=False):
+  cmd = cmd.replace('\n', '').strip()
+  log.info("Running %s ..." % cmd)
+  if collect:
+    out = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
+  else:
+    subprocess.check_call(cmd, shell=True)
+    out = None
+  log.info("... done with %s " % cmd)
+  return out
+
+
+def create_arg_parser():
+  import argparse
+  
+  parser = argparse.ArgumentParser(
+                      description=DESC,
+                      formatter_class=argparse.RawDescriptionHelpFormatter)
+  
+  # Configuration
+  parser.add_argument(
+    '--root', default=os.path.dirname(os.path.abspath(__file__)),
+    help='Use source at this root directory [default %(default)s]')
+
+  # Actions
+  parser.add_argument(
+    '--pull-s3-artifacts', default=False, action='store_true',
+    help='Pull the latest versions of all S3 artifacts')
+  parser.add_argument(
+    '--build-docker', default=False, action='store_true',
+    help='Build all available Docker environments')
+
+  return parser
+
+
+def main(args=None):
+  if not args:
+    parser = create_arg_parser()
+    args = parser.parse_args()
+  
+  if args.pull_s3_artifacts:
+    try:
+      run_cmd("aws --version")
+    except Exception as e:
+      raise ValueError("Host needs the awscli python package; %s" % (e,))
+    run_cmd("""
+      cd {src_root} && \
+        cd detection/models && \
+        aws s3 sync --size-only s3://aquabyte-research/pwais/mft-pg/detection_models_s3/ ./detection_models_s3/ && \
+        cd - && \
+
+        cd datasets && \
+        aws s3 sync --size-only s3://aquabyte-research/pwais/mft-pg/datasets_s3/ ./datasets_s3/ && \
+        cd -
+      """.format(src_root=args.root))
+  
+  if args.build_docker:
+    host_arch = run_cmd("dpkg --print-architecture", collect=True)
+    host_arch = host_arch.strip()
+    if host_arch == 'arm64':
+      run_cmd("""
+        echo "Building for ARM" && \
+          cd {src_root} && \
+            cd detection/inference/docker_jetson && \
+            docker build -t mft-pg-inference-arm64 . && \
+            cd -
+        """.format(src_root=args.root))
+    elif host_arch in ('amd64', 'x86_64'):
+      run_cmd("""
+        echo "Building for x86_64" && \
+          cd {src_root} && \
+            cd detection/inference/docker_x86 && \
+            docker build -t mft-pg-inference-x86 . && \
+            cd - && \
+
+            cd detection/training/darknet/docker && \
+            docker build -t mft-pg-darknet-train . && \
+            cd -
+        """.format(src_root=args.root))
+    else:
+      raise ValueError("Don't know how to build for %s" % host_arch)
+
+
+if __name__ == '__main__':
+  main()
