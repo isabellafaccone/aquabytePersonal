@@ -46,7 +46,8 @@ def enter_dockerized_shell(
         container_name='',
         src_root='',
         mnt_local_host_root=True,
-        start_only=False):
+        start_only=False,
+        include_trt=False):
   
   if not container_name:
     container_name = (
@@ -57,6 +58,12 @@ def enter_dockerized_shell(
       local_mounts + ' -v {src_root}:/opt/mft-pg:z'.format(src_root=src_root))
   if mnt_local_host_root:
     local_mounts = (local_mounts + ' -v /:/outer_root')
+  if include_trt:
+    trt_path = run_cmd(
+      "python3 -c 'import tensorrt as trt; print(trt.__file__)'", collect=True)
+    trt_path = trt_path.strip()
+    trt_path = os.path.dirname(trt_path)
+    local_mounts = (local_mounts + ' -v %s:%s' % (trt_path, trt_path))
 
   CMD = """
       docker run
@@ -170,7 +177,10 @@ def main(args=None):
     host_arch = host_arch.strip()
     
     if host_arch == 'arm64':
-      enter_dockerized_shell('mft-pg-inference-arm64', src_root=args.root)
+      enter_dockerized_shell(
+        'mft-pg-inference-arm64',
+        src_root=args.root,
+        include_trt=True)
     elif host_arch in ('amd64', 'x86_64'):
       enter_dockerized_shell('mft-pg-inference-x86', src_root=args.root)
   

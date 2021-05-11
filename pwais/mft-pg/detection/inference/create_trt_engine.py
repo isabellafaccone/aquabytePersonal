@@ -83,6 +83,12 @@ class AVTTRTDemosYoloBuilder(TRTBuilder):
     assert os.path.exists('/opt/tensorrt_demos'), \
       "This builder designed to work with https://github.com/jkjung-avt/tensorrt_demos"
     
+    if not os.path.exists('/opt/tensorrt_demos/plugins/libyolo_layer.so'):
+      mft_misc.log.info("Lazy-building Yolo plugin ...")
+      mft_misc.run_cmd("""
+        cd /opt/tensorrt_demos/plugins && make
+      """)
+
     yolo_config_path = os.path.join(self._artifact_dir, "yolov3.cfg")
     yolo_weights_path = os.path.join(self._artifact_dir, "yolov3_final.weights")
     create_trt_from_darknet_yolo(

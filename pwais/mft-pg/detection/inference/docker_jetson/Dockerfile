@@ -47,14 +47,24 @@ RUN \
 
 # Doh, the base image is missing python tensorRT headers as well as the 
 # python tensorrt package
-RUN \
-  apt-get update && apt-get install -y software-properties-common && \
-  apt-key adv --fetch-key https://repo.download.nvidia.com/jetson/jetson-ota-public.asc && \
-  apt-get update && \
-  echo "deb https://repo.download.nvidia.com/jetson/common r32.4 main" > /etc/apt/sources.list.d/nvidia-l4t-apt-source.list && \
-  echo "deb https://repo.download.nvidia.com/jetson/t186 r32.4 main" >> /etc/apt/sources.list.d/nvidia-l4t-apt-source.list && \
-  apt-get update && \
-  (apt-get install -y --no-install-recommends python3-libnvinfer-dev || true)
+# RUN \
+#   apt-get update && apt-get install -y software-properties-common && \
+#   apt-key adv --fetch-key https://repo.download.nvidia.com/jetson/jetson-ota-public.asc && \
+#   apt-get update && \
+#   echo "deb https://repo.download.nvidia.com/jetson/common r32.4 main" > /etc/apt/sources.list.d/nvidia-l4t-apt-source.list && \
+#   echo "deb https://repo.download.nvidia.com/jetson/t186 r32.4 main" >> /etc/apt/sources.list.d/nvidia-l4t-apt-source.list && \
+#   apt-get update && \
+#   apt-get install -y \
+#     nvidia-container-csv-cuda \
+#     nvidia-container-csv-cudnn \
+#     nvidia-container-csv-tensorrt \
+#     nvidia-container-csv-visionworks \
+#     cuda-curand-dev-10-2 \
+#     cuda-toolkit-10-2 \
+#     cuda-tools-10-2 \
+#     python3-libnvinfer-dev \
+#     python3-opencv
+  # (apt-get install -y --no-install-recommends python3-libnvinfer-dev || true)
 # blarg the above dies with
 # unable to remove newly-extracted version of '/usr/lib/python3.6/dist-packages/tensorrt/__init__.py': Read-only file system
 
@@ -63,9 +73,9 @@ RUN \
 #   pip3 install nvidia-pyindex && \
 #   pip3 install --upgrade nvidia-tensorrt
 
-RUN \
-  cd /opt/tensorrt_demos && \
-  cd plugins && make && cd -
+# RUN \
+#   cd /opt/tensorrt_demos && \
+#   cd plugins && make && cd -
 
 RUN \
   echo "need to edit tensorrt_demos have /opt/tensorrt_demos/plugins/libyolo_layer.so instead of ./plugins/libyolo_layer.so :(" && \
