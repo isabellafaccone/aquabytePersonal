@@ -7,11 +7,11 @@ import mlflow
 from mft_utils import misc as mft_misc
 
 
+
 def create_trt_from_darknet_yolo(
       yolo_config_path="yolov3.cfg",
       yolo_weights_path="yolov3.weights",
-      out_yolo_onnx_path="/tmp/yolov3.onnx",
-      out_trt_engine_path="/tmp/yolov3.trt"):
+      out_dir="/tmp/"):
 
   # The Yolo conversion scripts below take in config / weights files
   # with the name pattern `yolov3-WxH.cfg` where W and H are the
@@ -25,17 +25,18 @@ def create_trt_from_darknet_yolo(
   else:
     raise ValueError("Can't handle this yolo yet: %s" % yolo_config_path)
   
-  with mft_misc.error_friendly_tempdir() as tmpdirname:
-    conf_path = os.path.join(tmpdirname, mname + '.cfg')
-    weights_path = os.path.join(tmpdirname, mname + '.cfg')
-    onnx_path = os.path.join(tmpdirname, mname + '.onnx')
-    trt_engine_path = os.path.join(tmpdirname, mname + '.trt')
-    
+  with mft_misc.error_friendly_tempdir() as tempdirpath:
+    conf_path = os.path.join(tempdirpath, mname + '.cfg')
+    weights_path = os.path.join(tempdirpath, mname + '.weights')
+    onnx_path = os.path.join(tempdirpath, mname + '.onnx')
+    trt_engine_path = os.path.join(tempdirpath, mname + '.trt')
+
     mft_misc.run_cmd("ln -s %s %s" % (yolo_config_path, conf_path))
     mft_misc.run_cmd("ln -s %s %s" % (yolo_weights_path, weights_path))
 
     # Convert darknet -> ONNX
     mft_misc.run_cmd(f"""
+      cd {tempdirpath} && \
       python3 /opt/tensorrt_demos/yolo/yolo_to_onnx.py \
         --category_num={category_num} -m {mname}
     """)
@@ -43,11 +44,18 @@ def create_trt_from_darknet_yolo(
 
     # Convert ONNX -> TRT
     mft_misc.run_cmd(f"""
+      cd {tempdirpath} && \
       python3 /opt/tensorrt_demos/yolo/onnx_to_tensorrt.py \
         -v --category_num={category_num} -m {mname}
     """)
     assert os.path.exists(trt_engine_path), trt_engine_path
   
+    out_yolo_onnx_path = os.path.join(out_dir, 'yolov3.onnx')
+    out_trt_engine_path = os.path.join(
+                              out_dir,
+                              ('yolov3.' + 
+                                mft_misc.cuda_get_device_trt_engine_name() + 
+                                '.trt'))
     mft_misc.run_cmd("cp -v %s %s" % (onnx_path, out_yolo_onnx_path))
     mft_misc.run_cmd("cp -v %s %s" % (trt_engine_path, out_trt_engine_path))
 
@@ -76,14 +84,12 @@ class AVTTRTDemosYoloBuilder(TRTBuilder):
       "This builder designed to work with https://github.com/jkjung-avt/tensorrt_demos"
     
     yolo_config_path = os.path.join(self._artifact_dir, "yolov3.cfg")
-    yolo_weights_path = os.path.join(self._artifact_dir, "yolov3.weights")
-    out_yolo_onnx_path = os.path.join(workdir, "yolov3.onnx")
-    out_trt_engine_path = os.path.join(workdir, "yolov3.trt")
+    yolo_weights_path = os.path.join(self._artifact_dir, "yolov3_final.weights")
     create_trt_from_darknet_yolo(
       yolo_config_path=yolo_config_path,
       yolo_weights_path=yolo_weights_path,
-      out_yolo_onnx_path=out_yolo_onnx_path,
-      out_trt_engine_path=out_trt_engine_path)
+      out_dir=workdir)
+
 
 def create_trt_runner_from_artifacts(artifact_dir):
   if os.path.exists(os.path.join(artifact_dir, 'yolov3_final.weights')):
@@ -123,8 +129,9 @@ def create_trt_engine(
 
   trt_runner = create_trt_runner_from_artifacts(use_model_artifact_dir)
 
-  with mlflow.start_run() as mlrun:
-    mlflow.log_param('parent_run_id', use_model_run_id)
+  run_id = use_model_run_id or None
+  with mlflow.start_run(run_id=run_id) as mlrun:
+    mlflow.log_param('trt_parent_run_id', use_model_run_id)
 
     import time
     mft_misc.log.info('Runing TRT runner with workspace to %s ...' % workdir)

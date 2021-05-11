@@ -24,7 +24,7 @@ entry_points:
 
   train_yolo_darknet:
     parameters:
-      scratch_dir: {type: string, default: /opt/mft-pg-scratch}
+      scratch_dir: {type: string, default: /opt/mft-pg/scratch}
       dataset_name: {type: string, default: gopro1_fish_train}
       input_width: {type: int, default: 416}
       input_height: {type: int, default: 416}
@@ -58,7 +58,7 @@ entry_points:
 
   train_yolo_zoo:
     parameters:
-      scratch_dir: {type: string, default: /opt/mft-pg-scratch}
+      scratch_dir: {type: string, default: /opt/mft-pg/scratch}
       train_dataset_name: {type: string, default: gopro1_fish_train}
       test_dataset_name: {type: string, default: gopro1_fish_test}
       min_width: {type: int, default: 160}

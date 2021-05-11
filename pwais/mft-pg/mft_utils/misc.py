@@ -49,6 +49,15 @@ def run_cmd(cmd, collect=False, nolog=False):
     log.info("... done ({:.2f} sec) with {} ".format(duration, cmd))
   return out
 
+
+def cuda_get_device_trt_engine_name(gpu_id=0):
+  import pycuda.autoinit
+  import pycuda.driver as cuda
+  full_name = cuda.Device(gpu_id).name()
+  full_name = full_name.replace(' ', '.')
+  return full_name
+
+
 @contextmanager
 def error_friendly_tempdir(**kwargs):
   """Like `tempfile.TemporaryDirectory()`, but don't delete the tempdir
@@ -62,6 +71,7 @@ def error_friendly_tempdir(**kwargs):
     import shutil
     shutil.rmtree(dirpath)
 
+
 def futures_threadpool_safe_pmap(f, iargs, threadpool_kwargs):
   from concurrent.futures import ThreadPoolExecutor
   from concurrent.futures import as_completed
@@ -72,6 +82,7 @@ def futures_threadpool_safe_pmap(f, iargs, threadpool_kwargs):
       futures.append(executor.submit(f, arg))
     for future in as_completed(futures):
       yield future.result()
+
       
 def foreach_threadpool_safe_pmap(f, iargs, threadpool_kwargs):
   return list(futures_threadpool_safe_pmap(f, iargs, threadpool_kwargs))

@@ -205,10 +205,9 @@ class YoloAVTTRTDetector(object):
   def __init__(self, trt_engine_path, input_hw, num_categories):
     self._trt_yolo = None
     self._engine_load_time_sec = -1.
-    self._input_hw = tuple(input_hw[0], input_hw[1])
+    self._input_hw = (input_hw[0], input_hw[1])
 
     import time
-    import os
 
     assert os.path.exists('/opt/tensorrt_demos'), \
       "This runner designed to work with https://github.com/jkjung-avt/tensorrt_demos"
@@ -310,6 +309,10 @@ class YoloAVTTRTDetector(object):
 class DetectorRunner(object):
   def __call__(self, iter_img_gts):
     return pd.DataFrame([])
+  
+  @classmethod
+  def get_name(cls):
+    return str(cls.__name__)
 
 
 class DarknetRunner(DetectorRunner):
@@ -340,8 +343,15 @@ class YoloTRTRunner(DetectorRunner):
   def __init__(self, artifact_dir):
     self._artifact_dir = artifact_dir
 
+  @classmethod
+  def get_name(cls):
+    engine_name = mft_misc.cuda_get_device_trt_engine_name()
+    return str(cls.__name__) + '.' + engine_name
+
   def __call__(self, iter_img_gts):
-    trt_engine_path = os.path.join(self._artifact_dir, 'yolov3.trt')
+    engine_name = mft_misc.cuda_get_device_trt_engine_name()
+    trt_engine_path = os.path.join(
+                        self._artifact_dir, 'yolov3.%s.trt' % engine_name)
     yolo_config_path = os.path.join(self._artifact_dir, 'yolov3.cfg')
     
     w, h = mft_misc.darknet_get_yolo_input_wh(yolo_config_path)
@@ -354,12 +364,13 @@ class YoloTRTRunner(DetectorRunner):
 
     rows = []
     img_gts = list(iter_img_gts)
-    for i, o in enumerate(iter_img_gts):
+    for i, o in enumerate(img_gts):
       img_path = o.img_path
       boxes = detector.detect(img_path)
 
       latency_sec = -1.
       if boxes:
+        # TODO move this attrib away from bbox ..... 
         latency_sec = float(boxes[0].extra['inference_time_sec'])
 
       rows.append({
@@ -368,8 +379,8 @@ class YoloTRTRunner(DetectorRunner):
         'latency_sec': latency_sec,
       })
 
-    if ((i+1) % 100) == 0:
-      mft_misc.log.info('Detected %s of %s' % (i+1, len(img_gts)))
+      if ((i+1) % 100) == 0:
+        mft_misc.log.info('Detected %s of %s' % (i+1, len(img_gts)))
 
     df = pd.DataFrame(rows)
     df['trt_engine_load_time_sec'] = engine_load_time_sec
@@ -378,7 +389,8 @@ class YoloTRTRunner(DetectorRunner):
 
 
 def create_runner_from_artifacts(artifact_dir):
-  if os.path.exists(os.path.join(artifact_dir, 'yolov3.trt')):
+  engine_name = mft_misc.cuda_get_device_trt_engine_name()
+  if os.path.exists(os.path.join(artifact_dir, 'yolov3.%s.trt' % engine_name)):
     return YoloTRTRunner(artifact_dir)
   elif os.path.exists(os.path.join(artifact_dir, 'yolov3_final.weights')):
     return DarknetRunner(artifact_dir)
@@ -439,10 +451,10 @@ def create_detection_fixture(
   detector_runner = create_runner_from_artifacts(use_model_artifact_dir)
   
   if gpu_id > 0:
-    import os
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
 
-  with mlflow.start_run() as mlrun:
+  run_id = use_model_run_id or None
+  with mlflow.start_run(run_id=run_id) as mlrun:
     mlflow.log_param('parent_run_id', use_model_run_id)
 
     import time
@@ -458,7 +470,7 @@ def create_detection_fixture(
       df.to_pickle(save_to)
     else:
       import tempfile
-      fname = str(mlrun.info.run_id) + '_detections_df.pkl'
+      fname = detector_runner.get_name() + '.detections_df.pkl'
       save_to = os.path.join(tempfile.gettempdir(), fname)
       df.to_pickle(save_to)
       mlflow.log_artifact(save_to)
