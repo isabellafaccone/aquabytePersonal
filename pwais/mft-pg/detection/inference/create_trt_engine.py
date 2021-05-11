@@ -111,7 +111,7 @@ def create_trt_runner_from_artifacts(artifact_dir):
 @click.option("--use_model_artifact_dir", default="",
   help="Use the model artifacts at this directory path (optional)")
 @click.option("--scratch_dir", default="/tmp")
-@click.option("--clean_scratch", default=True)
+@click.option("--clean_scratch", default=True, type=bool)
 def create_trt_engine(
       use_model_run_id,
       use_model_artifact_dir,

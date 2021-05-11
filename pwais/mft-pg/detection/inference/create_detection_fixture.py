@@ -1,4 +1,5 @@
 import os
+import typing
 
 import attr
 import click
@@ -18,6 +19,12 @@ class ImgWithBoxes(object):
 
   bboxes = attr.ib(default=[])
   """bboxes: A list of `BBox2D` instances"""
+
+  latency_sec = attr.ib(type=float, default=-1)
+  """float, optional: Detector latency, if applicable"""
+
+  extra = attr.ib(default={}, type=typing.Dict[str, str])
+  """Dict[str, str]: A map for adhoc extra context"""
 
 
 ###############################################################################
@@ -123,35 +130,115 @@ DATASET_NAME_TO_ITER_FACTORY = {
 ###############################################################################
 ## Core Detection
 
-def run_yolo_detect(
-      config_path='yolov3-fish.cfg',
-      weight_path='/outer_root/data8tb/pwais/yolo_fish_second/yolov3-fish_last.weights',
-      meta_path='fish.data', # Needed for class names
-      img_paths=[]):
+# def run_yolo_detect(
+#       config_path='yolov3-fish.cfg',
+#       weight_path='/outer_root/data8tb/pwais/yolo_fish_second/yolov3-fish_last.weights',
+#       meta_path='fish.data', # Needed for class names
+#       img_paths=[]):
   
-  # This import (typically) comes from /opt/darknet in the
-  # dockerized environment
-  import darknet
+#   # This import (typically) comes from /opt/darknet in the
+#   # dockerized environment
+#   import darknet
   
-  import time
+#   import time
 
-  ## Based on darknet.performDetect()
+#   ## Based on darknet.performDetect()
 
-  net = darknet.load_net_custom(
-                  config_path.encode("ascii"),
-                  weight_path.encode("ascii"),
-                  0, 1)  # batch size = 1
-  meta = darknet.load_meta(meta_path.encode("ascii"))
-  thresh = 0.25
+#   net = darknet.load_net_custom(
+#                   config_path.encode("ascii"),
+#                   weight_path.encode("ascii"),
+#                   0, 1)  # batch size = 1
+#   meta = darknet.load_meta(meta_path.encode("ascii"))
+#   thresh = 0.25
   
-  # TODO: figure out why darknet needs classes=1 for training but classes=2 for detect
+#   # TODO: figure out why darknet needs classes=1 for training but classes=2 for detect
 
-  rows = []
-  for i, path in enumerate(img_paths):
+#   rows = []
+#   for i, path in enumerate(img_paths):
+#     start = time.time()
+#     detections = darknet.detect(net, meta, path.encode("ascii"), thresh)
+#     latency_sec = time.time() - start
+#     boxes = []
+#     for detection in detections:
+#       pred_class = detection[0]
+#       confidence = detection[1]
+#       bounds = detection[2]
+#       # h, w = img.shape[:2]
+#       # x = shape[1]
+#       # xExtent = int(x * bounds[2] / 100)
+#       # y = shape[0]
+#       # yExtent = int(y * bounds[3] / 100)
+      
+#       # Sometimes weekly-trained models spit out invalid boxes
+#       has_invalid = any(
+#         (b in (float('inf'), float('-inf'), float('nan')))
+#         for b in bounds)
+#       if has_invalid:
+#         continue
+
+#       yExtent = int(bounds[3])
+#       xEntent = int(bounds[2])
+#       # Coordinates are around the center
+#       xCoord = int(bounds[0] - bounds[2]/2)
+#       yCoord = int(bounds[1] - bounds[3]/2)
+
+#       boxes.append(
+#         BBox2D(
+#           category_name=pred_class,
+#           x=xCoord,
+#           y=yCoord,
+#           width=xEntent,
+#           height=yExtent,
+#           score=confidence))
+#     rows.append({
+#       'img_path': path,
+#       'boxes': boxes,
+#       'latency_sec': latency_sec,
+#     })
+
+#     if ((i+1) % 100) == 0:
+#       mft_misc.log.info('detected %s of %s' % (i+1, len(img_paths)))
+
+#   df = pd.DataFrame(rows)
+
+#   return df
+
+
+class DarknetDetector(object):
+  """Uses Darknet for inference"""
+  
+  def __init__(
+          self, 
+          config_path='yolov3-fish.cfg',
+          weight_path='/outer_root/data8tb/pwais/yolo_fish_second/yolov3-fish_last.weights',
+          meta_path='fish.data'): # Needed for class names
+    
+    # This import (typically) comes from /opt/darknet in the
+    # dockerized environment
+    import darknet
+    self._darknet = darknet
+
+    ## Based on darknet.performDetect()
+    self._net = darknet.load_net_custom(
+                    config_path.encode("ascii"),
+                    weight_path.encode("ascii"),
+                    0, 1)  # batch size = 1
+    self._meta = darknet.load_meta(meta_path.encode("ascii"))
+
+  def detect(
+        self,
+        img_path,
+        confidence_thresh=0.25):
+    
+    import time
     start = time.time()
-    detections = darknet.detect(net, meta, path.encode("ascii"), thresh)
+    detections = self._darknet.detect(
+                          self._net,
+                          self._meta,
+                          img_path.encode("ascii"),
+                          confidence_thresh)
     latency_sec = time.time() - start
-    boxes = []
+    bboxes = []
     for detection in detections:
       pred_class = detection[0]
       confidence = detection[1]
@@ -175,7 +262,7 @@ def run_yolo_detect(
       xCoord = int(bounds[0] - bounds[2]/2)
       yCoord = int(bounds[1] - bounds[3]/2)
 
-      boxes.append(
+      bboxes.append(
         BBox2D(
           category_name=pred_class,
           x=xCoord,
@@ -183,18 +270,11 @@ def run_yolo_detect(
           width=xEntent,
           height=yExtent,
           score=confidence))
-    rows.append({
-      'img_path': path,
-      'boxes': boxes,
-      'latency_sec': latency_sec,
-    })
-
-    if ((i+1) % 100) == 0:
-      mft_misc.log.info('detected %s of %s' % (i+1, len(img_paths)))
-
-  df = pd.DataFrame(rows)
-
-  return df
+    
+    return ImgWithBoxes(
+              img_path=img_path,
+              bboxes=bboxes,
+              latency_sec=latency_sec)
 
 
 class YoloAVTTRTDetector(object):
@@ -238,17 +318,19 @@ class YoloAVTTRTDetector(object):
   
   def detect(
         self,
-        img_or_path,
+        img_path='',
+        img=None,
         auto_resize=True,
-        confidence_thresh=0.25):
+        confidence_thresh=0.1):
     
     import time
 
-    img = img_or_path
-    if not hasattr(img, 'shape'):
+    if not img:
+      assert os.path.exists(img_path)
+      
       import imageio
-      img = imageio.imread(img)
-    
+      img = imageio.imread(img_path)
+      
     resize_time_sec = -1.
     orig_input_hw = img.shape[:2]
     if img.shape[:2] != self._input_hw:
@@ -264,11 +346,10 @@ class YoloAVTTRTDetector(object):
     assert self._trt_yolo is not None
 
     inf_start = time.time()
-    conf_th = 0.25
     boxes, confs, clss = self._trt_yolo.detect(img, confidence_thresh)
-    inf_time = time.time() - inf_start
+    latency_sec = time.time() - inf_start
 
-    boxes = []
+    bboxes = []
     for bb, score, clazz in zip(boxes, confs, clss):
       # These are all in units of pixels! :)
       x_min, y_min, x_max, y_max = bb[0], bb[1], bb[2], bb[3]
@@ -283,7 +364,7 @@ class YoloAVTTRTDetector(object):
 
       clazz = int(clazz)
 
-      boxes.append(
+      bboxes.append(
         BBox2D(
           category_name=str(clazz),
           x=x_min,
@@ -292,14 +373,16 @@ class YoloAVTTRTDetector(object):
           height=y_max - y_min + 1,
           im_width=orig_input_hw[1],
           im_height=orig_input_hw[0],
-          score=score,
-          extra={
-            'confidence_thresh': str(confidence_thresh),
-            'inference_time_sec': str(inf_time),
-            'resize_time_sec': str(resize_time_sec)
-          }))
+          score=score))
 
-    return boxes
+    return ImgWithBoxes(
+              img_path=img_path,
+              bboxes=bboxes,
+              latency_sec=latency_sec,
+              extra={
+                'confidence_thresh': str(confidence_thresh),
+                'resize_time_sec': str(resize_time_sec),
+              })
 
 
 
@@ -307,85 +390,80 @@ class YoloAVTTRTDetector(object):
 ## Detector Interface and Hooks
 
 class DetectorRunner(object):
-  def __call__(self, iter_img_gts):
-    return pd.DataFrame([])
-  
-  @classmethod
-  def get_name(cls):
-    return str(cls.__name__)
-
-
-class DarknetRunner(DetectorRunner):
-  def __init__(self, artifact_dir):
-    self._artifact_dir = artifact_dir
-
-  def __call__(self, iter_img_gts):
-    config_path = os.path.join(self._artifact_dir, 'yolov3.cfg')
-    weight_path = os.path.join(self._artifact_dir, 'yolov3_final.weights')
-
-    # Make a fake meta file that just references the names file we need
-    names_path = os.path.join(self._artifact_dir, 'names.names')
-
-    import tempfile
-    meta_path = tempfile.NamedTemporaryFile(suffix='.darknet.meta').name
-    with open(meta_path, 'w') as f:
-      f.write("names=" + names_path + '\n')
+  def __call__(self, img_gts):
     
-    df = run_yolo_detect(
-          config_path=config_path,
-          weight_path=weight_path,
-          meta_path=meta_path,
-          img_paths=[o.img_path for o in iter_img_gts])
-    return df
-
-
-class YoloTRTRunner(DetectorRunner):
-  def __init__(self, artifact_dir):
-    self._artifact_dir = artifact_dir
-
-  @classmethod
-  def get_name(cls):
-    engine_name = mft_misc.cuda_get_device_trt_engine_name()
-    return str(cls.__name__) + '.' + engine_name
-
-  def __call__(self, iter_img_gts):
-    engine_name = mft_misc.cuda_get_device_trt_engine_name()
-    trt_engine_path = os.path.join(
-                        self._artifact_dir, 'yolov3.%s.trt' % engine_name)
-    yolo_config_path = os.path.join(self._artifact_dir, 'yolov3.cfg')
-    
-    w, h = mft_misc.darknet_get_yolo_input_wh(yolo_config_path)
-    category_num = mft_misc.darknet_get_yolo_category_num(yolo_config_path)
-
-    detector = YoloAVTTRTDetector(trt_engine_path, (h, w), category_num)
-    
-    engine_load_time_sec = detector.engine_load_time_sec
-    mlflow.log_metric('trt_engine_load_time_sec', engine_load_time_sec)
-
     rows = []
-    img_gts = list(iter_img_gts)
     for i, o in enumerate(img_gts):
       img_path = o.img_path
-      boxes = detector.detect(img_path)
-
-      latency_sec = -1.
-      if boxes:
-        # TODO move this attrib away from bbox ..... 
-        latency_sec = float(boxes[0].extra['inference_time_sec'])
-
+      result = self.detect_on_img_path(img_path)
       rows.append({
-        'img_path': img_path,
-        'boxes': boxes,
-        'latency_sec': latency_sec,
+        'img_path': result.img_path,
+        'boxes': result.bboxes,
+        'latency_sec': result.latency_sec,
+        'extra': result.extra,
       })
 
       if ((i+1) % 100) == 0:
         mft_misc.log.info('Detected %s of %s' % (i+1, len(img_gts)))
 
     df = pd.DataFrame(rows)
-    df['trt_engine_load_time_sec'] = engine_load_time_sec
     return df
+  
+  @classmethod
+  def get_name(cls):
+    return str(cls.__name__)
 
+  def detect_on_img_path(self, img_path):
+    return ImgWithBoxes(img_path=img_path)
+
+
+class DarknetRunner(DetectorRunner):
+  def __init__(self, artifact_dir):
+    config_path = os.path.join(artifact_dir, 'yolov3.cfg')
+    weights_path = os.path.join(artifact_dir, 'yolov3_final.weights')
+
+    # Make a fake meta file that just references the names file we need
+    names_path = os.path.join(artifact_dir, 'names.names')
+
+    import tempfile
+    meta_path = tempfile.NamedTemporaryFile(suffix='.darknet.meta').name
+    with open(meta_path, 'w') as f:
+      f.write("names=" + names_path + '\n')
+    
+    self._detector = DarknetDetector(
+                      config_path=config_path,
+                      weight_path=weights_path,
+                      meta_path=meta_path)
+    
+  def detect_on_img_path(self, img_path):
+    return self._detector.detect(img_path=img_path)
+
+
+class YoloTRTRunner(DetectorRunner):
+  
+  @classmethod
+  def get_name(cls):
+    engine_name = mft_misc.cuda_get_device_trt_engine_name()
+    return str(cls.__name__) + '.' + engine_name
+  
+  def __init__(self, artifact_dir):
+    engine_name = mft_misc.cuda_get_device_trt_engine_name()
+    trt_engine_path = os.path.join(
+                        artifact_dir, 'yolov3.%s.trt' % engine_name)
+    yolo_config_path = os.path.join(artifact_dir, 'yolov3.cfg')
+    
+    w, h = mft_misc.darknet_get_yolo_input_wh(yolo_config_path)
+    category_num = mft_misc.darknet_get_yolo_category_num(yolo_config_path)
+
+    self._detector = YoloAVTTRTDetector(trt_engine_path, (h, w), category_num)
+    
+    self._engine_load_time_sec = self._detector.engine_load_time_sec
+    mlflow.log_metric('trt_engine_load_time_sec', self._engine_load_time_sec)
+
+  def detect_on_img_path(self, img_path):
+    result = self._detector.detect(img_path)
+    result.extra['trt_engine_load_time_sec'] = self._engine_load_time_sec
+    return result
 
 
 def create_runner_from_artifacts(artifact_dir):
@@ -441,25 +519,26 @@ def create_detection_fixture(
     "Requested %s but only have %s" % (
       detect_on_dataset, DATASET_NAME_TO_ITER_FACTORY.keys())
 
-  iter_factory = DATASET_NAME_TO_ITER_FACTORY[detect_on_dataset]
-  iter_img_gts = iter_factory()
-
-  if detect_limit >= 0:
-    import itertools
-    iter_img_gts = itertools.islice(iter_img_gts, detect_limit)
-
-  detector_runner = create_runner_from_artifacts(use_model_artifact_dir)
-  
   if gpu_id > 0:
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
+      os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
 
   run_id = use_model_run_id or None
   with mlflow.start_run(run_id=run_id) as mlrun:
     mlflow.log_param('parent_run_id', use_model_run_id)
 
+    iter_factory = DATASET_NAME_TO_ITER_FACTORY[detect_on_dataset]
+    iter_img_gts = iter_factory()
+
+    if detect_limit >= 0:
+      import itertools
+      iter_img_gts = itertools.islice(iter_img_gts, detect_limit)
+    img_gts = list(iter_img_gts)
+
+    detector_runner = create_runner_from_artifacts(use_model_artifact_dir)
+
     import time
     start = time.time()
-    df = detector_runner(iter_img_gts)
+    df = detector_runner(img_gts)
     d_time = time.time() - start
     
     mlflow.log_metric('mean_latency_ms', 1e3 * df['latency_sec'].mean())

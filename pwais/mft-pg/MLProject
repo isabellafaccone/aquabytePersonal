@@ -56,6 +56,15 @@ entry_points:
         --detect_on_dataset {detect_on_dataset} \
         --gpu_id {gpu_id}
 
+  create_trt_engine:
+    parameters:
+      use_model_run_id: {type: string, default: ''}
+      use_model_artifact_dir: {type: string, default: ''}
+    command: >
+      python3 detection/inference/create_trt_engine.py \
+        --use_model_run_id {use_model_run_id} \
+        --use_model_artifact_dir {use_model_artifact_dir}
+
   train_yolo_zoo:
     parameters:
       scratch_dir: {type: string, default: /opt/mft-pg/scratch}
