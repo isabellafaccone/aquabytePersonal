@@ -9,7 +9,7 @@ import mlflow
 from mft_utils import misc as mft_misc
 
 # The first Yolo zoo didn't have run ID tracking set up right.  Here are the
-# run Id for that zoo
+# MLFlow Run Ids for that zoo
 FIRST_YOLO_ZOO_RUN_IDS = (
   '90fafa4fb2194c70ab5e99bf94964587',
   '3771d3357f534c689a31f7278f2fe60e',
