@@ -113,3 +113,32 @@ def darknet_get_yolo_category_num(yolo_config_path):
       if 'classes' in line:
         category_num = int(_get_group_0(r"classes\W?=\W?(\d+)", line))
         return category_num
+
+
+def download_from_s3(uris, dest_root, parallel=-1):
+  """A quick and dirty S3 downloader that only depends on `awscli`; designed
+  to run outside an MFT-PG dockerized environment."""
+
+  log.info("Have %s urls to download" % len(uris))
+  
+  def download(uri):
+    try:
+      from urlparse import urlparse
+    except ImportError:
+      from urllib.parse import urlparse
+    
+    res = urlparse(uri, allow_fragments=False)
+    dest_relpath = res.path.lstrip('/')
+    dest = os.path.join(dest_root, dest_relpath)
+
+    dest_parent = os.path.split(dest)[0]
+    mkdir(dest_parent)
+
+    cmd = "aws s3 cp %s %s" % (uri, dest)
+    run_cmd(cmd) 
+
+  max_workers = os.cpu_count() * 2 if parallel < 0 else parallel
+  foreach_threadpool_safe_pmap(
+    download,
+    uris,
+    threadpool_kwargs={'max_workers': max_workers})
