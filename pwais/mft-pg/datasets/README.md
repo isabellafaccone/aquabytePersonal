@@ -21,6 +21,10 @@ the second half is `test`.
 
 ### `datasets_s3/akpd1`
 
+This dataset is a sample of AKPD data that Alok selected for 
+https://aquabyte.atlassian.net/browse/ENGALL-2556 .  The dataset
+has AKPD keypoints, left/right images, and camera intrinsics.
+
 In a host shell (dockerized environment not required):
 ```
 $ cd mft-pg/datasets/datasets_s3
