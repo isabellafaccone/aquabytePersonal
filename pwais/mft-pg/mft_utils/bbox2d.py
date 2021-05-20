@@ -1,6 +1,7 @@
 import typing
 
 import attr
+import numpy as np
 
 # Based on psegs https://github.com/pwais/psegs/blob/be13b8c69a36c3f9e258ab03b5a22b87f23baa3b/psegs/datum/bbox2d.py#L21
 @attr.s(slots=True, eq=True, weakref_slot=False)

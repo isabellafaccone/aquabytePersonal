@@ -9,7 +9,7 @@ from mft_utils import misc as mft_misc
 PRETRAINED_WEIGHTS_DEFAULT_PATH = '/tmp/darknet53.conv.74'
 
 
-def convert_to_yolo_format(
+def convert_csv_to_yolo_format(
       in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/train/gopro_fish_head_anns.csv',
       imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/',
       out_yolo_dir='gopro_fish_head_anns.csv.yolov3.annos',
@@ -33,9 +33,9 @@ def convert_to_yolo_format(
   with open(in_csv_path, newline='') as f:
     rows = list(csv.DictReader(f))
 
-  print('Read %s rows from %s' % (len(rows), in_csv_path))
+  mft_misc.log.info('Read %s rows from %s' % (len(rows), in_csv_path))
 
-  print("Saving to %s" % out_yolo_dir)
+  mft_misc.log.info("Saving to %s" % out_yolo_dir)
   mft_misc.mkdir(out_yolo_dir)
 
   # Read and cache the image dims only once; they're from a video so all
@@ -61,7 +61,7 @@ def convert_to_yolo_format(
       
       h = float(h)
       w = float(w)
-      print("Images have dimensions width %s height %s" % (w, h))
+      mft_misc.log.info("Images have dimensions width %s height %s" % (w, h))
     
     # LOL those annotations aren't JSONs, they're string-ified python dicts :(
     import ast
@@ -100,14 +100,14 @@ def convert_to_yolo_format(
 
   with open(out_train_txt_path, 'w') as f:
     f.write('\n'.join(train_txt_lines))
-  print('saved', out_train_txt_path)
+  mft_misc.log.info('saved', out_train_txt_path)
 
   with open(out_names_path, 'w') as f:
     f.write('\n'.join((
       'bkg',          # Class 0
       positive_class  # Class 1
     )))
-  print('saved', out_names_path)
+  mft_misc.log.info('saved', out_names_path)
 
   with open(out_data_path, 'w') as f:
     train_fname = os.path.basename(out_train_txt_path)
@@ -120,7 +120,96 @@ def convert_to_yolo_format(
       'names=' + names_fname, # I think it needs this for debug images
       'backup=.',
     )))
-  print('saved', out_data_path)
+  mft_misc.log.info('saved', out_data_path)
+
+
+def convert_img_gt_to_darknet_format(
+      img_gts=[],
+      out_yolo_dir='img_gts.yolov3.annos',
+      out_train_txt_path='train.txt',
+      out_names_path='names.names',
+      out_data_path='data.data',
+      id_to_category=[]):
+
+  # FMI see convert_csv_to_yolo_format() above
+
+  mft_misc.log.info('Saving %s img_gts to Darknet format %s' % (len(img_gts),))
+
+  if not id_to_category:
+    import itertools
+    id_to_category = sorted(set(
+                      itertools.chain.from_iterable(
+                        (b.category_name for b in img_gt.bboxes)
+                        for img_gt in img_gts)))
+  
+  # For some reason darknet insists on 2-class training
+  if len(id_to_category) == 1:
+    id_to_category = ['background'] + id_to_category
+  category_to_id = dict(enumerate(id_to_category))
+
+  train_txt_lines = []
+  for img_gt in img_gts:
+    
+    img_path = img_gt.img_path
+    img_fname = os.path.basename(img_path)
+    img_dest_path = os.path.join(out_yolo_dir, img_fname)
+    mft_misc.run_cmd("ln -s %s %s || true" % (img_path, img_dest_path))
+
+    train_txt_lines.append(img_dest_path)
+
+    h, w = (None, None)
+    yolo_label_lines = []
+    for bbox in img_gt.bboxes:
+      x_pixels = bbox.x
+      y_pixels = bbox.y
+      w_pixels = bbox.width
+      h_pixels = bbox.height
+
+      assert bbox.im_width > 0, bbox.im_width
+      assert bbox.im_height > 0, bbox.im_height
+      
+      x_center_rel = (x_pixels + .5 * w_pixels) / bbox.im_width
+      y_center_rel = (y_pixels + .5 * h_pixels) / bbox.im_height
+      w_rel = w_pixels / bbox.im_width
+      h_rel = h_pixels / bbox.im_height
+
+      yolo_label_lines.append(
+        '{class_id} {x_center_rel} {y_center_rel} {w_rel} {h_rel}'.format(
+          class_id=category_to_id[bbox.category_name],
+          x_center_rel=x_center_rel,
+          y_center_rel=y_center_rel,
+          w_rel=w_rel,
+          h_rel=h_rel))
+    
+    dest_label_fname = img_fname.replace('.jpg', '.txt')
+    dest_label_fname = dest_label_fname.replace('.png', '.txt')
+    dest = os.path.join(out_yolo_dir, dest_label_fname)
+    with open(dest, 'w') as f:
+      f.write('\n'.join(yolo_label_lines))
+
+    with open(out_train_txt_path, 'w') as f:
+      f.write('\n'.join(train_txt_lines))
+    mft_misc.log.info('saved', out_train_txt_path)
+
+    with open(out_names_path, 'w') as f:
+      f.write('\n'.join((
+        id_to_category
+      )))
+    mft_misc.log.info('saved', out_names_path)
+
+    with open(out_data_path, 'w') as f:
+      train_fname = os.path.basename(out_train_txt_path)
+      names_fname = os.path.basename(out_names_path)
+      f.write('\n'.join((
+        'classes=' + str(len(id_to_category)),
+        'train=' + train_fname,
+        'valid=' + train_fname, # I think this makes it compute mAP on the training set?
+        # 'eval=' + train_fname,  # IDK if this does anything
+        'names=' + names_fname, # I think it needs this for debug images
+        'backup=.',
+      )))
+    mft_misc.log.info('saved', out_data_path)
+
 
 def create_model_config_str(
       template_path='/opt/mft-pg/detection/models/detection_models_s3/yolo_ragnarok_config_hack0/yolov3-fish.cfg',
@@ -172,14 +261,42 @@ def install_dataset(mlflow, model_workdir, dataset_name):
     
     import time
     start = time.time()
-    convert_to_yolo_format(**cparams)
+    convert_csv_to_yolo_format(**cparams)
     mlflow.log_metric('convert_to_yolo_format_time_sec', time.time() - start)
+
+    # Need this for inference... it's not in the model config
+    mlflow.log_artifact(out_names_path)
+
+  elif dataset_name.startswith('akpd1'):
+    from mft_utils.akpd_data import DATASET_NAME_TO_FACTORY
+    assert dataset_name in DATASET_NAME_TO_FACTORY, (
+      dataset_name, 'not in', DATASET_NAME_TO_FACTORY.keys())
+    
+    img_gts_factory = DATASET_NAME_TO_FACTORY[dataset_name]
+    img_gts = img_gts_factory()
+
+    out_names_path = os.path.join(model_workdir, 'names.names')
+    cparams = dict(
+      img_gts=img_gts,
+      out_yolo_dir=os.path.join(model_workdir, 'gopro_fish_head_anns.csv.yolov3.annos'),
+      out_train_txt_path=os.path.join(model_workdir, 'train.txt'),
+      out_names_path=out_names_path,
+      out_data_path=os.path.join(model_workdir, 'data.data'),
+    )
+    for k, v in cparams.items():
+      mlflow.log_param('convert_to_darknet_format.' + k, v)
+    
+    import time
+    start = time.time()
+    convert_img_gt_to_darknet_format(**cparams)
+    mlflow.log_metric('convert_to_darknet_format_time_sec', time.time() - start)
 
     # Need this for inference... it's not in the model config
     mlflow.log_artifact(out_names_path)
 
   else:
     raise ValueError("Don't know how to train on %s" % dataset_name)
+
 
 def install_model_config(
       mlflow,
