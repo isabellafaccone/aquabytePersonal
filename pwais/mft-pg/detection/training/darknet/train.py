@@ -25,6 +25,9 @@ def convert_to_yolo_format(
   #   Where x, y, width, and height are relative to the image's
   #   width and height."
 
+  # TODO: sync this code with the more modern:
+  # gopro_data.iter_gopro1_img_gts()
+
   import csv
 
   with open(in_csv_path, newline='') as f:

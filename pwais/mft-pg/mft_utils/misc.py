@@ -72,7 +72,7 @@ def error_friendly_tempdir(**kwargs):
     shutil.rmtree(dirpath)
 
 
-def futures_threadpool_safe_pmap(f, iargs, threadpool_kwargs):
+def futures_threadpool_safe_pmap(f, iargs, threadpool_kwargs={}):
   from concurrent.futures import ThreadPoolExecutor
   from concurrent.futures import as_completed
 
@@ -84,8 +84,9 @@ def futures_threadpool_safe_pmap(f, iargs, threadpool_kwargs):
       yield future.result()
 
       
-def foreach_threadpool_safe_pmap(f, iargs, threadpool_kwargs):
-  return list(futures_threadpool_safe_pmap(f, iargs, threadpool_kwargs))
+def foreach_threadpool_safe_pmap(f, iargs, threadpool_kwargs={}):
+  return list(futures_threadpool_safe_pmap(
+    f, iargs, threadpool_kwargs=threadpool_kwargs))
 
 
 

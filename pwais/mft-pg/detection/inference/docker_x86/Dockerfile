@@ -42,3 +42,13 @@ RUN \
   echo "need to edit tensorrt_demos have /opt/tensorrt_demos/plugins/libyolo_layer.so instead of ./plugins/libyolo_layer.so :(" && \
   sed -i 's/\.\/plugins\/libyolo_layer\.so/\/opt\/tensorrt_demos\/plugins\/libyolo_layer\.so/g' /opt/tensorrt_demos/utils/yolo_with_plugins.py && \
   sed -i 's/\.\.\/plugins\/libyolo_layer\.so/\/opt\/tensorrt_demos\/plugins\/libyolo_layer\.so/g' /opt/tensorrt_demos/yolo/plugins.py
+
+# Install tracker stuff
+RUN cd /opt/ && \
+  git clone https://github.com/adipandas/multi-object-tracker  && \
+    cd multi-object-tracker && \
+      git checkout 501605262a120f1ab47658f423fa180a6f36117c && \
+        pip3 install -r requirements.txt && \
+        pip3 install ipyfilechooser && \
+        pip3 install -e .
+ENV PYTHONPATH $PYTHONPATH:/opt/multi-object-tracker

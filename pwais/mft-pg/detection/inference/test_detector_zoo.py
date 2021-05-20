@@ -45,11 +45,14 @@ FIRST_YOLO_ZOO_RUN_IDS = (
 @click.command(help="Create detection fixtures for an entire detector zoo")
 @click.option("--use_train_run_id", default="",
   help="Use the model with this mlflow run ID (optional)")
-@click.option("--trt_only", is_flag=True,
+@click.option("--eval_trt_only", is_flag=True,
   help="Only build and evaluate TensorRT engine")
+@click.option("--use_existing_trt", is_flag=True,
+  help="Use TensorRT engines that have already been built (if available)")
 def test_detector_zoo(
       use_train_run_id,
-      trt_only):
+      eval_trt_only,
+      use_existing_trt):
   
   run_ids_to_test = []
   if use_train_run_id:
@@ -63,7 +66,7 @@ def test_detector_zoo(
     for i, run_id in enumerate(run_ids_to_test):
       mft_misc.log.info("Testing %s" % run_id)
 
-      if not trt_only:
+      if not eval_trt_only:
         mlflow.projects.run(
               run_id=run_id,
               uri=".",
@@ -73,14 +76,15 @@ def test_detector_zoo(
               },
               use_conda=False)
 
-      mlflow.projects.run(
-          run_id=run_id,
-          uri=".",
-          entry_point="create_trt_engine",
-          parameters={
-            'use_model_run_id': run_id,
-          },
-          use_conda=False)
+      if not use_existing_trt:
+        mlflow.projects.run(
+            run_id=run_id,
+            uri=".",
+            entry_point="create_trt_engine",
+            parameters={
+              'use_model_run_id': run_id,
+            },
+            use_conda=False)
       
       # This will now grab the TRT engine
       mlflow.projects.run(

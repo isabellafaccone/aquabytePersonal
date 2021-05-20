@@ -9,200 +9,13 @@ import pandas as pd
 
 from mft_utils import misc as mft_misc
 from mft_utils.bbox2d import BBox2D
+from mft_utils.img_w_boxes import ImgWithBoxes
+from mft_utils.gopro_data import DATASET_NAME_TO_ITER_FACTORY
 
-
-@attr.s(slots=True, eq=True)
-class ImgWithBoxes(object):
-
-  img_path = attr.ib(default="")
-  """img_path: Path to the image"""
-
-  bboxes = attr.ib(default=[])
-  """bboxes: A list of `BBox2D` instances"""
-
-  latency_sec = attr.ib(type=float, default=-1)
-  """float, optional: Detector latency, if applicable"""
-
-  extra = attr.ib(default={}, type=typing.Dict[str, str])
-  """Dict[str, str]: A map for adhoc extra context"""
-
-
-###############################################################################
-## Datasets
-
-def iter_gopro1_img_gts(
-      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/train/gopro_fish_head_anns.csv',
-      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/',
-      only_classes=[]):
-
-  # NB: adapted from convert_to_yolo_format() in mft-pg
-  # Some day mebbe refactor to join them...
-
-  import csv
-
-  with open(in_csv_path, newline='') as f:
-    rows = list(csv.DictReader(f))
-
-  mft_misc.log.info('Read %s rows from %s' % (len(rows), in_csv_path))
-
-  # Read and cache the image dims only once; they're from a video so all
-  # the same
-  h = None
-  w = None
-
-  for row in rows:
-
-    img_fname = os.path.basename(row['image_f'])
-    img_path = os.path.join(imgs_basedir, img_fname)
-
-    if (h, w) == (None, None):
-      import imageio
-
-      img = imageio.imread(img_path)
-      h, w = img.shape[:2]
-      
-      mft_misc.log.info("Images have dimensions width %s height %s" % (w, h))
-
-    # LOL those annotations aren't JSONs, they're string-ified python dicts :(
-    import ast
-    annos_raw = ast.literal_eval(row['annotation'])
-    bboxes = []
-    for anno in annos_raw['annotations']:
-      if only_classes and anno['category'] not in only_classes:
-        continue
-
-      if 'xCrop' not in anno:
-        print('bad anno %s' % (row,))
-        continue
-
-      x_pixels = anno['xCrop']
-      y_pixels = anno['yCrop']
-      w_pixels = anno['width']
-      h_pixels = anno['height']
-
-      bboxes.append(
-        BBox2D(
-          category_name=anno['category'],
-          x=x_pixels,
-          y=y_pixels,
-          width=w_pixels,
-          height=h_pixels,
-          im_width=w,
-          im_height=h))
-
-    yield ImgWithBoxes(img_path=img_path, bboxes=bboxes)
-
-
-DATASET_NAME_TO_ITER_FACTORY = {
-  'gopro1_test': (lambda:
-    iter_gopro1_img_gts(
-      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/test/gopro_fish_head_anns.csv',
-      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/test/images/',
-      only_classes=[])),
-  'gopro1_train': (lambda:
-    iter_gopro1_img_gts(
-      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/train/gopro_fish_head_anns.csv',
-      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/',
-      only_classes=[])),
-  'gopro1_fish_test': (lambda:
-    iter_gopro1_img_gts(
-      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/test/gopro_fish_head_anns.csv',
-      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/test/images/',
-      only_classes=['FISH'])),
-  'gopro1_fish_train': (lambda:
-    iter_gopro1_img_gts(
-      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/train/gopro_fish_head_anns.csv',
-      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/',
-      only_classes=['FISH'])),
-  'gopro1_head_test': (lambda:
-    iter_gopro1_img_gts(
-      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/test/gopro_fish_head_anns.csv',
-      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/test/images/',
-      only_classes=['HEAD'])),
-  'gopro1_head_train': (lambda:
-    iter_gopro1_img_gts(
-      in_csv_path='/opt/mft-pg/datasets/datasets_s3/gopro1/train/gopro_fish_head_anns.csv',
-      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/',
-      only_classes=['HEAD'])),
-}
 
 
 ###############################################################################
 ## Core Detection
-
-# def run_yolo_detect(
-#       config_path='yolov3-fish.cfg',
-#       weight_path='/outer_root/data8tb/pwais/yolo_fish_second/yolov3-fish_last.weights',
-#       meta_path='fish.data', # Needed for class names
-#       img_paths=[]):
-  
-#   # This import (typically) comes from /opt/darknet in the
-#   # dockerized environment
-#   import darknet
-  
-#   import time
-
-#   ## Based on darknet.performDetect()
-
-#   net = darknet.load_net_custom(
-#                   config_path.encode("ascii"),
-#                   weight_path.encode("ascii"),
-#                   0, 1)  # batch size = 1
-#   meta = darknet.load_meta(meta_path.encode("ascii"))
-#   thresh = 0.25
-  
-#   # TODO: figure out why darknet needs classes=1 for training but classes=2 for detect
-
-#   rows = []
-#   for i, path in enumerate(img_paths):
-#     start = time.time()
-#     detections = darknet.detect(net, meta, path.encode("ascii"), thresh)
-#     latency_sec = time.time() - start
-#     boxes = []
-#     for detection in detections:
-#       pred_class = detection[0]
-#       confidence = detection[1]
-#       bounds = detection[2]
-#       # h, w = img.shape[:2]
-#       # x = shape[1]
-#       # xExtent = int(x * bounds[2] / 100)
-#       # y = shape[0]
-#       # yExtent = int(y * bounds[3] / 100)
-      
-#       # Sometimes weekly-trained models spit out invalid boxes
-#       has_invalid = any(
-#         (b in (float('inf'), float('-inf'), float('nan')))
-#         for b in bounds)
-#       if has_invalid:
-#         continue
-
-#       yExtent = int(bounds[3])
-#       xEntent = int(bounds[2])
-#       # Coordinates are around the center
-#       xCoord = int(bounds[0] - bounds[2]/2)
-#       yCoord = int(bounds[1] - bounds[3]/2)
-
-#       boxes.append(
-#         BBox2D(
-#           category_name=pred_class,
-#           x=xCoord,
-#           y=yCoord,
-#           width=xEntent,
-#           height=yExtent,
-#           score=confidence))
-#     rows.append({
-#       'img_path': path,
-#       'boxes': boxes,
-#       'latency_sec': latency_sec,
-#     })
-
-#     if ((i+1) % 100) == 0:
-#       mft_misc.log.info('detected %s of %s' % (i+1, len(img_paths)))
-
-#   df = pd.DataFrame(rows)
-
-#   return df
-
 
 class DarknetDetector(object):
   """Uses Darknet for inference"""
@@ -302,6 +115,10 @@ class YoloAVTTRTDetector(object):
         with open(trt_engine_path, 'rb') as f:
           with trt.Runtime(self.trt_logger) as runtime:
             return runtime.deserialize_cuda_engine(f.read())
+      
+      # def detect(self, *args, **kwargs):
+      #   import pdb; pdb.set_trace()
+      #   return super(MyTrtYOLO, self).detect(*args, **kwargs)
     
     start = time.time()
     mft_misc.log.info('Loading TRT engine %s' % trt_engine_path)

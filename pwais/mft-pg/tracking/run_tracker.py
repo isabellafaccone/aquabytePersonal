@@ -7,7 +7,7 @@ import pandas as pd
 
 from mft_utils import misc as mft_misc
 from mft_utils.bbox2d import BBox2D
-
+from mft_utils.gopro_data import DATASET_NAME_TO_ITER_FACTORY
 
 # def run_tracker(
 #      detections_df, debug_video_dest='tracks.mp4'):
@@ -43,6 +43,75 @@ from mft_utils.bbox2d import BBox2D
 #     print('tracked', idx, img_path)
 #   writer.close()
 
+class TrackerRunner(object):
+
+  def update_and_get_tracks(self, bboxes):
+    return bboxes # list of BBox2D
+    # return bboxes (with track ids and maybe Track objects and other metadata)
+  
+  def track_all(
+        self,
+        imbbs,
+        ablate_input_to_fps=-1, #######################???????????????????????????????????
+        debug_output_path='',
+        debug_threads=-1):
+
+    import copy
+    import os
+    import time
+
+    import imageio
+
+    imbbs_out = []
+    for i, ib in enumerate(imbbs):
+      update_start = time.time()
+      boxes_out = self.update_and_get_tracks(ib.bboxes)
+      track_latency_sec = time.time() - update_start
+
+      ib_out = copy.deepcopy(ib)
+      ib_out.bboxes = boxes_out
+      ib_out.extra['track_latency_sec'] = track_latency_sec
+      imbbs_out.append(ib_out)
+
+      if ((i+1) % 100) == 0:
+        mft_misc.log.info('Detected %s of %s' % (i+1, len(imbbs)))
+
+    if debug_output_path:
+
+      ## Render debug video
+      debug_video_dest = os.path.join(debug_output_path, 'tracks_debug.mp4')
+      def render_debug_frame(idx):
+        import imageio
+        ib = imbbs_out[idx]
+        debug_img = imageio.imread(ib.img_path)
+        for bbox in ib.bboxes:
+          bbox.draw_in_image(debug_img, identify_by='track_id')
+        return debug_img
+      
+      n_tasks = len(imbbs_out)
+      max_workers = os.cpu_count() if debug_threads < 0 else debug_threads
+      iter_debugs = mft_misc.futures_threadpool_safe_pmap(
+                    render_debug_frame,
+                    range(n_tasks),
+                    threadpool_kwargs={'max_workers': max_workers})
+      writer = imageio.get_writer(debug_video_dest, fps=60)
+      for i, debug_img in enumerate(iter_debugs):
+        writer.append_data(debug_img)
+        if ((i+1) % 100) == 0:
+          mft_misc.log.info(
+            '... wrote %s of %s frames to %s' % (
+              i+1, n_tasks, debug_video_dest))
+      writer.close()
+
+    return imbbs_out
+
+
+    # output new df with:
+    #  * for each image include tracker latency
+    #  * for each bbox include a track_id
+
+    # return img_bboxes_df
+
 
 def create_runner_from_artifacts(artifact_dir):
   pass
@@ -68,6 +137,8 @@ def create_runner_from_artifacts(artifact_dir):
   help="Use the model with this mlflow run ID (optional)")
 @click.option("--use_model_artifact_dir", default="",
   help="Use the model artifacts at this directory path (optional)")
+@click.option("--use_dataset", default="",
+  help="Induce a sequence of detections from this dataset")
 @click.option("--tracker_algo", default="motrackers.SORT",
   help="Use this tracking algo")
 @click.option("--save_debugs", default=True, 
@@ -77,10 +148,13 @@ def create_runner_from_artifacts(artifact_dir):
 def run_tracker(
       use_model_run_id,
       use_model_artifact_dir,
+      use_dataset,
       tracker_algo,
       save_debugs,
       save_to):
   
+  
+  img_boxes = None
   if use_model_run_id and not use_model_artifact_dir:
     run = mlflow.get_run(use_model_run_id)
     use_model_artifact_dir = run.info.artifact_uri
@@ -88,9 +162,178 @@ def run_tracker(
       "Only support local artifacts for now ..."
     use_model_artifact_dir = use_model_artifact_dir.replace('file://', '')
   
-  assert use_model_artifact_dir, "Need some model artifacts to run a model"
+  if use_dataset:
+    iter_factory = DATASET_NAME_TO_ITER_FACTORY[use_dataset]
+    iter_img_gts = iter_factory()
+    img_boxes = list(iter_img_gts)
+
+  assert img_boxes, "Need some image-boxes to run on"
+  
 
 
+  import numpy as np
+  import imageio
+  from motrackers import CentroidTracker, CentroidKF_Tracker, SORT, IOUTracker
+  from motrackers.utils import draw_tracks
+
+  tracker = SORT(max_lost=3, tracker_output_format='mot_challenge', iou_threshold=0.3)
+
+  writer = imageio.get_writer('tracks.mp4', fps=60)
+  TARGET_FPS = 0.6
+  TARGET_PERIOD_MICROS = int((1. / TARGET_FPS) * 1e6)
+  last_tracker_update_micros = -TARGET_PERIOD_MICROS
+  
+  tracks = []
+  bboxes = np.zeros((0, 4))
+  confidences = np.zeros((0, 1))
+  class_ids = np.zeros((0, 1))
+
+  for ib in img_boxes:
+    img_path = ib.img_path
+    boxes = ib.bboxes
+
+    # bboxes = np.array([
+    #   [b['x_min_pixels'], b['y_min_pixels'], b['width_pixels'], b['height_pixels']]
+    #   for b in boxes
+    # ])
+    
+
+    if ib.microstamp >= (last_tracker_update_micros + TARGET_PERIOD_MICROS):
+      bboxes = np.array([
+        [b.x, b.y, b.width, b.height]
+        for b in boxes
+      ])
+      confidences = np.array([1 for b in boxes])
+      class_ids = np.array([1 for b in boxes])
+
+      tracks = tracker.update(bboxes, confidences, class_ids)
+      last_tracker_update_micros = ib.microstamp
+
+    debug_img = imageio.imread(img_path)
+
+    def _draw_bboxes(image, bboxes, confidences, class_ids):
+      """
+      based upon motrackers.detector.draw_bboxes()
+
+      Draw the bounding boxes about detected objects in the image.
+
+      Parameters
+      ----------
+      image : numpy.ndarray
+          Image or video frame.
+      bboxes : numpy.ndarray
+          Bounding boxes pixel coordinates as (xmin, ymin, width, height)
+      confidences : numpy.ndarray
+          Detection confidence or detection probability.
+      class_ids : numpy.ndarray
+          Array containing class ids (aka label ids) of each detected object.
+
+      Returns
+      -------
+      numpy.ndarray : image with the bounding boxes drawn on it.
+      """
+      import cv2 as cv
+      BBOX_COLORS = {0: (255, 255, 0), 1: (0, 255, 0), 2: (0, 255, 255), 3: (0, 0, 255)}
+      for bb, conf, cid in zip(bboxes, confidences, class_ids):
+          clr = [int(c) for c in BBOX_COLORS[cid]]
+          cv.rectangle(image, (bb[0], bb[1]), (bb[0] + bb[2], bb[1] + bb[3]), clr, 2)
+          label = "{}:{:.4f}".format(cid, conf)
+          (label_width, label_height), baseLine = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 2)
+          y_label = max(bb[1], label_height)
+          cv.rectangle(image, (bb[0], y_label - label_height), (bb[0] + label_width, y_label + baseLine),
+                        (255, 255, 255), cv.FILLED)
+          cv.putText(image, label, (bb[0], y_label), cv.FONT_HERSHEY_SIMPLEX, 0.5, clr, 2)
+      return image
+
+
+    debug_img = _draw_bboxes(debug_img, bboxes, confidences, class_ids)
+
+    debug_img = draw_tracks(debug_img, tracks)
+
+    writer.append_data(debug_img)
+    print('tracked', img_path)
+  writer.close()
+
+"""
+cd /opt/ && \
+  git clone https://github.com/adipandas/multi-object-tracker  && \
+    cd multi-object-tracker && \
+      git checkout 501605262a120f1ab47658f423fa180a6f36117c && \
+        pip3 install -r requirements.txt && \
+        pip3 install ipyfilechooser && \
+        pip3 install -e .
+
+
+
+
+deply demo ticket:
+ ** step 1: create well-defined end-to-end script to run on a fixture of data.  for now just yolo + tracker
+ ** bigger experiment for demo + data mining. run yolo detector + tracker on unlabeled gopro videos and measure:
+    - raw distinct fish per minute (and over all M minutes of video)
+    - *** ablate the feed down to N frames per second and repeat experiments
+    - TX2 latency histogram of detector and tracker, maybe pre-loading N-seconds into RAM,
+         other TX2 vitals
+    - use Histogram With Examples reports to surface:
+        * identify time segments of no fish and check WTF
+        * identify time segments with lots of newly-spawned tracks and check WTF
+
+
+ * tracklet scorer ticket:
+    - part 1: translate AKPD keypoints to bboxen (and maybe pairs of bboxes) and test yolo on it.  if its good then:
+    - devise a 'max distance scorer' for tracklets and do a Histogram with Examples study over the training data
+    - if scores make sense, then run over all gopro videos to estimate good fish per hour.  do a 
+          histogram with examples report to surface
+
+ * accuracy vs latency ticket:
+    - use the dump of N-thousand bbox examples to train & test yolos just as we did for gopro
+    - add COCO metrics
+
+
+
+
+
+
+
+ * ablation test...
+    * add timestamp to imgbbox.
+    * make a thing to ablate imgbbox sequence.
+    * given input sequence, do ablations and output those tracks
+       * output: MOTS comparison between full res seq and ablated
+       * output: debug video of ablated tracking, showing intermediate frames?
+    * we can start out just looking at "ground truth".  in the future want to
+        plug in yolo.
+
+
+where is this going?
+ * given a set of bboxes, just output a tracking fixture with a debug
+ * ... just output above, but ablate frame rate
+ * compare tracking fixtures
+
+-- the ablation thing probably gonna be a "one and done" to estimate robustness
+-- compare tracking fixtures is more likely to be used at scale
+
+
+ ** want a parallel debug video generator!!
+ ** we'll want to string together end-to-end one day...
+
+
+class Tracker(object):
+
+  def __init__(self, **hparams):
+    ...
+  
+  def update_and_get_tracks(self, bboxes):
+    return bboxes (with track ids and maybe Track objects)
+  
+  def run_and_profile(self, img_bboxes_df, debugs_output_path=''):
+
+    output new df with:
+     * for each image include tracker latency
+     * for each bbox include a track_id
+
+    return img_bboxes_df
+
+"""
 
 
 

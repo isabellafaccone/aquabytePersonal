@@ -126,7 +126,7 @@ def train_yolo_zoo(
     mft_misc.foreach_threadpool_safe_pmap(
       lambda t: t.run(),
       tasks,
-      {'max_workers': n_workers})
+      threadpool_kwargs={'max_workers': n_workers})
 
     # with ThreadPoolExecutor(max_workers=n_workers) as executor:
     #   _ = executor.map(lambda t: t.run(), tasks)
