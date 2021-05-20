@@ -72,7 +72,7 @@ def convert_csv_to_yolo_format(
         continue
       
       if 'xCrop' not in anno:
-        print('bad anno %s' % (row,))
+        mft_misc.log.warn('bad anno %s' % (row,))
         continue
 
       x_pixels = anno['xCrop']
@@ -100,14 +100,14 @@ def convert_csv_to_yolo_format(
 
   with open(out_train_txt_path, 'w') as f:
     f.write('\n'.join(train_txt_lines))
-  mft_misc.log.info('saved', out_train_txt_path)
+  mft_misc.log.info('saved %s' % out_train_txt_path)
 
   with open(out_names_path, 'w') as f:
     f.write('\n'.join((
       'bkg',          # Class 0
       positive_class  # Class 1
     )))
-  mft_misc.log.info('saved', out_names_path)
+  mft_misc.log.info('saved %s' % out_names_path)
 
   with open(out_data_path, 'w') as f:
     train_fname = os.path.basename(out_train_txt_path)
@@ -120,7 +120,7 @@ def convert_csv_to_yolo_format(
       'names=' + names_fname, # I think it needs this for debug images
       'backup=.',
     )))
-  mft_misc.log.info('saved', out_data_path)
+  mft_misc.log.info('saved %s' % out_data_path)
 
 
 def convert_img_gt_to_darknet_format(
@@ -133,7 +133,9 @@ def convert_img_gt_to_darknet_format(
 
   # FMI see convert_csv_to_yolo_format() above
 
-  mft_misc.log.info('Saving %s img_gts to Darknet format %s' % (len(img_gts),))
+  mft_misc.log.info('Saving %s img_gts to Darknet format' % (len(img_gts),))
+  mft_misc.log.info("Saving to %s" % out_yolo_dir)
+  mft_misc.mkdir(out_yolo_dir)
 
   if not id_to_category:
     import itertools
@@ -145,13 +147,14 @@ def convert_img_gt_to_darknet_format(
   # For some reason darknet insists on 2-class training
   if len(id_to_category) == 1:
     id_to_category = ['background'] + id_to_category
-  category_to_id = dict(enumerate(id_to_category))
+  category_to_id = dict((c, i) for i, c in enumerate(id_to_category))
 
   train_txt_lines = []
-  for img_gt in img_gts:
+  for i, img_gt in enumerate(img_gts):
     
     img_path = img_gt.img_path
     img_fname = os.path.basename(img_path)
+    img_fname = 'darknet_train_%s_%s' % (i, img_fname)
     img_dest_path = os.path.join(out_yolo_dir, img_fname)
     mft_misc.run_cmd("ln -s %s %s || true" % (img_path, img_dest_path))
 
@@ -187,28 +190,28 @@ def convert_img_gt_to_darknet_format(
     with open(dest, 'w') as f:
       f.write('\n'.join(yolo_label_lines))
 
-    with open(out_train_txt_path, 'w') as f:
-      f.write('\n'.join(train_txt_lines))
-    mft_misc.log.info('saved', out_train_txt_path)
+  with open(out_train_txt_path, 'w') as f:
+    f.write('\n'.join(train_txt_lines))
+  mft_misc.log.info('saved %s' % out_train_txt_path)
 
-    with open(out_names_path, 'w') as f:
-      f.write('\n'.join((
-        id_to_category
-      )))
-    mft_misc.log.info('saved', out_names_path)
+  with open(out_names_path, 'w') as f:
+    f.write('\n'.join((
+      id_to_category
+    )))
+  mft_misc.log.info('saved %s' % out_names_path)
 
-    with open(out_data_path, 'w') as f:
-      train_fname = os.path.basename(out_train_txt_path)
-      names_fname = os.path.basename(out_names_path)
-      f.write('\n'.join((
-        'classes=' + str(len(id_to_category)),
-        'train=' + train_fname,
-        'valid=' + train_fname, # I think this makes it compute mAP on the training set?
-        # 'eval=' + train_fname,  # IDK if this does anything
-        'names=' + names_fname, # I think it needs this for debug images
-        'backup=.',
-      )))
-    mft_misc.log.info('saved', out_data_path)
+  with open(out_data_path, 'w') as f:
+    train_fname = os.path.basename(out_train_txt_path)
+    names_fname = os.path.basename(out_names_path)
+    f.write('\n'.join((
+      'classes=' + str(len(id_to_category)),
+      'train=' + train_fname,
+      'valid=' + train_fname, # I think this makes it compute mAP on the training set?
+      # 'eval=' + train_fname,  # IDK if this does anything
+      'names=' + names_fname, # I think it needs this for debug images
+      'backup=.',
+    )))
+  mft_misc.log.info('saved %s' % out_data_path)
 
 
 def create_model_config_str(
@@ -230,9 +233,16 @@ def create_model_config_str(
   if 'batch_size' in model_params:
     config_txt = config_txt.replace('batch=4', 'batch=' + str(model_params['batch_size']))
     config_txt = config_txt.replace('subdivisions=1', 'subdivisions=' + str(model_params['batch_size']))
-      # Save memory
+      # Save GPU memory: give each element in a batch a subdivision
   if 'max_batches' in model_params:
     config_txt = config_txt.replace('max_batches = 500200', 'max_batches=' + str(model_params['max_batches']))
+  if 'classes' in model_params:
+    config_txt = config_txt.replace('classes=2', 'classes=' + str(model_params['classes']))
+
+    # Guh, Yolo doesn't auto-resize ....
+    # https://github.com/hweersot/darknet-custom#how-to-train-to-detect-your-custom-objects
+    filters = (int(model_params['classes']) + 5) * 3
+    config_txt = config_txt.replace('filters=21', 'filters=%s' % filters)
 
   return config_txt
 
@@ -278,7 +288,7 @@ def install_dataset(mlflow, model_workdir, dataset_name):
     out_names_path = os.path.join(model_workdir, 'names.names')
     cparams = dict(
       img_gts=img_gts,
-      out_yolo_dir=os.path.join(model_workdir, 'gopro_fish_head_anns.csv.yolov3.annos'),
+      out_yolo_dir=os.path.join(model_workdir, 'img_gt.yolov3.annos'),
       out_train_txt_path=os.path.join(model_workdir, 'train.txt'),
       out_names_path=out_names_path,
       out_data_path=os.path.join(model_workdir, 'data.data'),
@@ -305,6 +315,12 @@ def install_model_config(
   
   template_path = '/opt/mft-pg/detection/models/detection_models_s3/yolo_ragnarok_config_hack0/yolov3-fish.cfg'
   mlflow.log_param('template_path', template_path)
+
+  if 'classes' not in model_params:
+    dat_path = os.path.join(model_workdir, 'data.data')
+    category_num = mft_misc.darknet_get_yolo_category_num(dat_path)
+    model_params['classes'] = str(category_num)
+
   config_txt = create_model_config_str(template_path, **model_params)
 
   # We want to name this file 'yolov3.cfg' to make ONNX conversion easier
@@ -312,7 +328,7 @@ def install_model_config(
   dest = os.path.join(model_workdir, 'yolov3.cfg')
   with open(dest, 'w') as f:
     f.write(config_txt)
-  print("saved model config", dest)
+  mft_misc.log.info("saved model config %s" % dest)
   mlflow.log_artifact(dest)
   
   if model_params.get('finetune_from_imagenet'):
@@ -348,7 +364,7 @@ def run_darknet_training(mlflow, model_workdir, gpu_id):
       gpu_prefix="CUDA_VISIBLE_DEVICES=%s" % gpu_id if gpu_id >= 0 else "")
 
   mlflow.log_param('train_cmd', cmd)
-  print('Starting training in', model_workdir)
+  mft_misc.log.info('Starting training in %s' % model_workdir)
   import time
   start = time.time()
   mft_misc.run_cmd(cmd)

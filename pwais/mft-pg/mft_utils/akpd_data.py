@@ -4,11 +4,10 @@ def get_akpd_as_bbox_img_gts(
       imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
       kp_bbox_to_fish_scale=0.1,
       only_camera='left'):
-
   
-  import datetime
   import csv
   import os
+  from datetime import datetime
 
   # LOL those annotations aren't JSONs, they're string-ified python dicts :(
   import ast
@@ -25,7 +24,14 @@ def get_akpd_as_bbox_img_gts(
   img_gts_out = []
   for row in rows:
 
-    utc_time = datetime.strptime(row['captured_at'].split('+')[0], "%Y-%m-%d %H:%M:%S.%f")
+    timestamp_raw = row['captured_at']
+    if '+' in timestamp_raw:
+      timestamp_raw = timestamp_raw.split('+')[0]
+    try:
+      utc_time = datetime.strptime(timestamp_raw, "%Y-%m-%d %H:%M:%S.%f")
+    except:
+      utc_time = datetime.strptime(timestamp_raw, "%Y-%m-%d %H:%M:%S")
+      
     epoch_time = (utc_time - datetime(1970, 1, 1)).total_seconds()
     microstamp = int(epoch_time * 1e6)
 
@@ -82,7 +88,7 @@ def get_akpd_as_bbox_img_gts(
         'akpd.quality': str(quality.get('quality', float('nan'))),
         'akpd.blurriness': str(quality.get('blurriness', float('nan'))),
         'akpd.darkness': str(quality.get('darkness', float('nan'))),
-        'akpd.mean_luminance': str(crop_meta.get('mean_luminance'), float('nan')),
+        'akpd.mean_luminance': str(crop_meta.get('mean_luminance', float('nan'))),
       })
 
       img_gts_out.append(
