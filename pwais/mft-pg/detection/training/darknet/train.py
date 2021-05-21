@@ -49,7 +49,8 @@ def convert_csv_to_yolo_format(
     img_fname = os.path.basename(row['image_f'])
     img_path = os.path.join(imgs_basedir, img_fname)
     img_dest_path = os.path.join(out_yolo_dir, img_fname)
-    mft_misc.run_cmd("ln -s %s %s || true" % (img_path, img_dest_path))
+    mft_misc.run_cmd(
+      "ln -s %s %s || true" % (img_path, img_dest_path), nolog=True)
 
     train_txt_lines.append(img_dest_path)
 
