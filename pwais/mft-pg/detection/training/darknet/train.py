@@ -157,7 +157,8 @@ def convert_img_gt_to_darknet_format(
     img_fname = os.path.basename(img_path)
     img_fname = 'darknet_train_%s_%s' % (i, img_fname)
     img_dest_path = os.path.join(out_yolo_dir, img_fname)
-    mft_misc.run_cmd("ln -s %s %s || true" % (img_path, img_dest_path))
+    mft_misc.run_cmd(
+      "ln -s %s %s || true" % (img_path, img_dest_path), nolog=True)
 
     train_txt_lines.append(img_dest_path)
 
@@ -235,7 +236,7 @@ def create_model_config_str(
     config_txt = config_txt.replace('batch=4', 'batch=' + str(model_params['batch_size']))
 
     import math
-    subdivisions = max(1, int(math.log2(int(model_params['batch_size']))))
+    subdivisions = max(1, int(model_params['batch_size']) // 4)
     config_txt = config_txt.replace('subdivisions=1', 'subdivisions=' + str(subdivisions))
       # Save GPU memory: use small subdivisions
   if 'max_batches' in model_params:
