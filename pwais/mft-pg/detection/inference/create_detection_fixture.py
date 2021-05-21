@@ -95,10 +95,12 @@ class YoloAVTTRTDetector(object):
   functionality.
   """
   
-  def __init__(self, trt_engine_path, input_hw, num_categories):
+  def __init__(
+        self, trt_engine_path, input_hw, num_categories, category_id_to_name):
     self._trt_yolo = None
     self._engine_load_time_sec = -1.
     self._input_hw = (input_hw[0], input_hw[1])
+    self._category_id_to_name = category_id_to_name
 
     import time
 
@@ -183,7 +185,7 @@ class YoloAVTTRTDetector(object):
 
       bboxes.append(
         BBox2D(
-          category_name=str(clazz),
+          category_name=self._category_id_to_name[clazz],
           x=x_min,
           y=y_min,
           width=x_max - x_min + 1,
@@ -209,21 +211,45 @@ class YoloAVTTRTDetector(object):
 class DetectorRunner(object):
   def __call__(self, img_gts):
     
-    rows = []
+    img_dets = []
     for i, o in enumerate(img_gts):
       img_path = o.img_path
       result = self.detect_on_img_path(img_path)
-      rows.append({
-        'img_path': result.img_path,
-        'boxes': result.bboxes,
-        'latency_sec': result.latency_sec,
-        'extra': result.extra,
-      })
+      img_dets.append(result)
 
       if ((i+1) % 100) == 0:
         mft_misc.log.info('Detected %s of %s' % (i+1, len(img_gts)))
 
+    mft_misc.log.info('Running COCO merics ...')
+    from mft_utils import coco_detection_metrics as coco_metrics
+    metrics = coco_metrics.get_coco_summary(img_gts, img_dets)
+    mft_misc.log.info('... done')
+
+    rows = []
+    for gt, dt in zip(img_gts, img_dets):
+      img_metrics = metrics['image_id_to_stats'][dt.img_path]
+      rows.append({
+        'img_path': dt.img_path,
+        'boxes': dt.bboxes,
+        'latency_sec': dt.latency_sec,
+        'extra': dt.extra,
+        'img_Recall1_iou05': img_metrics['Recall1_iou05'],
+        'img_APrecision1_iou05': img_metrics['APrecision1_iou05'],
+      })
+
     df = pd.DataFrame(rows)
+    SKIP_METRIC_KEYS = (
+      'image_id_to_stats',
+    )
+    for k in metrics.keys():
+      if k in SKIP_METRIC_KEYS:
+        continue
+      v = metrics[k]
+      if hasattr(v, 'items'):
+        v = [v] + ([{}] * max(0, len(df) - 1))
+      df.insert(0, 'coco_' + k, v)
+    
+    import pdb; pdb.set_trace()
     return df
   
   @classmethod
@@ -272,7 +298,14 @@ class YoloTRTRunner(DetectorRunner):
     w, h = mft_misc.darknet_get_yolo_input_wh(yolo_config_path)
     category_num = mft_misc.darknet_get_yolo_category_num(yolo_config_path)
 
-    self._detector = YoloAVTTRTDetector(trt_engine_path, (h, w), category_num)
+    yolo_names_path = os.path.join(artifact_dir, 'names.names')
+    category_id_to_name = open(yolo_names_path, 'r').readlines()
+
+    self._detector = YoloAVTTRTDetector(
+                        trt_engine_path,
+                        (h, w),
+                        category_num,
+                        category_id_to_name)
     
     self._engine_load_time_sec = self._detector.engine_load_time_sec
     mlflow.log_metric('trt_engine_load_time_sec', self._engine_load_time_sec)

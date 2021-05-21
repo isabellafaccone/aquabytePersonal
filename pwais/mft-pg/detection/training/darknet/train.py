@@ -245,7 +245,7 @@ def create_model_config_str(
     config_txt = config_txt.replace('classes=2', 'classes=' + str(model_params['classes']))
 
     # Guh, Yolo doesn't auto-resize ....
-    # https://github.com/hweersot/darknet-custom#how-to-train-to-detect-your-custom-objects
+    # https://github.com/AlexeyAB/darknet#how-to-train-to-detect-your-custom-objects
     filters = (int(model_params['classes']) + 5) * 3
     config_txt = config_txt.replace('filters=21', 'filters=%s' % filters)
 
