@@ -286,15 +286,17 @@ def install_dataset(mlflow, model_workdir, dataset_name):
     img_gts = img_gts_factory()
 
     out_names_path = os.path.join(model_workdir, 'names.names')
+    out_data_path = os.path.join(model_workdir, 'data.data')
     cparams = dict(
       img_gts=img_gts,
       out_yolo_dir=os.path.join(model_workdir, 'img_gt.yolov3.annos'),
       out_train_txt_path=os.path.join(model_workdir, 'train.txt'),
       out_names_path=out_names_path,
-      out_data_path=os.path.join(model_workdir, 'data.data'),
+      out_data_path=out_data_path,
     )
     for k, v in cparams.items():
-      mlflow.log_param('convert_to_darknet_format.' + k, v)
+      if k != 'img_gts':
+        mlflow.log_param('convert_to_darknet_format.' + k, v)
     
     import time
     start = time.time()
@@ -303,6 +305,9 @@ def install_dataset(mlflow, model_workdir, dataset_name):
 
     # Need this for inference... it's not in the model config
     mlflow.log_artifact(out_names_path)
+    
+    # Save this for reference
+    mlflow.log_artifact(out_data_path)
 
   else:
     raise ValueError("Don't know how to train on %s" % dataset_name)
