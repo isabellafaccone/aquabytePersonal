@@ -232,8 +232,11 @@ def create_model_config_str(
     config_txt = config_txt.replace('height=416', 'height=' + str(model_params['height']))
   if 'batch_size' in model_params:
     config_txt = config_txt.replace('batch=4', 'batch=' + str(model_params['batch_size']))
-    config_txt = config_txt.replace('subdivisions=1', 'subdivisions=' + str(model_params['batch_size']))
-      # Save GPU memory: give each element in a batch a subdivision
+
+    import math
+    subdivisions = max(1, int(math.log2(int(model_params['batch_size']))))
+    config_txt = config_txt.replace('subdivisions=1', 'subdivisions=' + str(subdivisions))
+      # Save GPU memory: use small subdivisions
   if 'max_batches' in model_params:
     config_txt = config_txt.replace('max_batches = 500200', 'max_batches=' + str(model_params['max_batches']))
   if 'classes' in model_params:
