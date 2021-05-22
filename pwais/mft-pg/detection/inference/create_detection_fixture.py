@@ -229,38 +229,50 @@ class DetectorRunner(object):
     import attr
     rows = []
     for gt, dt in zip(img_gts, img_dets):
-      img_metrics = metrics['image_id_to_stats'][dt.img_path]
+      # Record ground truth used for evaluation; also helps viz
       dt.bboxes_alt = [copy.deepcopy(bb) for bb in gt.bboxes]
       for bb in dt.bboxes_alt:
         bb.category_name = 'GT: ' + bb.category_name
 
 
-      row = attr.asdict(dt)
-      row.update({
-        'img_Recall1_iou05': img_metrics['Recall1_iou05'],
-        'img_APrecision1_iou05': img_metrics['APrecision1_iou05'],
-      })
+      img_metrics = metrics['image_id_to_stats'][dt.img_path]
+      dt.extra.update(
+        ('coco_metrics_' + k, str(v))
+        for k, v in img_metrics.items())
+
+      row = attr.asdict(dt, recurse=False)
+      row.update(
+        ('img_coco_metrics_' + k, v)
+        for k, v in img_metrics.items())
+      rows.append(row)
+      # row.update({
+      #   'img_Recall1_iou05': img_metrics['Recall1_iou05'],
+      #   'img_APrecision1_iou05': img_metrics['APrecision1_iou05'],
+      # })
       
-      rows.append({
-        'img_path': dt.img_path,
-        'boxes': dt.bboxes,
-        'latency_sec': dt.latency_sec,
-        'extra': dt.extra,
+      # rows.append({
+      #   'img_path': dt.img_path,
+      #   'boxes': dt.bboxes,
+      #   'latency_sec': dt.latency_sec,
+      #   'extra': dt.extra,
         
-      })
+      # })
 
     df = pd.DataFrame(rows)
-    SKIP_METRIC_KEYS = (
+    SKIP_GLOBAL_METRIC_KEYS = (
       'image_id_to_stats',
     )
     for k in metrics.keys():
-      if k in SKIP_METRIC_KEYS:
+      if k in SKIP_GLOBAL_METRIC_KEYS:
         continue
       v = metrics[k]
       if hasattr(v, 'items'):
         v = [v] + ([{}] * max(0, len(df) - 1))
       df.insert(0, 'coco_' + k, v)
     
+    # df.insert(0, 'detector', self.get_name())
+
+    df.to_pickle('/opt/mft-pg/tester_df.pkl')
     import pdb; pdb.set_trace()
     return df
   
@@ -402,17 +414,24 @@ def detections_df_to_html(df):
       def display_bucket(self, sub_pivot, bucket_id, irows):
           # Sample from irows using reservior sampling
           import random
-          r = random.Random(1337)
+          rand = random.Random(1337)
           rows = []
           for i, row in enumerate(irows):
-              r = r.randint(0, i)
+              r = rand.randint(0, i)
               if r < self.ROWS_TO_DISPLAY_PER_BUCKET:
                   if i < self.ROWS_TO_DISPLAY_PER_BUCKET:
                       rows.insert(r, row)
                   else:
                       rows[r] = row
           
+          # Deserialize collected rows
+          from oarphpy import spark as S
+          rows = [
+            S.RowAdapter.from_row(r) for r in rows
+          ]
+
           # Now render each row to HTML
+          from mft_utils.img_w_boxes import ImgWithBoxes
           row_htmls = [
             ImgWithBoxes.from_dict(row).to_html()
             for row in rows
@@ -430,18 +449,30 @@ def detections_df_to_html(df):
           return bucket_id, HTML
 
   from oarphpy import spark as S
-  with S.SessionFactory.sess() as spark:
-    import databricks.koalas as ks
-    # sdf = spark.createDataFrame(ks.from_pandas(df))
-    sdf = ks.from_pandas(df)
+  class MFTSpark(S.SessionFactory):
+    CONF_KV = {
+      'spark.pyspark.python': 'python3',
+      'spark.driverEnv.PYTHONPATH': '/opt/mft-pg:/opt/oarphpy',
+    }
+
+  with MFTSpark.sess() as spark:
+    # import databricks.koalas as ks
+    sdf = spark.createDataFrame(
+          [S.RowAdapter.to_row(r) for r in df.to_dict(orient='records')],
+          schema=S.RowAdapter.to_schema(df.to_dict(orient='records')[0]))
+    # sdf = ks.DataFrame(
+    #   [S.RowAdapter.to_row(r) for r in df.to_dict(orient='records')])
 
     plotter = Plotter()
-    fig = plotter.run(sdf, 'coco_overall_AP1_iou05')
+    fig = plotter.run(sdf, 'img_coco_metrics_APrecision1_iou05')
 
     from mft_utils.plotting import bokeh_fig_to_html
-    fig_html = bokeh_fig_to_html(fig, title='coco_overall_AP1_iou05')
+    fig_html = bokeh_fig_to_html(fig, title='img_coco_metrics_APrecision1_iou05')
 
-  return html_yay + "<br/><br/>" +cdf.T.to_html() + "<br/><br/>" + fig_html
+    total_html = html_yay + "<br/><br/>" +cdf.T.to_html() + "<br/><br/>" + fig_html 
+    with open('/opt/mft-pg/yaytest.html', 'w') as f:
+      f.write(total_html)
+    return total_html
 
 
 

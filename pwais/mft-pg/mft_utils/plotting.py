@@ -137,12 +137,13 @@ class BBoxVideoRecorder(object):
     self.close()
 
 def bokeh_fig_to_html(fig, title=''):
-  from bokeh.plotting import figure
-  from bokeh.resources import CDN
-  from bokeh.embed import file_html
+  import tempfile
+  from oarphpy.plotting import save_bokeh_fig
+  with tempfile.NamedTemporaryFile() as f:
+    save_bokeh_fig(fig, f.name, title=title)
+    return f.read().decode("utf-8")
+  # from bokeh.resources import CDN
+  # from bokeh.embed import file_html
 
-  plot = figure()
-  plot.circle([1,2], [3,4])
-
-  html = file_html(fig, CDN, title)
-  return html
+  # html = file_html(fig, CDN, title)
+  # return html

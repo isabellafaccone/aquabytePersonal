@@ -189,10 +189,11 @@ def get_coco_summary(groundtruth_bbs, detected_bbs):
                             })
                          for r in full_iou05_images)
 
-    overall_AP1_iou05 = np.mean(
-        [x['AP'] for k in full_iou05_images for x in full_iou05_images[k] if x['AP'] is not None])
+    overall_AP1_iou05 = np.mean([
+        r['AP'] for r in full_iou05_images if r['AP'] is not None
+    ])
     overall_AR1_iou05 = np.mean([
-        x['TP'] / x['total positives'] for k in full_iou05_images for x in full_iou05_images[k] if x['TP'] is not None
+        (r['TP'] / r['total positives']) for r in full_iou05_images if r['TP'] is not None
     ])
 
     return {

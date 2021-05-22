@@ -29,8 +29,9 @@ ENV LANG C.UTF-8
 # Install TRT demo stuff for yolo
 RUN \
   mkdir -p /opt && cd /opt && \
-  git clone https://github.com/jkjung-avt/tensorrt_demos && \
-  cd tensorrt_demos && git checkout 0016973315d1f3f6eaed70a5abd03d6309fe4730
+  git clone -v https://github.com/jkjung-avt/tensorrt_demos.git/ && \
+  cd tensorrt_demos && \
+  git checkout 0016973315d1f3f6eaed70a5abd03d6309fe4730
 RUN \
   cd /opt/tensorrt_demos && \
   cd ssd && ./install_pycuda.sh && cd - && \
