@@ -189,6 +189,12 @@ def get_coco_summary(groundtruth_bbs, detected_bbs):
                             })
                          for r in full_iou05_images)
 
+    overall_AP1_iou05 = np.mean(
+        [x['AP'] for k in full_iou05_images for x in full_iou05_images[k] if x['AP'] is not None])
+    overall_AR1_iou05 = np.mean([
+        x['TP'] / x['total positives'] for k in full_iou05_images for x in full_iou05_images[k] if x['TP'] is not None
+    ])
+
     return {
         "AP": AP,
         "AP50": AP50,
@@ -202,6 +208,9 @@ def get_coco_summary(groundtruth_bbs, detected_bbs):
         "ARsmall": ARsmall,
         "ARmedium": ARmedium,
         "ARlarge": ARlarge,
+
+        "overall_AP1_iou05": overall_AP1_iou05,
+        "overall_AR1_iou05": overall_AR1_iou05,
 
         "class_to_Recall1_iou05": class_to_Recall1_iou05,
         "class_to_APrecision1_iou05": class_to_APrecision1_iou05,

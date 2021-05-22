@@ -225,16 +225,28 @@ class DetectorRunner(object):
     metrics = coco_metrics.get_coco_summary(img_gts, img_dets)
     mft_misc.log.info('... done')
 
+    import copy
+    import attr
     rows = []
     for gt, dt in zip(img_gts, img_dets):
       img_metrics = metrics['image_id_to_stats'][dt.img_path]
+      dt.bboxes_alt = [copy.deepcopy(bb) for bb in gt.bboxes]
+      for bb in dt.bboxes_alt:
+        bb.category_name = 'GT: ' + bb.category_name
+
+
+      row = attr.asdict(dt)
+      row.update({
+        'img_Recall1_iou05': img_metrics['Recall1_iou05'],
+        'img_APrecision1_iou05': img_metrics['APrecision1_iou05'],
+      })
+      
       rows.append({
         'img_path': dt.img_path,
         'boxes': dt.bboxes,
         'latency_sec': dt.latency_sec,
         'extra': dt.extra,
-        'img_Recall1_iou05': img_metrics['Recall1_iou05'],
-        'img_APrecision1_iou05': img_metrics['APrecision1_iou05'],
+        
       })
 
     df = pd.DataFrame(rows)
@@ -327,7 +339,60 @@ def create_runner_from_artifacts(artifact_dir):
 
 
 
-# todo lets use this https://github.com/rafaelpadilla/review_object_detection_metrics
+"""
+
+sample image at top
+core stuff
+latency distribution
+(future: ram distribution)
+
+
+(for each hist with examples, prolly wanna link it ....)
+per-image average scores histogram with examples
+
+precisions histogram with examples
+
+recalls histogram with examples
+
+for each optional attribute:
+  histogram with examples
+
+"""
+
+    
+def detections_df_to_html(df):
+
+  def _safe_get_col(colname):
+    if colname in df.columns:
+      return df[colname][0]
+    else:
+      return "(unknown)"
+
+  
+
+  core_metrics = {
+    'Detector': _safe_get_col('detector_description'),
+    'Dataset': _safe_get_col('dataset'),
+    'Number of images': len(df),
+
+    'COCO Average Precision @ 1 (0.5 IoU)': _safe_get_col('coco_overall_AP1_iou05'),
+    'COCO Average Recall @ 1 (0.5 IoU)': _safe_get_col('coco_overall_AR1_iou05'),
+    
+    'COCO Average Precision (Small)': _safe_get_col('coco_APsmall'),
+    'COCO Average Precision (Medium)': _safe_get_col('coco_APmedium'),
+    'COCO Average Precision (Large)': _safe_get_col('coco_APlarge'),
+
+    'COCO Average Recall (Small)': _safe_get_col('coco_ARsmall'),
+    'COCO Average Recall (Medium)': _safe_get_col('coco_ARmedium'),
+    'COCO Average Recall (Large)': _safe_get_col('coco_ARlarge'),
+  }
+    
+  cdf = pd.DataFrame([core_metrics])
+
+  row0 = df.iloc[123]
+  html_yay = ImgWithBoxes.from_dict(row0).to_html()
+
+  return html_yay + "<br/><br/>" +cdf.T.to_html()
 
 
 

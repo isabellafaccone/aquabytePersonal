@@ -1,5 +1,6 @@
 import hashlib
 import colorsys
+import copy
 
 import cv2
 import imageio
@@ -60,6 +61,7 @@ def draw_bbox_in_image(np_image, bbox, color=None, label_txt='', thickness=2):
   Based upon PSegs: https://github.com/pwais/psegs/blob/d24fac31a9be8d43ae0de51d6a6ca807b3c36379/psegs/util/plotting.py#L37
   """
   
+  bbox = copy.deepcopy(bbox)
   if not isinstance(bbox, BBox2D):
     bbox = BBox2D.from_x1_y1_x2_y2(*bbox)
 
@@ -67,6 +69,7 @@ def draw_bbox_in_image(np_image, bbox, color=None, label_txt='', thickness=2):
   if not color:
     color = hash_to_rbg(label_txt)
 
+  bbox.quantize()
   x1, y1, x2, y2 = bbox.get_x1_y1_x2_y2()
 
   ### Draw Box
@@ -75,7 +78,7 @@ def draw_bbox_in_image(np_image, bbox, color=None, label_txt='', thickness=2):
     (x1, y1),
     (x2, y2),
     color_to_opencv(color),
-    thickness=thickness)
+    thickness=int(thickness))
 
   ### Draw Text
   FONT_SCALE = 0.8

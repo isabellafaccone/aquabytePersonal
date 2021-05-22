@@ -52,3 +52,17 @@ RUN cd /opt/ && \
         pip3 install ipyfilechooser && \
         pip3 install -e .
 ENV PYTHONPATH $PYTHONPATH:/opt/multi-object-tracker
+
+# Install oarphpy for reports
+RUN \
+  DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-11-jdk && \
+  echo JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 >> /etc/environment && \
+  pip3 install pyspark==3.0.1 && \
+  pip3 install numpy pandas>=1.0.0
+ENV PYSPARK_PYTHON python3
+ENV PYSPARK_DRIVER_PYTHON python3
+RUN cd /opt/ && \
+  git clone https://github.com/pwais/oarphpy.git && \
+  cd oarphpy && git checkout v0.1.0 && \
+  pip3 install -e .[spark]
+ENV PYTHONPATH $PYTHONPATH:/opt/oarphpy

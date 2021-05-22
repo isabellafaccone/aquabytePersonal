@@ -211,6 +211,7 @@ class BBox2D(object):
         self,
         img,
         identify_by='category_name',
+        flip_color=False,
         thickness=2):
     """Draw a bounding box in `np_image`.
 
@@ -218,6 +219,8 @@ class BBox2D(object):
       img (numpy.ndarray): Draw in this image.
       identify_by (str): Auto-pick color and text by this attribute of
         this instance.
+      flip_color (bool): Use a contrasting color to the one chosen (e.g. for
+        contrasting ground truth with detections).
       thickness (int): Thickness of the line in pixels.
     """
 
@@ -228,6 +231,10 @@ class BBox2D(object):
 
     from mft_utils.plotting import hash_to_rbg
     color = hash_to_rbg(id_value)
+
+    if flip_color:
+      from mft_utils.plotting import contrasting_color
+      color = contrasting_color(color)
 
     from mft_utils.plotting import draw_bbox_in_image
     draw_bbox_in_image(
