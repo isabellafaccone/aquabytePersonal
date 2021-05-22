@@ -135,3 +135,14 @@ class BBoxVideoRecorder(object):
   
   def __del__(self):
     self.close()
+
+def bokeh_fig_to_html(fig, title=''):
+  from bokeh.plotting import figure
+  from bokeh.resources import CDN
+  from bokeh.embed import file_html
+
+  plot = figure()
+  plot.circle([1,2], [3,4])
+
+  html = file_html(fig, CDN, title)
+  return html

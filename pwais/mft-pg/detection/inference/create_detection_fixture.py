@@ -392,7 +392,56 @@ def detections_df_to_html(df):
   row0 = df.iloc[123]
   html_yay = ImgWithBoxes.from_dict(row0).to_html()
 
-  return html_yay + "<br/><br/>" +cdf.T.to_html()
+
+  from oarphpy import plotting as opl
+  class Plotter(opl.HistogramWithExamplesPlotter):
+      NUM_BINS = 10
+      ROWS_TO_DISPLAY_PER_BUCKET = 5
+      # SUB_PIVOT_COL = 'fp_dataset'
+
+      def display_bucket(self, sub_pivot, bucket_id, irows):
+          # Sample from irows using reservior sampling
+          import random
+          r = random.Random(1337)
+          rows = []
+          for i, row in enumerate(irows):
+              r = r.randint(0, i)
+              if r < self.ROWS_TO_DISPLAY_PER_BUCKET:
+                  if i < self.ROWS_TO_DISPLAY_PER_BUCKET:
+                      rows.insert(r, row)
+                  else:
+                      rows[r] = row
+          
+          # Now render each row to HTML
+          row_htmls = [
+            ImgWithBoxes.from_dict(row).to_html()
+            for row in rows
+          ]
+          
+          HTML = """
+          <b>Pivot: {spv} Bucket: {bucket_id} </b> <br/>
+          
+          {row_bodies}
+          """.format(
+                spv=sub_pivot,
+                bucket_id=bucket_id,
+                row_bodies="<br/><br/><br/>".join(row_htmls))
+          
+          return bucket_id, HTML
+
+  from oarphpy import spark as S
+  with S.SessionFactory.sess() as spark:
+    import databricks.koalas as ks
+    # sdf = spark.createDataFrame(ks.from_pandas(df))
+    sdf = ks.from_pandas(df)
+
+    plotter = Plotter()
+    fig = plotter.run(sdf, 'coco_overall_AP1_iou05')
+
+    from mft_utils.plotting import bokeh_fig_to_html
+    fig_html = bokeh_fig_to_html(fig, title='coco_overall_AP1_iou05')
+
+  return html_yay + "<br/><br/>" +cdf.T.to_html() + "<br/><br/>" + fig_html
 
 
 
