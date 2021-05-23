@@ -137,7 +137,7 @@ def create_trt_engine(
 
   run_id = use_model_run_id or None
   with mlflow.start_run(run_id=run_id) as mlrun:
-    mlflow.log_param('trt_parent_run_id', use_model_run_id)
+    # mlflow.log_param('trt_parent_run_id', use_model_run_id)
 
     import time
     mft_misc.log.info('Runing TRT runner with workspace to %s ...' % workdir)

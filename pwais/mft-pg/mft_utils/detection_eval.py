@@ -142,8 +142,8 @@ def get_histogram_with_examples_htmls(df, hist_cols=[]):
 
   from oarphpy import plotting as opl
   class Plotter(opl.HistogramWithExamplesPlotter):
-    NUM_BINS = 10
-    ROWS_TO_DISPLAY_PER_BUCKET = 5
+    NUM_BINS = 50
+    ROWS_TO_DISPLAY_PER_BUCKET = 10
 
     def display_bucket(self, sub_pivot, bucket_id, irows):
       # Sample from irows using reservior sampling

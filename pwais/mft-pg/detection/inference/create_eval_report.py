@@ -39,9 +39,9 @@ def create_eval_report(
       import pandas as pd
       df = pd.read_pickle(det_path)
 
-      from mft_utils import detection_eval as deval
+      from mft_utils import detection_eval as d_eval
 
-      html = deval.detections_df_to_html(df)
+      html = d_eval.detections_df_to_html(df)
       dest_path = det_path + '.eval.html'
       with open(dest_path, 'w') as f:
         f.write(html)
