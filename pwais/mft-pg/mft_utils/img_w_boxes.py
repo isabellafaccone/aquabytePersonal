@@ -53,7 +53,7 @@ class ImgWithBoxes(object):
     debug_img = self.get_debug_image()
 
     from oarphpy.plotting import img_to_data_uri
-    debug_img_html = """<img src="%s" />""" % img_to_data_uri(debug_img)
+    debug_img_html = """<img width="80%%" src="%s" />""" % img_to_data_uri(debug_img)
 
     props = {
       'microstamp': self.microstamp,

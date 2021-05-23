@@ -64,7 +64,10 @@ def get_sample_row_html(df, row_idx=-1):
   
   if len(df) > 0:
     sample_row = df.iloc[row_idx]
-    sample_row_html = ImgWithBoxes.from_dict(sample_row).to_html()
+    obj = ImgWithBoxes.from_dict(sample_row)
+    for bb in obj.bboxes_alt:
+      bb.category_name = "GT:" + bb.category_name
+    sample_row_html = obj.to_html()
   else:
     sample_row_html = "(no data)"
   
@@ -91,27 +94,27 @@ def get_latency_hist_html(df):
   if 'latency_sec' not in df.columns or len(df) == 0:
     return "<i>(No latency data)</i>"
   
-  latencies_micros = 1e6 * df['latency_sec']
-  hist, edges = np.histogram(latencies_micros, density=False, bins=500)
+  latencies_ms = 1e3 * df['latency_sec']
+  hist, edges = np.histogram(latencies_ms, density=False, bins=100)
 
   from bokeh.plotting import figure
 
   fig = figure(
-          title="Latency Distribution (microseconds)",
+          title="Latency Distribution (milliseconds)",
           y_axis_label="Count",
-          x_axis_label="Latency (microseconds)")
+          x_axis_label="Latency (milliseconds)")
   fig.quad(
       top=hist, bottom=0, left=edges[:-1], right=edges[1:],
-      fill_color="navy", line_color="white", alpha=0.5)
+      fill_color="navy", line_color="white", alpha=0.85)
   
   from mft_utils.plotting import bokeh_fig_to_html
   fig_html = bokeh_fig_to_html(fig, title='Detector_Latencies')
 
   stats_df = pd.DataFrame([{
-    'mean': np.mean(latencies_micros),
-    'median': np.percentile(latencies_micros, 50),
-    '90th': np.percentile(latencies_micros, 90),
-    '99th': np.percentile(latencies_micros, 99),
+    'mean': np.mean(latencies_ms),
+    'median': np.percentile(latencies_ms, 50),
+    '90th': np.percentile(latencies_ms, 90),
+    '99th': np.percentile(latencies_ms, 99),
   }])
   stats_html = stats_df.T.to_html()
 
@@ -163,10 +166,12 @@ def get_histogram_with_examples_htmls(df, hist_cols=[]):
 
       # Now render each row to HTML
       from mft_utils.img_w_boxes import ImgWithBoxes
-      row_htmls = [
-        ImgWithBoxes.from_dict(row).to_html()
-        for row in rows
-      ]
+      row_htmls = []
+      for row in rows:
+        obj = ImgWithBoxes.from_dict(row)
+        for bb in obj.bboxes_alt:
+          bb.category_name = "GT:" + bb.category_name
+        row_htmls.append(obj.to_html())
       
       HTML = """
       <b>Pivot: {spv} Bucket: {bucket_id} </b> <br/>
@@ -234,7 +239,10 @@ def detections_df_to_html(df):
   hist_col_to_html = get_histogram_with_examples_htmls(df)
 
   hist_agg_html = "<br/><br/>".join(
-    "<h2>%s</h2><br/><iframe width='100%%', height='900px'>%s</iframe>" % (k, v)
+    """
+      <h2>%s</h2><br/>
+      <div width='100%%' height='1000px' style='overflow-y:auto'>%s</div>
+    """ % (k, v)
     for k, v in hist_col_to_html.items())
 
   return """
