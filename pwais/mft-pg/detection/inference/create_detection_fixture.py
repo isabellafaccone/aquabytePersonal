@@ -10,8 +10,21 @@ import pandas as pd
 from mft_utils import misc as mft_misc
 from mft_utils.bbox2d import BBox2D
 from mft_utils.img_w_boxes import ImgWithBoxes
-from mft_utils.gopro_data import DATASET_NAME_TO_ITER_FACTORY
 
+
+
+def df_add_static_col(df, colname, v, empty_v=None):
+  import six
+  if empty_v is None:
+    if hasattr(v, 'items'):
+      empty_v = {}
+    elif isinstance(v, list):
+      empty_v = []
+    elif isinstance(v, six.string_types):
+      empty_v = ''
+    else:
+      empty_v = v
+  df.insert(0, colname, [v] + ([empty_v] * max(0, len(df) - 1)))
 
 
 ###############################################################################
@@ -256,12 +269,12 @@ class DetectorRunner(object):
       if k in SKIP_GLOBAL_METRIC_KEYS:
         continue
       v = metrics[k]
-      if hasattr(v, 'items'):
-        v = [v] + ([{}] * max(0, len(df) - 1))
-      df.insert(0, 'coco_' + k, v)
+      df_add_static_col(df, 'coco_' + k, v)
     
-    df.insert(0, 'detector_runner', self.get_runner_name())
-    df.insert(0, 'detector_info', self.get_detector_info())
+    df_add_static_col(df, 'detector_runner', self.get_runner_name())
+    df_add_static_col(df, 'detector_info', self.get_detector_info())
+    # df.insert(0, 'detector_runner', self.get_runner_name())
+    # df.insert(0, 'detector_info', self.get_detector_info())
     return df
   
   @classmethod
@@ -393,19 +406,28 @@ def create_detection_fixture(
   
   assert use_model_artifact_dir, "Need some model artifacts to run a model"
 
-  assert detect_on_dataset in DATASET_NAME_TO_ITER_FACTORY, \
+
+  from mft_utils import gopro_data
+  from mft_utils import akpd_data
+
+  DATASET_NAME_TO_FACTORY = {}
+  DATASET_NAME_TO_FACTORY.update(gopro_data.DATASET_NAME_TO_ITER_FACTORY)
+  DATASET_NAME_TO_FACTORY.update(akpd_data.DATASET_NAME_TO_ITER_FACTORY)
+  assert detect_on_dataset in DATASET_NAME_TO_FACTORY, \
     "Requested %s but only have %s" % (
-      detect_on_dataset, DATASET_NAME_TO_ITER_FACTORY.keys())
+      detect_on_dataset, DATASET_NAME_TO_FACTORY.keys())
+
 
   if gpu_id > 0:
       os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
+
 
   run_id = use_model_run_id or None
   with mlflow.start_run(run_id=run_id) as mlrun:
     mlflow.log_param('parent_run_id', use_model_run_id)
 
-    iter_factory = DATASET_NAME_TO_ITER_FACTORY[detect_on_dataset]
-    iter_img_gts = iter_factory()
+    dfactory = DATASET_NAME_TO_FACTORY[detect_on_dataset]
+    iter_img_gts = dfactory()
 
     if detect_limit >= 0:
       import itertools
@@ -419,9 +441,12 @@ def create_detection_fixture(
     df = detector_runner(img_gts)
     d_time = time.time() - start
     
-    df.insert(0, 'dataset', detect_on_dataset)
-    df.insert(0, 'model_artifact_dir', use_model_artifact_dir)
-    df.insert(0, 'model_run_id', use_model_run_id)
+    df_add_static_col(df, 'dataset', detect_on_dataset)
+    df_add_static_col(df, 'model_artifact_dir', use_model_artifact_dir)
+    df_add_static_col(df, 'model_run_id', use_model_run_id)
+    # df.insert(0, 'dataset', detect_on_dataset)
+    # df.insert(0, 'model_artifact_dir', use_model_artifact_dir)
+    # df.insert(0, 'model_run_id', use_model_run_id)
 
     mlflow.log_metric('mean_latency_ms', 1e3 * df['latency_sec'].mean())
 

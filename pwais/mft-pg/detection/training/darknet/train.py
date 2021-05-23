@@ -294,12 +294,12 @@ def install_dataset(mlflow, model_workdir, dataset_name):
     mlflow.log_artifact(out_names_path)
 
   elif dataset_name.startswith('akpd1'):
-    from mft_utils.akpd_data import DATASET_NAME_TO_FACTORY
-    assert dataset_name in DATASET_NAME_TO_FACTORY, (
-      dataset_name, 'not in', DATASET_NAME_TO_FACTORY.keys())
+    from mft_utils.akpd_data import DATASET_NAME_TO_ITER_FACTORY
+    assert dataset_name in DATASET_NAME_TO_ITER_FACTORY, (
+      dataset_name, 'not in', DATASET_NAME_TO_ITER_FACTORY.keys())
     
-    img_gts_factory = DATASET_NAME_TO_FACTORY[dataset_name]
-    img_gts = img_gts_factory()
+    img_gts_factory = DATASET_NAME_TO_ITER_FACTORY[dataset_name]
+    img_gts = list(img_gts_factory())
 
     out_names_path = os.path.join(model_workdir, 'names.names')
     out_data_path = os.path.join(model_workdir, 'data.data')

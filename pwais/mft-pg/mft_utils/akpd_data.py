@@ -1,5 +1,7 @@
 
-def get_akpd_as_bbox_img_gts(
+import itertools
+
+def iter_akpd_as_bbox_img_gts(
       in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd1/2021-05-19_akpd_representative_training_dataset_10K.csv',
       imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
       kp_bbox_to_fish_scale=0.1,
@@ -91,24 +93,24 @@ def get_akpd_as_bbox_img_gts(
         'akpd.mean_luminance': str(crop_meta.get('mean_luminance', float('nan'))),
       })
 
-      img_gts_out.append(
-                    ImgWithBoxes(
+      yield ImgWithBoxes(
                       img_path=img_path,
                       bboxes=bboxes,
-                      microstamp=microstamp))
-  return img_gts_out
+                      microstamp=microstamp)
 
-DATASET_NAME_TO_FACTORY = {
+DATASET_NAME_TO_ITER_FACTORY = {
   'akpd1.0_scale0.1_left_train': (lambda:
-    get_akpd_as_bbox_img_gts(
-      in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd1/2021-05-19_akpd_representative_training_dataset_10K.csv',
-      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
-      kp_bbox_to_fish_scale=0.1,
-      only_camera='left')[:4885]),
+    itertools.islice(
+      iter_akpd_as_bbox_img_gts(
+        in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd1/2021-05-19_akpd_representative_training_dataset_10K.csv',
+        imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
+        kp_bbox_to_fish_scale=0.1,
+        only_camera='left'), 4885)),
   'akpd1.0_scale0.1_left_test': (lambda:
-    get_akpd_as_bbox_img_gts(
-      in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd1/2021-05-19_akpd_representative_training_dataset_10K.csv',
-      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
-      kp_bbox_to_fish_scale=0.1,
-      only_camera='left')[4885:]),
+    itertools.islice(
+      iter_akpd_as_bbox_img_gts(
+        in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd1/2021-05-19_akpd_representative_training_dataset_10K.csv',
+        imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
+        kp_bbox_to_fish_scale=0.1,
+        only_camera='left'), 4885+1, None)),
 }

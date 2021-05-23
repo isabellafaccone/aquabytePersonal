@@ -52,10 +52,7 @@ def get_core_description_html(df):
   }
     
   cdf = pd.DataFrame([core_metrics])
-  return cdf.T.to_html(
-              justify='left',
-              index=False,
-              notebook=True) # Better colors
+  return cdf.T.to_html()
 
 def get_sample_row_html(df, row_idx=-1):
   from mft_utils.img_w_boxes import ImgWithBoxes
@@ -82,7 +79,7 @@ def spark_df_add_mean_bbox_score(
 
   def mean_bbox_score(bboxes):
     import numpy as np
-    return np.mean([bb.score for bb in bboxes] or [-1.])
+    return float(np.mean([bb.score for bb in bboxes] or [-1.]))
   mean_bbox_score_udf = udf(lambda x: mean_bbox_score(x), DoubleType())
 
   spark_df = spark_df.withColumn(outcol, mean_bbox_score_udf(bbox_col))
@@ -94,15 +91,18 @@ def get_latency_hist_html(df):
   if 'latency_sec' not in df.columns or len(df) == 0:
     return "<i>(No latency data)</i>"
   
-  from bokeh.charts import Histogram
-  
   latencies_micros = 1e6 * df['latency_sec']
-  fig = Histogram(
-          latencies_micros,
-          bins=500,
-          title="Latency (microseconds)",
+  hist, edges = np.histogram(latencies_micros, density=False, bins=500)
+
+  from bokeh.plotting import figure
+
+  fig = figure(
+          title="Latency Distribution (microseconds)",
           y_axis_label="Count",
           x_axis_label="Latency (microseconds)")
+  fig.quad(
+      top=hist, bottom=0, left=edges[:-1], right=edges[1:],
+      fill_color="navy", line_color="white", alpha=0.5)
   
   from mft_utils.plotting import bokeh_fig_to_html
   fig_html = bokeh_fig_to_html(fig, title='Detector_Latencies')
@@ -113,10 +113,7 @@ def get_latency_hist_html(df):
     '90th': np.percentile(latencies_micros, 90),
     '99th': np.percentile(latencies_micros, 99),
   }])
-  stats_html = stats_df.T.to_html(
-              justify='left',
-              index=False,
-              notebook=True) # Better colors
+  stats_html = stats_df.T.to_html()
 
   return "%s<br />%s" % (fig_html, stats_html)
 
@@ -236,8 +233,8 @@ def detections_df_to_html(df):
 
   hist_col_to_html = get_histogram_with_examples_htmls(df)
 
-  hist_agg_html = '<br/><br/>'.join(
-    '<h2>%s</h2><br/>%s' % (k, v)
+  hist_agg_html = "<br/><br/>".join(
+    "<h2>%s</h2><br/><iframe width='100%%', height='900px'>%s</iframe>" % (k, v)
     for k, v in hist_col_to_html.items())
 
   return """

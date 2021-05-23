@@ -66,9 +66,6 @@ class ImgWithBoxes(object):
       props['extra.' + k] = str(v)
     
     import pandas as pd
-    props_html = pd.DataFrame([props]).T.to_html(
-                    justify='left',
-                    index=False,
-                    notebook=True) # Better colors
+    props_html = pd.DataFrame([props]).T.to_html()
 
     return "%s<br/>%s<br/>" % (debug_img_html, props_html)

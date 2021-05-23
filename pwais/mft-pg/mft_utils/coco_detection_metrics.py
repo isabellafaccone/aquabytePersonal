@@ -175,10 +175,11 @@ def get_coco_summary(groundtruth_bbs, detected_bbs):
 
     statss_at_iou05 = full[0.5]
     class_to_Recall1_iou05 = dict(
-        (stats['class'], stats['TP'] / stats['total positives'])
+        (stats['class'], 
+            (stats['TP'] / stats['total positives'] if stats['TP'] is not None else 0.))
         for stats in statss_at_iou05)
     class_to_APrecision1_iou05 = dict(
-        (stats['class'], stats['AP'])
+        (stats['class'], stats['AP'] or 0.)
         for stats in statss_at_iou05)
 
     image_id_to_stats = dict(
