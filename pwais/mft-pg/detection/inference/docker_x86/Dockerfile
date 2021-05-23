@@ -29,7 +29,7 @@ ENV LANG C.UTF-8
 # Install TRT demo stuff for yolo
 RUN \
   mkdir -p /opt && cd /opt && \
-  git clone -v https://github.com/jkjung-avt/tensorrt_demos.git/ && \
+  git clone https://github.com/jkjung-avt/tensorrt_demos.git/ && \
   cd tensorrt_demos && \
   git checkout 0016973315d1f3f6eaed70a5abd03d6309fe4730
 RUN \
@@ -54,7 +54,7 @@ RUN cd /opt/ && \
         pip3 install -e .
 ENV PYTHONPATH $PYTHONPATH:/opt/multi-object-tracker
 
-# Install oarphpy for reports
+# Install oarphpy+spark for reports
 RUN \
   DEBIAN_FRONTEND=noninteractive apt-get install -y openjdk-11-jdk && \
   echo JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 >> /etc/environment && \
@@ -67,3 +67,5 @@ RUN cd /opt/ && \
   cd oarphpy && git checkout v0.1.0 && \
   pip3 install -e .[spark]
 ENV PYTHONPATH $PYTHONPATH:/opt/oarphpy
+
+ENV PYTHONPATH $PYTHONPATH:/opt/mft-pg

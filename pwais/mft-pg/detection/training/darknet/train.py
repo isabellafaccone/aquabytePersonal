@@ -128,6 +128,7 @@ def convert_img_gt_to_darknet_format(
       img_gts=[],
       out_yolo_dir='img_gts.yolov3.annos',
       out_train_txt_path='train.txt',
+      out_valid_txt_path='valid.txt',
       out_names_path='names.names',
       out_data_path='data.data',
       id_to_category=[]):
@@ -196,6 +197,15 @@ def convert_img_gt_to_darknet_format(
     f.write('\n'.join(train_txt_lines))
   mft_misc.log.info('saved %s' % out_train_txt_path)
 
+  import random
+  rand = random.Random(1337)
+  valid_lines = list(train_txt_lines)
+  rand.shuffle(valid_lines)
+  valid_lines = valid_lines[:100]
+  with open(out_valid_txt_path, 'w') as f:
+    f.write('\n'.join(valid_lines))
+  mft_misc.log.info('saved %s' % out_valid_txt_path)
+
   with open(out_names_path, 'w') as f:
     f.write('\n'.join((
       id_to_category
@@ -204,11 +214,12 @@ def convert_img_gt_to_darknet_format(
 
   with open(out_data_path, 'w') as f:
     train_fname = os.path.basename(out_train_txt_path)
+    valid_fname = os.path.basename(out_valid_txt_path)
     names_fname = os.path.basename(out_names_path)
     f.write('\n'.join((
       'classes=' + str(len(id_to_category)),
       'train=' + train_fname,
-      'valid=' + train_fname, # I think this makes it compute mAP on the training set?
+      'valid=' + valid_fname, # I think this makes it compute mAP on the training set?
       # 'eval=' + train_fname,  # IDK if this does anything
       'names=' + names_fname, # I think it needs this for debug images
       'backup=.',
@@ -267,6 +278,7 @@ def install_dataset(mlflow, model_workdir, dataset_name):
       imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/',
       out_yolo_dir=os.path.join(model_workdir, 'gopro_fish_head_anns.csv.yolov3.annos'),
       out_train_txt_path=os.path.join(model_workdir, 'train.txt'),
+      out_valid_txt_path=os.path.join(model_workdir, 'valid.txt'),
       out_names_path=out_names_path,
       out_data_path=os.path.join(model_workdir, 'data.data'),
       positive_class=positive_class,

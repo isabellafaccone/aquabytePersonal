@@ -215,7 +215,7 @@ def main(args=None):
                         start_only=True)
     run_cmd("""
         echo "FIXME ENV" && 
-        docker exec -it {container_name} bash -c "PYTHONPATH=$PYTHONPATH:/opt/mft-pg:/opt/oarphpy PYSPARK_PYTHON=python3 PYSPARK_DRIVER_PYTHON=python3 jupyter notebook --no-browser --allow-root --ip='*' --port={port}"
+        docker exec -it {container_name} bash -c "jupyter notebook --no-browser --allow-root --ip='*' --port={port}"
       """.format(container_name=container_name, port=args.jupyter_ui))
 
 if __name__ == '__main__':
