@@ -227,8 +227,9 @@ class DetectorRunner(object):
     img_dets = []
     for i, o in enumerate(img_gts):
       img_path = o.img_path
-      result = self.detect_on_img_path(img_path)
-      img_dets.append(result)
+      img_det = self.detect_on_img_path(img_path)
+      img_det.extra.update(o.extra)
+      img_dets.append(img_det)
 
       if ((i+1) % 100) == 0:
         mft_misc.log.info('Detected %s of %s' % (i+1, len(img_gts)))

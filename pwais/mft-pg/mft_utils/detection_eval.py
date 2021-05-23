@@ -105,7 +105,7 @@ def get_latency_hist_html(df):
           x_axis_label="Latency (milliseconds)")
   fig.quad(
       top=hist, bottom=0, left=edges[:-1], right=edges[1:],
-      fill_color="navy", line_color="white", alpha=0.85)
+      fill_color="blue", line_color="navy", alpha=0.85)
   
   from mft_utils.plotting import bokeh_fig_to_html
   fig_html = bokeh_fig_to_html(fig, title='Detector_Latencies')
@@ -121,7 +121,7 @@ def get_latency_hist_html(df):
   return "%s<br />%s" % (fig_html, stats_html)
 
 
-def get_histogram_with_examples_htmls(df, hist_cols=[]):
+def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
   from mft_utils import misc as mft_misc
 
   if not hist_cols:
@@ -135,7 +135,10 @@ def get_histogram_with_examples_htmls(df, hist_cols=[]):
 
   from oarphpy import spark as S
   class MFTSpark(S.SessionFactory):
-    CONF_KV = {}
+    CONF_KV = {
+      'spark.files.overwrite': 'true',
+        # Make it easy to have multiple invocations of parent function
+    }
     #   'spark.pyspark.python': 'python3',
     #   'spark.driverEnv.PYTHONPATH': '/opt/mft-pg:/opt/oarphpy',
     # }
@@ -186,7 +189,7 @@ def get_histogram_with_examples_htmls(df, hist_cols=[]):
 
 
   col_to_html = {}
-  with MFTSpark.sess() as spark:
+  with MFTSpark.sess(spark) as spark:
     import pyspark.sql
     if not isinstance(df, pyspark.sql.DataFrame):
       spark_rows = [
