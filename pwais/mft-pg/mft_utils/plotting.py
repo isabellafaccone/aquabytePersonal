@@ -137,13 +137,16 @@ class BBoxVideoRecorder(object):
     self.close()
 
 def bokeh_fig_to_html(fig, title=''):
+  # Yes sadly it seems Bokeh has no "write to buffer" option
   import tempfile
   from oarphpy.plotting import save_bokeh_fig
   with tempfile.NamedTemporaryFile() as f:
     save_bokeh_fig(fig, f.name, title=title)
     return f.read().decode("utf-8")
+  
+  # We tried this and some of the javascript didn't work, might have been
+  # a bad version of bokeh tho.
   # from bokeh.resources import CDN
   # from bokeh.embed import file_html
-
   # html = file_html(fig, CDN, title)
   # return html

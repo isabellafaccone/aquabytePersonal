@@ -229,11 +229,13 @@ class DetectorRunner(object):
     import attr
     rows = []
     for gt, dt in zip(img_gts, img_dets):
-      # Record ground truth used for evaluation; also helps viz
-      dt.bboxes_alt = [copy.deepcopy(bb) for bb in gt.bboxes]
-      for bb in dt.bboxes_alt:
-        bb.category_name = 'GT: ' + bb.category_name
-
+      # Record ground truth used for evaluation; also helps viz.
+      dt.bboxes_alt = gt.bboxes
+      # [copy.deepcopy(bb) for bb in gt.bboxes]
+      # for bb in dt.bboxes_alt:
+      #   # NB: the coco_merics above need to have the same category_name to
+      #   # work, but we prefix the categories here for bete
+      #   bb.category_name = 'GT: ' + bb.category_name
 
       img_metrics = metrics['image_id_to_stats'][dt.img_path]
       dt.extra.update(
@@ -245,18 +247,6 @@ class DetectorRunner(object):
         ('img_coco_metrics_' + k, v)
         for k, v in img_metrics.items())
       rows.append(row)
-      # row.update({
-      #   'img_Recall1_iou05': img_metrics['Recall1_iou05'],
-      #   'img_APrecision1_iou05': img_metrics['APrecision1_iou05'],
-      # })
-      
-      # rows.append({
-      #   'img_path': dt.img_path,
-      #   'boxes': dt.bboxes,
-      #   'latency_sec': dt.latency_sec,
-      #   'extra': dt.extra,
-        
-      # })
 
     df = pd.DataFrame(rows)
     SKIP_GLOBAL_METRIC_KEYS = (
@@ -270,15 +260,16 @@ class DetectorRunner(object):
         v = [v] + ([{}] * max(0, len(df) - 1))
       df.insert(0, 'coco_' + k, v)
     
-    # df.insert(0, 'detector', self.get_name())
-
-    df.to_pickle('/opt/mft-pg/tester_df.pkl')
-    import pdb; pdb.set_trace()
+    df.insert(0, 'detector_runner', self.get_runner_name())
+    df.insert(0, 'detector_info', self.get_detector_info())
     return df
   
   @classmethod
-  def get_name(cls):
+  def get_runner_name(cls):
     return str(cls.__name__)
+
+  def get_detector_info(self):
+    return {'base_runner': 'base_runner'}
 
   def detect_on_img_path(self, img_path):
     return ImgWithBoxes(img_path=img_path)
@@ -302,14 +293,25 @@ class DarknetRunner(DetectorRunner):
                       weight_path=weights_path,
                       meta_path=meta_path)
     
+    w, h = mft_misc.darknet_get_yolo_input_wh(config_path)
+    self._dector_info = {
+      'config_path': config_path,
+      'weights_path': weights_path,
+      'input_w': w,
+      'input_h': h,
+    }
+    
   def detect_on_img_path(self, img_path):
     return self._detector.detect(img_path=img_path)
+  
+  def get_detector_info(self):
+    return self._dector_info
 
 
 class YoloTRTRunner(DetectorRunner):
   
   @classmethod
-  def get_name(cls):
+  def get_runner_name(cls):
     engine_name = mft_misc.cuda_get_device_trt_engine_name()
     return str(cls.__name__) + '.' + engine_name
   
@@ -334,10 +336,20 @@ class YoloTRTRunner(DetectorRunner):
     self._engine_load_time_sec = self._detector.engine_load_time_sec
     mlflow.log_metric('trt_engine_load_time_sec', self._engine_load_time_sec)
 
+    self._dector_info = {
+      'trt_engine_name': engine_name,
+      'config_path': yolo_config_path,
+      'input_w': w,
+      'input_h': h,
+    }
+
   def detect_on_img_path(self, img_path):
     result = self._detector.detect(img_path)
     result.extra['trt_engine_load_time_sec'] = self._engine_load_time_sec
     return result
+  
+  def get_detector_info(self):
+    return self._dector_info
 
 
 def create_runner_from_artifacts(artifact_dir):
@@ -348,135 +360,6 @@ def create_runner_from_artifacts(artifact_dir):
     return DarknetRunner(artifact_dir)
   else:
     raise ValueError("Could not resolve detector for %s" % artifact_dir)
-
-
-
-"""
-
-sample image at top
-core stuff
-latency distribution
-(future: ram distribution)
-
-
-(for each hist with examples, prolly wanna link it ....)
-per-image average scores histogram with examples
-
-precisions histogram with examples
-
-recalls histogram with examples
-
-for each optional attribute:
-  histogram with examples
-
-"""
-
-    
-def detections_df_to_html(df):
-
-  def _safe_get_col(colname):
-    if colname in df.columns:
-      return df[colname][0]
-    else:
-      return "(unknown)"
-
-  
-
-  core_metrics = {
-    'Detector': _safe_get_col('detector_description'),
-    'Dataset': _safe_get_col('dataset'),
-    'Number of images': len(df),
-
-    'COCO Average Precision @ 1 (0.5 IoU)': _safe_get_col('coco_overall_AP1_iou05'),
-    'COCO Average Recall @ 1 (0.5 IoU)': _safe_get_col('coco_overall_AR1_iou05'),
-    
-    'COCO Average Precision (Small)': _safe_get_col('coco_APsmall'),
-    'COCO Average Precision (Medium)': _safe_get_col('coco_APmedium'),
-    'COCO Average Precision (Large)': _safe_get_col('coco_APlarge'),
-
-    'COCO Average Recall (Small)': _safe_get_col('coco_ARsmall'),
-    'COCO Average Recall (Medium)': _safe_get_col('coco_ARmedium'),
-    'COCO Average Recall (Large)': _safe_get_col('coco_ARlarge'),
-  }
-    
-  cdf = pd.DataFrame([core_metrics])
-
-  row0 = df.iloc[123]
-  html_yay = ImgWithBoxes.from_dict(row0).to_html()
-
-
-  from oarphpy import plotting as opl
-  class Plotter(opl.HistogramWithExamplesPlotter):
-      NUM_BINS = 10
-      ROWS_TO_DISPLAY_PER_BUCKET = 5
-      # SUB_PIVOT_COL = 'fp_dataset'
-
-      def display_bucket(self, sub_pivot, bucket_id, irows):
-          # Sample from irows using reservior sampling
-          import random
-          rand = random.Random(1337)
-          rows = []
-          for i, row in enumerate(irows):
-              r = rand.randint(0, i)
-              if r < self.ROWS_TO_DISPLAY_PER_BUCKET:
-                  if i < self.ROWS_TO_DISPLAY_PER_BUCKET:
-                      rows.insert(r, row)
-                  else:
-                      rows[r] = row
-          
-          # Deserialize collected rows
-          from oarphpy import spark as S
-          rows = [
-            S.RowAdapter.from_row(r) for r in rows
-          ]
-
-          # Now render each row to HTML
-          from mft_utils.img_w_boxes import ImgWithBoxes
-          row_htmls = [
-            ImgWithBoxes.from_dict(row).to_html()
-            for row in rows
-          ]
-          
-          HTML = """
-          <b>Pivot: {spv} Bucket: {bucket_id} </b> <br/>
-          
-          {row_bodies}
-          """.format(
-                spv=sub_pivot,
-                bucket_id=bucket_id,
-                row_bodies="<br/><br/><br/>".join(row_htmls))
-          
-          return bucket_id, HTML
-
-  from oarphpy import spark as S
-  class MFTSpark(S.SessionFactory):
-    CONF_KV = {
-      'spark.pyspark.python': 'python3',
-      'spark.driverEnv.PYTHONPATH': '/opt/mft-pg:/opt/oarphpy',
-    }
-
-  with MFTSpark.sess() as spark:
-    # import databricks.koalas as ks
-    sdf = spark.createDataFrame(
-          [S.RowAdapter.to_row(r) for r in df.to_dict(orient='records')],
-          schema=S.RowAdapter.to_schema(df.to_dict(orient='records')[0]))
-    # sdf = ks.DataFrame(
-    #   [S.RowAdapter.to_row(r) for r in df.to_dict(orient='records')])
-
-    plotter = Plotter()
-    fig = plotter.run(sdf, 'img_coco_metrics_APrecision1_iou05')
-
-    from mft_utils.plotting import bokeh_fig_to_html
-    fig_html = bokeh_fig_to_html(fig, title='img_coco_metrics_APrecision1_iou05')
-
-    total_html = html_yay + "<br/><br/>" +cdf.T.to_html() + "<br/><br/>" + fig_html 
-    with open('/opt/mft-pg/yaytest.html', 'w') as f:
-      f.write(total_html)
-    return total_html
-
-
-
-
 
 
 
@@ -536,6 +419,10 @@ def create_detection_fixture(
     df = detector_runner(img_gts)
     d_time = time.time() - start
     
+    df.insert(0, 'dataset', detect_on_dataset)
+    df.insert(0, 'model_artifact_dir', use_model_artifact_dir)
+    df.insert(0, 'model_run_id', use_model_run_id)
+
     mlflow.log_metric('mean_latency_ms', 1e3 * df['latency_sec'].mean())
 
     mlflow.log_metric('total_detection_time_sec', d_time)
@@ -544,7 +431,7 @@ def create_detection_fixture(
       df.to_pickle(save_to)
     else:
       import tempfile
-      fname = detector_runner.get_name() + '.detections_df.pkl'
+      fname = detector_runner.get_runner_name() + '.detections_df.pkl'
       save_to = os.path.join(tempfile.gettempdir(), fname)
       df.to_pickle(save_to)
       mlflow.log_artifact(save_to)

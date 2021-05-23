@@ -18,7 +18,7 @@ class ImgWithBoxes(object):
 
   ## Stats and Misc (optional)
 
-  latency_sec = attr.ib(type=float, default=-1)
+  latency_sec = attr.ib(type=float, default=-1.)
   """float, optional: Detector latency, if applicable"""
 
   bboxes_alt = attr.ib(default=[])
@@ -49,6 +49,7 @@ class ImgWithBoxes(object):
     return debug
 
   def to_html(self):
+    import numpy as np
     debug_img = self.get_debug_image()
 
     from oarphpy.plotting import img_to_data_uri
@@ -59,11 +60,15 @@ class ImgWithBoxes(object):
       'num_boxes': len(self.bboxes),
       'img_path': self.img_path,
       'latency_sec': self.latency_sec,
+      'mean_bbox_score': np.mean([bb.score for bb in self.bboxes] or [-1.]),
     }
     for k, v in sorted(self.extra.items()):
       props['extra.' + k] = str(v)
     
     import pandas as pd
-    props_html = pd.DataFrame([props]).T.to_html()
+    props_html = pd.DataFrame([props]).T.to_html(
+                    justify='left',
+                    index=False,
+                    notebook=True) # Better colors
 
     return "%s<br/>%s<br/>" % (debug_img_html, props_html)
