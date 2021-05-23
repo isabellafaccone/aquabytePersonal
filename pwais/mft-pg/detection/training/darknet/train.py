@@ -278,7 +278,6 @@ def install_dataset(mlflow, model_workdir, dataset_name):
       imgs_basedir='/opt/mft-pg/datasets/datasets_s3/gopro1/train/images/',
       out_yolo_dir=os.path.join(model_workdir, 'gopro_fish_head_anns.csv.yolov3.annos'),
       out_train_txt_path=os.path.join(model_workdir, 'train.txt'),
-      out_valid_txt_path=os.path.join(model_workdir, 'valid.txt'),
       out_names_path=out_names_path,
       out_data_path=os.path.join(model_workdir, 'data.data'),
       positive_class=positive_class,
@@ -308,6 +307,7 @@ def install_dataset(mlflow, model_workdir, dataset_name):
       img_gts=img_gts,
       out_yolo_dir=os.path.join(model_workdir, 'img_gt.yolov3.annos'),
       out_train_txt_path=os.path.join(model_workdir, 'train.txt'),
+      out_valid_txt_path=os.path.join(model_workdir, 'valid.txt'),
       out_names_path=out_names_path,
       out_data_path=out_data_path,
     )
