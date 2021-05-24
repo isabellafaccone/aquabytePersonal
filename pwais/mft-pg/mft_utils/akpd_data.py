@@ -87,30 +87,48 @@ def iter_akpd_as_bbox_img_gts(
       extra = dict(base_extra)
       extra.update({
         'akpd.crop_metadata_raw': row[camera + '_crop_metadata'], # is a str
-        'akpd.quality': str(quality.get('quality', float('nan'))),
-        'akpd.blurriness': str(quality.get('blurriness', float('nan'))),
-        'akpd.darkness': str(quality.get('darkness', float('nan'))),
-        'akpd.mean_luminance': str(crop_meta.get('mean_luminance', float('nan'))),
+        'akpd.quality': str(quality.get('quality', -1.)),
+        'akpd.blurriness': str(quality.get('blurriness', -1.)),
+        'akpd.darkness': str(quality.get('darkness', -1.)),
+        'akpd.mean_luminance': str(crop_meta.get('mean_luminance', -1.)),
       })
-
       yield ImgWithBoxes(
                       img_path=img_path,
                       bboxes=bboxes,
-                      microstamp=microstamp)
+                      microstamp=microstamp,
+                      extra=extra)
 
 DATASET_NAME_TO_ITER_FACTORY = {
-  'akpd1.0_scale0.1_left_train': (lambda:
-    itertools.islice(
-      iter_akpd_as_bbox_img_gts(
-        in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd1/2021-05-19_akpd_representative_training_dataset_10K.csv',
-        imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
-        kp_bbox_to_fish_scale=0.1,
-        only_camera='left'), 4885)),
+
+  ## NB: At the time of writing, the first 4420 examples have quality / darkness
+  ## scores, so we save those examples for the test set.
   'akpd1.0_scale0.1_left_test': (lambda:
     itertools.islice(
       iter_akpd_as_bbox_img_gts(
         in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd1/2021-05-19_akpd_representative_training_dataset_10K.csv',
         imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
         kp_bbox_to_fish_scale=0.1,
+        only_camera='left'), 4885)),
+  'akpd1.0_scale0.1_left_train': (lambda:
+    itertools.islice(
+      iter_akpd_as_bbox_img_gts(
+        in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd1/2021-05-19_akpd_representative_training_dataset_10K.csv',
+        imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
+        kp_bbox_to_fish_scale=0.1,
+        only_camera='left'), 4885+1, None)),
+  
+  'akpd1.0_scale0.05_left_test': (lambda:
+    itertools.islice(
+      iter_akpd_as_bbox_img_gts(
+        in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd1/2021-05-19_akpd_representative_training_dataset_10K.csv',
+        imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
+        kp_bbox_to_fish_scale=0.05,
+        only_camera='left'), 4885)),
+  'akpd1.0_scale0.05_left_train': (lambda:
+    itertools.islice(
+      iter_akpd_as_bbox_img_gts(
+        in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd1/2021-05-19_akpd_representative_training_dataset_10K.csv',
+        imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
+        kp_bbox_to_fish_scale=0.05,
         only_camera='left'), 4885+1, None)),
 }
