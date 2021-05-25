@@ -66,7 +66,7 @@ class DarknetDetector(object):
     latency_sec = time.time() - start
     bboxes = []
     for detection in detections:
-      pred_class = detection[0]
+      pred_class = detection[0].strip()
       confidence = detection[1]
       bounds = detection[2]
       # h, w = img.shape[:2]
@@ -130,10 +130,6 @@ class YoloAVTTRTDetector(object):
         with open(trt_engine_path, 'rb') as f:
           with trt.Runtime(self.trt_logger) as runtime:
             return runtime.deserialize_cuda_engine(f.read())
-      
-      # def detect(self, *args, **kwargs):
-      #   import pdb; pdb.set_trace()
-      #   return super(MyTrtYOLO, self).detect(*args, **kwargs)
     
     start = time.time()
     mft_misc.log.info('Loading TRT engine %s' % trt_engine_path)
@@ -223,13 +219,19 @@ class YoloAVTTRTDetector(object):
 
 class DetectorRunner(object):
   def __call__(self, img_gts):
-    
+    import copy
+
     img_dets = []
     for i, o in enumerate(img_gts):
       img_path = o.img_path
       img_det = self.detect_on_img_path(img_path)
       img_det.extra.update(o.extra)
+      # Record ground truth used for evaluation; also helps viz.
+      img_det.bboxes_alt = copy.deepcopy(o.bboxes)
       img_dets.append(img_det)
+
+      # if '=2019-04-30T07:53:26.905236000Z/left_frame_crop_1342_1713_3338_2323.jpg' in img_path:
+      #   import pdb; pdb.set_trace()
 
       if ((i+1) % 100) == 0:
         mft_misc.log.info('Detected %s of %s' % (i+1, len(img_gts)))
@@ -239,18 +241,9 @@ class DetectorRunner(object):
     metrics = coco_metrics.get_coco_summary(img_gts, img_dets)
     mft_misc.log.info('... done')
 
-    import copy
     import attr
     rows = []
-    for gt, dt in zip(img_gts, img_dets):
-      # Record ground truth used for evaluation; also helps viz.
-      dt.bboxes_alt = gt.bboxes
-      # [copy.deepcopy(bb) for bb in gt.bboxes]
-      # for bb in dt.bboxes_alt:
-      #   # NB: the coco_merics above need to have the same category_name to
-      #   # work, but we prefix the categories here for bete
-      #   bb.category_name = 'GT: ' + bb.category_name
-
+    for dt in img_dets:
       img_metrics = metrics['image_id_to_stats'][dt.img_path]
       dt.extra.update(
         ('coco_metrics_' + k, str(v))
@@ -276,6 +269,7 @@ class DetectorRunner(object):
     df_add_static_col(df, 'detector_info', self.get_detector_info())
     # df.insert(0, 'detector_runner', self.get_runner_name())
     # df.insert(0, 'detector_info', self.get_detector_info())
+
     return df
   
   @classmethod
@@ -339,7 +333,9 @@ class YoloTRTRunner(DetectorRunner):
     category_num = mft_misc.darknet_get_yolo_category_num(yolo_config_path)
 
     yolo_names_path = os.path.join(artifact_dir, 'names.names')
-    category_id_to_name = open(yolo_names_path, 'r').readlines()
+    category_id_to_name = [
+      c.strip() for c in open(yolo_names_path, 'r').readlines()
+    ]
 
     self._detector = YoloAVTTRTDetector(
                         trt_engine_path,

@@ -308,15 +308,15 @@ def _group_detections(dt, gt):
     #     c_id = g.get_class_id()
     #     bb_info[i_id, c_id]["gt"].append(g)
     for d in dt:
-        i_id = d.img_path
+        di_id = d.img_path
         for dbb in d.bboxes:
-            c_id = dbb.category_name
-            bb_info[i_id, c_id]["dt"].append(dbb)
+            dc_id = dbb.category_name
+            bb_info[di_id, dc_id]["dt"].append(dbb)
     for g in gt:
-        i_id = g.img_path
+        gi_id = g.img_path
         for gbb in g.bboxes:
-            c_id = gbb.category_name
-            bb_info[i_id, c_id]["gt"].append(gbb)
+            gc_id = gbb.category_name
+            bb_info[gi_id, gc_id]["gt"].append(gbb)
     return bb_info
 
 

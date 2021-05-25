@@ -67,6 +67,7 @@ def get_sample_row_html(df, row_idx=-1):
     obj = ImgWithBoxes.from_dict(sample_row)
     for bb in obj.bboxes_alt:
       bb.category_name = "GT:" + bb.category_name
+
     sample_row_html = obj.to_html()
   else:
     sample_row_html = "(no data)"
@@ -266,121 +267,4 @@ def detections_df_to_html(df):
       core_desc_html=core_desc_html,
       latency_html=latency_html,
       hist_agg_html=hist_agg_html)
-
-
-
-  # import pandas as pd
-
-  # from mft_utils import misc as mft_misc
-  # from mft_utils.bbox2d import BBox2D
-  # from mft_utils.img_w_boxes import ImgWithBoxes
-
-  # def _safe_get_col(colname):
-  #   if colname in df.columns:
-  #     return df[colname][0]
-  #   else:
-  #     return "(unknown)"
-
-  # core_metrics = {
-  #   'Detector Runner': _safe_get_col('detector_runner'),
-  #   'Detector Info': _safe_get_col('detector_info'),
-  #   'Model Artifact Dir': _safe_get_col('model_artifact_dir'),
-  #   'MLFlow Run ID': _safe_get_col('model_run_id'),
-  #   'Dataset': _safe_get_col('dataset'),
-  #   'Number of images': len(df),
-
-  #   'COCO Average Precision @ 1 (0.5 IoU)': _safe_get_col('coco_overall_AP1_iou05'),
-  #   'COCO Average Recall @ 1 (0.5 IoU)': _safe_get_col('coco_overall_AR1_iou05'),
-    
-  #   'COCO Average Precision (Small)': _safe_get_col('coco_APsmall'),
-  #   'COCO Average Precision (Medium)': _safe_get_col('coco_APmedium'),
-  #   'COCO Average Precision (Large)': _safe_get_col('coco_APlarge'),
-
-  #   'COCO Average Recall (Small)': _safe_get_col('coco_ARsmall'),
-  #   'COCO Average Recall (Medium)': _safe_get_col('coco_ARmedium'),
-  #   'COCO Average Recall (Large)': _safe_get_col('coco_ARlarge'),
-  # }
-    
-  # cdf = pd.DataFrame([core_metrics])
-
-  # if len(df) > 0:
-  #   import random
-  #   rand = random.Random(1337)
-  #   row_idx = rand.randint(0, len(df) - 1)
-  #   sample_row = df.iloc[row_idx]
-  #   sample_row_html = ImgWithBoxes.from_dict(sample_row).to_html()
-  # else:
-  #   sample_row_html = "(no data)"
-
-
-  # from oarphpy import plotting as opl
-  # class Plotter(opl.HistogramWithExamplesPlotter):
-  #     NUM_BINS = 10
-  #     ROWS_TO_DISPLAY_PER_BUCKET = 5
-  #     # SUB_PIVOT_COL = 'fp_dataset'
-
-  #     def display_bucket(self, sub_pivot, bucket_id, irows):
-  #         # Sample from irows using reservior sampling
-  #         import random
-  #         rand = random.Random(1337)
-  #         rows = []
-  #         for i, row in enumerate(irows):
-  #             r = rand.randint(0, i)
-  #             if r < self.ROWS_TO_DISPLAY_PER_BUCKET:
-  #                 if i < self.ROWS_TO_DISPLAY_PER_BUCKET:
-  #                     rows.insert(r, row)
-  #                 else:
-  #                     rows[r] = row
-          
-  #         # Deserialize collected rows
-  #         from oarphpy import spark as S
-  #         rows = [
-  #           S.RowAdapter.from_row(r) for r in rows
-  #         ]
-
-  #         # Now render each row to HTML
-  #         from mft_utils.img_w_boxes import ImgWithBoxes
-  #         row_htmls = [
-  #           ImgWithBoxes.from_dict(row).to_html()
-  #           for row in rows
-  #         ]
-          
-  #         HTML = """
-  #         <b>Pivot: {spv} Bucket: {bucket_id} </b> <br/>
-          
-  #         {row_bodies}
-  #         """.format(
-  #               spv=sub_pivot,
-  #               bucket_id=bucket_id,
-  #               row_bodies="<br/><br/><br/>".join(row_htmls))
-          
-  #         return bucket_id, HTML
-
-  # from oarphpy import spark as S
-  # class MFTSpark(S.SessionFactory):
-  #   CONF_KV = {
-  #     'spark.pyspark.python': 'python3',
-  #     'spark.driverEnv.PYTHONPATH': '/opt/mft-pg:/opt/oarphpy',
-  #   }
-
-  # with MFTSpark.sess() as spark:
-  #   # import databricks.koalas as ks
-  #   sdf = spark.createDataFrame(
-  #         [S.RowAdapter.to_row(r) for r in df.to_dict(orient='records')],
-  #         schema=S.RowAdapter.to_schema(df.to_dict(orient='records')[0]))
-  #   # sdf = ks.DataFrame(
-  #   #   [S.RowAdapter.to_row(r) for r in df.to_dict(orient='records')])
-
-  #   plotter = Plotter()
-  #   fig = plotter.run(sdf, 'img_coco_metrics_APrecision1_iou05')
-
-  #   from mft_utils.plotting import bokeh_fig_to_html
-  #   fig_html = bokeh_fig_to_html(fig, title='img_coco_metrics_APrecision1_iou05')
-
-  #   total_html = html_yay + "<br/><br/>" +cdf.T.to_html() + "<br/><br/>" + fig_html 
-  #   with open('/opt/mft-pg/yaytest.html', 'w') as f:
-  #     f.write(total_html)
-  #   return total_html
-
-  # return ''
 
