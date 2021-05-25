@@ -51,7 +51,9 @@ def parse(v):
   assert len(lst) == 1
   return lst[0]
 
-uris += [parse(r) for r in df['images']]
+uris += [
+  parse(r) for r in df['images'] if uris not in (
+    's3://aquabyte-frames-resized-inbound/environment=production/site-id=39/pen-id=56/date=2020-07-08/hour=12/at=2020-07-08T12:56:46.231615000Z/left_frame.resize_512_512.jpg',)]
 from mft_utils import misc as mft_misc
 mft_misc.download_from_s3(uris, 'datasets/datasets_s3/high_recall_fish1/images')
 

@@ -20,6 +20,7 @@ def create_cleaned_df(
   n_duplicates = 0
   n_partial = 0
   n_annotator_skipped = 0
+  n_missing_images = 0
   for i, row in enumerate(df_in.to_dict(orient='records')):
     
     img_lst = ast.literal_eval(row['images'])
@@ -33,7 +34,10 @@ def create_cleaned_df(
     else:
       raise ValueError(img_s3_uri)
 
-    assert os.path.exists(img_path), img_path
+    if not os.path.exists(img_path):
+      print('missing image or bad uri', img_path, img_s3_uri)
+      n_missing_images += 1
+      continue
 
     if img_path in images_seen:
       print(img_path, 'is a dupe')
@@ -61,7 +65,8 @@ def create_cleaned_df(
     
     annos_raw = ast.literal_eval(row['annotation'])
     annotation_is_partial = bool(annos_raw.get('isPartial'))
-    n_partial += 1
+    if annotation_is_partial:
+      n_partial += 1
 
     skip_reasons = annos_raw.get('skipReasons', [])
     if 'annotations' not in annos_raw:
@@ -90,6 +95,7 @@ def create_cleaned_df(
   print('n_duplicates', n_duplicates)
   print('n_partial', n_partial)
   print('n_annotator_skipped', n_annotator_skipped)
+  print('n_missing_images', n_missing_images)
   print('len(rows_out)', len(rows_out))
   return pd.DataFrame(rows_out)
 
