@@ -1,7 +1,7 @@
 def create_cleaned_df(
     in_csv_path='/opt/mft-pg/datasets/datasets_s3/high_recall_fish1/2021-05-20_high_recall_fish_detection_training_dataset_11011.csv',
     imgs_basedir='/opt/mft-pg/datasets/datasets_s3/high_recall_fish1/images/'):
-  """Clean the given AKPD Ground Truth CSV data and return a
+  """Clean the given Ground Truth CSV data and return a
   cleaned DataFrame."""
 
   import os
