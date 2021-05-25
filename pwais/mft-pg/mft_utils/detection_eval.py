@@ -54,6 +54,8 @@ def get_core_description_html(df):
   cdf = pd.DataFrame([core_metrics])
   return cdf.T.style.render()
 
+
+
 def get_sample_row_html(df, row_idx=-1):
   from mft_utils.img_w_boxes import ImgWithBoxes
   
@@ -74,6 +76,23 @@ def get_sample_row_html(df, row_idx=-1):
   
   return sample_row_html
 
+
+def get_time_series_report_html(df):
+  def get_count_distinct(timescale):
+    return (df['microseconds'] // int(timescale)).nunique()
+
+  ts_metrics = {
+    'Num Distinct Timestamps': get_count_distinct(1),
+    'Num Distinct Minutes': get_count_distinct(60 * 1e6),
+    'Num Distinct Hours': get_count_distinct(60 * 60 * 1e6),
+    'Num Distinct Days': get_count_distinct(24 * 60 * 60 * 1e6),
+    'Frames per second': (
+      float(len(df['microseconds'])) / 
+        (1e-6 * (df['microseconds'].max() - df['microseconds'].min()))),
+  }
+    
+  tdf = pd.DataFrame([ts_metrics])
+  return tdf.T.style.render()
 
 def spark_df_add_mean_bbox_score(
         spark_df,
@@ -277,6 +296,8 @@ def detections_df_to_html(df):
 
   latency_html = get_latency_hist_html(df)
 
+  time_series_html = get_time_series_report_html(df)
+
   hist_col_to_html = get_histogram_with_examples_htmls(df)
 
   hist_agg_html = "<br/><br/>".join(
@@ -295,6 +316,10 @@ def detections_df_to_html(df):
     {latency_html}
     <br/><br/>
 
+    <h2>Time Series Info</h2>
+    {time_series_html}
+    <br/><br/>
+
     <br/><br/>
     
     <h1>Histograms with Examples</h1><br/>
@@ -303,5 +328,6 @@ def detections_df_to_html(df):
       sample_html=sample_html,
       core_desc_html=core_desc_html,
       latency_html=latency_html,
+      time_series_html=time_series_html,
       hist_agg_html=hist_agg_html)
 
