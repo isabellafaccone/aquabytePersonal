@@ -24,7 +24,7 @@ RUN python3 -m pip install --upgrade pip
 
 RUN pip3 install \
       imageio \
-      pandas \
+      pandas==1.1.5 \
       pycuda \
       ipython \
       imageio-ffmpeg \

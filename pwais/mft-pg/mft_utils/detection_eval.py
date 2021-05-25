@@ -52,7 +52,7 @@ def get_core_description_html(df):
   }
     
   cdf = pd.DataFrame([core_metrics])
-  return cdf.T.to_html()
+  return cdf.T.style.render()
 
 def get_sample_row_html(df, row_idx=-1):
   from mft_utils.img_w_boxes import ImgWithBoxes
@@ -74,6 +74,7 @@ def get_sample_row_html(df, row_idx=-1):
   
   return sample_row_html
 
+
 def spark_df_add_mean_bbox_score(
         spark_df,
         bbox_col='bboxes',
@@ -88,6 +89,30 @@ def spark_df_add_mean_bbox_score(
 
   spark_df = spark_df.withColumn(outcol, mean_bbox_score_udf(bbox_col))
   return spark_df
+
+
+def spark_df_maybe_add_extra_float(
+        spark_df,
+        key='my_key',
+        default_value=-1.,
+        outcol=''):
+  from pyspark.sql.functions import udf
+  from pyspark.sql.types import DoubleType
+
+  if not outcol:
+    outcol = key
+
+  has_extra_key = key in spark_df.select('extra').first().extra
+  if not has_extra_key:
+    return spark_df
+
+  def get_extra(extra):
+    return float(extra.get(key, default_value))
+  mean_bbox_score_udf = udf(lambda x: get_extra(x), DoubleType())
+
+  spark_df = spark_df.withColumn(outcol, mean_bbox_score_udf(spark_df.extra))
+  return spark_df
+
 
 def get_latency_hist_html(df):
   import numpy as np
@@ -117,7 +142,7 @@ def get_latency_hist_html(df):
     '90th': np.percentile(latencies_ms, 90),
     '99th': np.percentile(latencies_ms, 99),
   }])
-  stats_html = stats_df.T.to_html()
+  stats_html = stats_df.T.style.render()
 
   return "%s<br />%s" % (fig_html, stats_html)
 
@@ -129,7 +154,11 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
     hist_cols = [
       'img_coco_metrics_APrecision1_iou05',
       'img_coco_metrics_Recall1_iou05',
-      'mean_bbox_score',
+      'meta:mean_bbox_score',
+      'meta:extra:akpd.blurriness',
+      'meta:extra:akpd.darkness',
+      'meta:extra:akpd.quality',
+      'meta:extra:akpd.mean_luminance',
     ]
 
   mft_misc.log.info("Histogram-with-examples-ifying cols: %s" % (hist_cols,))
@@ -146,8 +175,8 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
 
   from oarphpy import plotting as opl
   class Plotter(opl.HistogramWithExamplesPlotter):
-    NUM_BINS = 50
-    ROWS_TO_DISPLAY_PER_BUCKET = 10
+    NUM_BINS = 20
+    ROWS_TO_DISPLAY_PER_BUCKET = 5
 
     def display_bucket(self, sub_pivot, bucket_id, irows):
       # Sample from irows using reservior sampling
@@ -199,23 +228,31 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
       schema = S.RowAdapter.to_schema(df.to_dict(orient='records')[0])
       df = spark.createDataFrame(spark_rows, schema=schema)
     
-      df = df.persist()
-      plotter = Plotter()
-      for hist_col in hist_cols:
-        if (hist_col == 'mean_bbox_score' and 
-              'mean_bbox_score' not in df.columns):
+    df = df.persist()
+    plotter = Plotter()
+    for hist_col in hist_cols:
+      if hist_col.startswith('meta:'):
+        if hist_col == 'meta:mean_bbox_score':
           df = spark_df_add_mean_bbox_score(df)
-        
-        if hist_col not in df.columns:
-          mft_misc.log.info("Skipping col: %s" % hist_col)
-          continue
+          df = df.persist()
+          hist_col = 'mean_bbox_score'
+        elif hist_col.startswith('meta:extra:'):
+          key = hist_col.replace('meta:extra:', '')
+          outcol = key.replace('.', '_')
+          df = spark_df_maybe_add_extra_float(df, key=key, outcol=outcol)
+          df = df.persist()
+          hist_col = outcol
+      
+      if hist_col not in df.columns:
+        mft_misc.log.info("Skipping col: %s" % hist_col)
+        continue
 
-        fig = plotter.run(df, hist_col)
+      fig = plotter.run(df, hist_col)
 
-        from mft_utils.plotting import bokeh_fig_to_html
-        fig_html = bokeh_fig_to_html(fig, title=hist_col)
+      from mft_utils.plotting import bokeh_fig_to_html
+      fig_html = bokeh_fig_to_html(fig, title=hist_col)
 
-        col_to_html[hist_col] = fig_html
+      col_to_html[hist_col] = fig_html
   return col_to_html
 
     # # sdf = ks.DataFrame(
@@ -245,7 +282,7 @@ def detections_df_to_html(df):
   hist_agg_html = "<br/><br/>".join(
     """
       <h2>%s</h2><br/>
-      <div width='100%%' height='1000px' style='overflow-y:auto'>%s</div>
+      <div width='90%%' height='1000px' style='border-style:dotted;overflow-y:auto'>%s</div>
     """ % (k, v)
     for k, v in hist_col_to_html.items())
 

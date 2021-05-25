@@ -151,11 +151,11 @@ DATASET_NAME_TO_ITER_FACTORY = {
 
   ## NB: At the time of writing, the first ~4420 examples have quality / darkness
   ## scores, so we save those examples for the test set.
-  'akpd1.0_scale0.1_left_test': (lambda:
+  'akpd1.0_scale0.1_left_train': (lambda:
       get_akpd_as_bbox_img_gts(
         kp_bbox_to_fish_scale=0.1,
         only_camera='left')[:4200]),
-  'akpd1.0_scale0.1_left_train': (lambda:
+  'akpd1.0_scale0.1_left_test': (lambda:
       get_akpd_as_bbox_img_gts(
         kp_bbox_to_fish_scale=0.1,
         only_camera='left')[4200:]),
