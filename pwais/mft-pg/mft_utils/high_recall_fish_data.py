@@ -1,3 +1,13 @@
+import os
+
+import pandas as pd
+
+from mft_utils import misc as mft_misc
+from mft_utils.bbox2d import BBox2D
+from mft_utils.img_w_boxes import ImgWithBoxes
+
+
+
 def create_cleaned_df(
     in_csv_path='/opt/mft-pg/datasets/datasets_s3/high_recall_fish1/2021-05-20_high_recall_fish_detection_training_dataset_11011.csv',
     imgs_basedir='/opt/mft-pg/datasets/datasets_s3/high_recall_fish1/images/'):
@@ -17,7 +27,6 @@ def create_cleaned_df(
   rows_out = []
   images_seen = set()
   n_duplicates = 0
-  n_partial = 0
   n_annotator_skipped = 0
   n_missing_images = 0
   for i, row in enumerate(df_in.to_dict(orient='records')):
@@ -63,39 +72,122 @@ def create_cleaned_df(
       pen_id = 'unknown'  
     
     annos_raw = ast.literal_eval(row['annotation'])
-    annotation_is_partial = bool(annos_raw.get('isPartial'))
-    if annotation_is_partial:
-      n_partial += 1
+    # NB: the isPartial thing is junk from a previous version of the labeler
+    # annotation_is_partial = bool(annos_raw.get('isPartial'))
+    # if annotation_is_partial:
+    #   n_partial += 1
 
     skip_reasons = annos_raw.get('skipReasons', [])
+    
     if 'annotations' not in annos_raw:
       n_annotator_skipped += 1
       bboxes = None
     else:
       bboxes = pd.DataFrame(annos_raw['annotations'])
+        # >>> df['bboxes']
+        # 0             label  width  xCrop  yCrop  height catego...
+        #                                ...                        
+        # 10929                                                 None
+        # 10930         label  width  xCrop  yCrop  height catego...
+        # >>> df['bboxes'][10930]
+        #      label  width  xCrop  yCrop  height category
+        # 0     FULL    214    181    264     120     FISH
+        # 1     FULL    128    379    205      54     FISH
+        # 2  PARTIAL     78     79    159      46     FISH
+        # 3     FULL     87     76    189      41     FISH
+        # 4     FULL     91    305     50      31     FISH
+        # 5     FULL     53    289    187      33     FISH
 
     metadata_raw = ast.literal_eval(row['metadata'])
     meta_tags = metadata_raw.get('tags', [])
 
+    if 'left_frame_crop' in img_path:
+      camera = 'left'
+    elif 'right_frame_crop' in img_path:
+      camera = 'right'
+    else:
+      camera = 'unknown'
+
     rows_out.append({
+      'camera': camera,
       'img_path': img_path,
       'img_height': h,
       'img_width': w,
       'pen_id': pen_id,
       'timestamp': timestamp,
-      'annotation_is_partial': annotation_is_partial,
       'bboxes': bboxes,
       'meta_tags': meta_tags,
+      'skip_reasons': skip_reasons,
     })
     
     if (i+1) % 100 == 0:
       print("... cleaned %s of %s ..." % (i+1, len(df_in)))
   
   print('n_duplicates', n_duplicates)
-  print('n_partial', n_partial)
   print('n_annotator_skipped', n_annotator_skipped)
   print('n_missing_images', n_missing_images)
   print('len(rows_out)', len(rows_out))
   return pd.DataFrame(rows_out)
 
 
+def get_img_gts(
+      in_csv_path='/opt/mft-pg/datasets/datasets_s3/high_recall_fish1/2021-05-20_high_recall_fish_detection_training_dataset_11011.csv',
+      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/high_recall_fish1/images/',
+      only_camera='left',
+      parallel=-1):
+
+  # NB original image dimensions are 4096x3000
+
+  cleaned_df_path = in_csv_path + 'cleaned.pkl'
+  if not os.path.exists(cleaned_df_path):
+    mft_misc.log.info("Cleaning labels and caching cleaned copy ...")
+    df = create_cleaned_df(in_csv_path=in_csv_path, imgs_basedir=imgs_basedir)
+    df.to_pickle(cleaned_df_path)
+  
+  mft_misc.log.info("Using cached / cleaned labels at %s" % cleaned_df_path)
+  labels_df = pd.read_pickle(cleaned_df_path)
+  if only_camera:
+    labels_df = labels_df[labels_df['camera'] == only_camera]
+  mft_misc.log.info("Have %s labels" % len(labels_df))
+
+  def to_img_gt(row):
+    w, h = row['img_width'], row['img_height']
+    bboxes = [
+      BBox2D(
+        x=bb['xCrop'], width=bb['width'], im_width=w,
+        y=bb['yCrop'], height=bb['height'], im_height=h,
+        category_name=bb['category'],
+        extra={'is_partial': bb['label'] == 'PARTIAL'})
+      for bb in row['bboxes'].to_dict(orient='records')
+    ]
+
+    img_path = row['img_path']
+    microstamp = int(1e6 * row['timestamp'].timestamp())
+    extra = {
+      'camera': row['camera'],
+      'pen_id': row['pen_id'],
+      'labeler.skip_reasons': str(row['skip_reasons']),
+      'labeler.meta_tags': str(row['meta_tags']),
+    }
+    return ImgWithBoxes(
+                      img_path=img_path,
+                      bboxes=bboxes,
+                      microstamp=microstamp,
+                      extra=extra)
+
+  if parallel < 0:
+    parallel = os.cpu_count()
+  img_gts = mft_misc.foreach_threadpool_safe_pmap(
+              to_img_gt,
+              labels_df.to_dict(orient='records'),
+              {'max_workers': parallel})
+  return img_gts
+
+DATASET_NAME_TO_ITER_FACTORY = {
+
+  ## NB: At the time of writing, the first ~4420 examples have quality / darkness
+  ## scores, so we save those examples for the test set.
+  ## TODO do a fresh shuffle 
+  'hrf_1.0_train': (lambda: get_img_gts()[:5400]),
+  'hrf_1.0_test': (lambda: get_img_gts()[5400:]),
+}

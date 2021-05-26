@@ -293,13 +293,23 @@ def install_dataset(mlflow, model_workdir, dataset_name):
     # Need this for inference... it's not in the model config
     mlflow.log_artifact(out_names_path)
 
-  elif dataset_name.startswith('akpd1'):
-    from mft_utils.akpd_data import DATASET_NAME_TO_ITER_FACTORY
-    assert dataset_name in DATASET_NAME_TO_ITER_FACTORY, (
-      dataset_name, 'not in', DATASET_NAME_TO_ITER_FACTORY.keys())
-    
-    img_gts_factory = DATASET_NAME_TO_ITER_FACTORY[dataset_name]
-    img_gts = list(img_gts_factory())
+  elif dataset_name.startswith('akpd1') or dataset_name.startswith('hrf_'):
+    if dataset_name.startswith('akpd1'):
+      from mft_utils.akpd_data import DATASET_NAME_TO_ITER_FACTORY
+      assert dataset_name in DATASET_NAME_TO_ITER_FACTORY, (
+        dataset_name, 'not in', DATASET_NAME_TO_ITER_FACTORY.keys())
+      
+      img_gts_factory = DATASET_NAME_TO_ITER_FACTORY[dataset_name]
+      img_gts = list(img_gts_factory())
+    elif dataset_name.startswith('hrf_'):
+      from mft_utils.high_recall_fish_data import DATASET_NAME_TO_ITER_FACTORY
+      assert dataset_name in DATASET_NAME_TO_ITER_FACTORY, (
+        dataset_name, 'not in', DATASET_NAME_TO_ITER_FACTORY.keys())
+      
+      img_gts_factory = DATASET_NAME_TO_ITER_FACTORY[dataset_name]
+      img_gts = list(img_gts_factory())
+    else:
+      raise ValueError("can't handle %s" % dataset_name)
 
     out_names_path = os.path.join(model_workdir, 'names.names')
     out_data_path = os.path.join(model_workdir, 'data.data')

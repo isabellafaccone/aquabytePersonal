@@ -126,6 +126,7 @@ def get_akpd_as_bbox_img_gts(
     microstamp = int(1e6 * row['captured_at'].timestamp())
     extra = {
       # 'akpd.camera_metadata': row['camera_metadata'], # str
+      'camera': row['camera'],
       'akpd.quality': str(row['quality']),
       'akpd.blurriness': str(row['blurriness']),
       'akpd.darkness': str(row['darkness']),
