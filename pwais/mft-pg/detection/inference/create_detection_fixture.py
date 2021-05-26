@@ -406,10 +406,12 @@ def create_detection_fixture(
 
   from mft_utils import gopro_data
   from mft_utils import akpd_data
+  from mft_utils import high_recall_fish_data as hrfd
 
   DATASET_NAME_TO_FACTORY = {}
   DATASET_NAME_TO_FACTORY.update(gopro_data.DATASET_NAME_TO_ITER_FACTORY)
   DATASET_NAME_TO_FACTORY.update(akpd_data.DATASET_NAME_TO_ITER_FACTORY)
+  DATASET_NAME_TO_FACTORY.update(hrfd.DATASET_NAME_TO_ITER_FACTORY)
   assert detect_on_dataset in DATASET_NAME_TO_FACTORY, \
     "Requested %s but only have %s" % (
       detect_on_dataset, DATASET_NAME_TO_FACTORY.keys())
