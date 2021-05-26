@@ -65,11 +65,10 @@ def create_cleaned_df(
       timestamp = pd.to_datetime(0)
     
     try:
-      matches = re.findall(r'pen_id=(.*)/', img_s3_uri)
-      pen_id = matches[0]
-      timestamp = pd.to_datetime(matches[0])
+      matches = re.findall(r'/pen[_-]id=(\d+)/', img_s3_uri)
+      pen_id = int(matches[0])
     except Exception:
-      pen_id = 'unknown'  
+      pen_id = 'unknown'
     
     annos_raw = ast.literal_eval(row['annotation'])
     # NB: the isPartial thing is junk from a previous version of the labeler
@@ -101,9 +100,9 @@ def create_cleaned_df(
     metadata_raw = ast.literal_eval(row['metadata'])
     meta_tags = metadata_raw.get('tags', [])
 
-    if 'left_frame_crop' in img_path:
+    if 'left_frame' in img_path:
       camera = 'left'
-    elif 'right_frame_crop' in img_path:
+    elif 'right_frame' in img_path:
       camera = 'right'
     else:
       camera = 'unknown'
@@ -138,7 +137,7 @@ def get_img_gts(
 
   # NB original image dimensions are 4096x3000
 
-  cleaned_df_path = in_csv_path + 'cleaned.pkl'
+  cleaned_df_path = in_csv_path + '.cleaned.pkl'
   if not os.path.exists(cleaned_df_path):
     mft_misc.log.info("Cleaning labels and caching cleaned copy ...")
     df = create_cleaned_df(in_csv_path=in_csv_path, imgs_basedir=imgs_basedir)
@@ -152,14 +151,17 @@ def get_img_gts(
 
   def to_img_gt(row):
     w, h = row['img_width'], row['img_height']
-    bboxes = [
-      BBox2D(
-        x=bb['xCrop'], width=bb['width'], im_width=w,
-        y=bb['yCrop'], height=bb['height'], im_height=h,
-        category_name=bb['category'],
-        extra={'is_partial': bb['label'] == 'PARTIAL'})
-      for bb in row['bboxes'].to_dict(orient='records')
-    ]
+    if row['bboxes'] is None:
+      bboxes = []
+    else:
+      bboxes = [
+        BBox2D(
+          x=bb['xCrop'], width=bb['width'], im_width=w,
+          y=bb['yCrop'], height=bb['height'], im_height=h,
+          category_name=bb['category'],
+          extra={'is_partial': bb['label'] == 'PARTIAL'})
+        for bb in row['bboxes'].to_dict(orient='records')
+      ]
 
     img_path = row['img_path']
     microstamp = int(1e6 * row['timestamp'].timestamp())
