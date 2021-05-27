@@ -102,26 +102,19 @@ def R_from_euler_angles(alpha: float, beta: float, gamma: float) -> np.ndarray:
     ])
 
     R_y = np.array([
-        [np.cos(beta), 0, np.sin(beta)],
+        [np.cos(beta), 0, -np.sin(beta)],
         [0, 1, 0],
-        [-np.sin(beta), 0, np.cos(beta)]
+        [np.sin(beta), 0, np.cos(beta)]
     ])
 
     R_x = np.array([
         [1, 0, 0],
-        [0, np.cos(gamma), -np.sin(gamma)],
-        [0, np.sin(gamma), np.cos(gamma)]
+        [0, np.cos(gamma), np.sin(gamma)],
+        [0, -np.sin(gamma), np.cos(gamma)]
     ])
 
     R = np.dot(R_z, np.dot(R_y, R_x))
     return R
-
-
-def translate_coordinates(coords: np.ndarray, v: np.ndarray) -> np.ndarray:
-    """Apply translation such that medoid becomes the new origin."""
-
-    translated_coords = coords + v
-    return translated_coords
 
     
 def rotate_and_reposition(coords: np.ndarray, alpha: float, beta: float, 
@@ -168,7 +161,7 @@ def generate_rotation_matrix(n, theta):
 
 
 def center_3D_coordinates(coords):
-    """apply rotation to 3D coordinates about origin such that
+    """Apply rotation to 3D coordinates about origin such that
     centroid is on positive y-axis (i.e. camera is looking straight at it).""" 
 
     v = np.median(coords, axis=0)
@@ -185,8 +178,9 @@ def center_3D_coordinates(coords):
 
 
 
-# Checks if a matrix is a valid rotation matrix.
-def is_rotation_matrix(R) :
+def is_rotation_matrix(R):
+    """Check if a matrix is a valid rotation matrix."""
+
     Rt = np.transpose(R)
     shouldBeIdentity = np.dot(Rt, R)
     I = np.identity(3, dtype = R.dtype)
@@ -194,10 +188,9 @@ def is_rotation_matrix(R) :
     return n < 1e-6
 
 
-# Calculates rotation matrix to euler angles
-# The result is the same as MATLAB except the order
-# of the euler angles ( x and z are swapped ).
-def rotation_matrix_to_euler_angles(R) :
+def rotation_matrix_to_euler_angles(R):
+    """Convert rotation matrix to Euler angles."""
+
     assert(is_rotation_matrix(R))
     sy = math.sqrt(R[0,0] * R[0,0] + R[1,0] * R[1,0])
     
@@ -205,15 +198,11 @@ def rotation_matrix_to_euler_angles(R) :
 
     if not singular :
         x = math.atan2(R[1,0], R[0,0])
-        y = math.atan2(-R[2,0], sy)
-        z = math.atan2(R[2,1] , R[2,2])
+        y = math.atan2(R[2,0], sy)
+        z = math.atan2(-R[2,1] , R[2,2])
     else :
         x = 0
-        y = math.atan2(-R[2,0], sy)
-        z = math.atan2(-R[1,2], R[1,1])
+        y = math.atan2(R[2,0], sy)
+        z = math.atan2(R[1,2], R[1,1])
 
     return [x, y, z]
-
-
-
-
