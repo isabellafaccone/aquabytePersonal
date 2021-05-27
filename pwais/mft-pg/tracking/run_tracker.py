@@ -190,7 +190,7 @@ def run_tracker(
   tracker = SORT(max_lost=3, tracker_output_format='mot_challenge', iou_threshold=0.3)
 
   writer = imageio.get_writer('tracks.mp4', fps=60)
-  TARGET_FPS = 0.6
+  TARGET_FPS = 60.
   TARGET_PERIOD_MICROS = int((1. / TARGET_FPS) * 1e6)
   last_tracker_update_micros = -TARGET_PERIOD_MICROS
   

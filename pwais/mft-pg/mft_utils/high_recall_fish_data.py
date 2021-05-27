@@ -160,8 +160,13 @@ def get_img_gts(
           y=bb['yCrop'], height=bb['height'], im_height=h,
           category_name=bb['category'],
           extra={'is_partial': bb['label'] == 'PARTIAL'})
-        for bb in row['bboxes'].to_dict(orient='records')
+        for bb in row['bboxes'].dropna().to_dict(orient='records')
       ]
+
+    bboxes = [
+      bb for bb in bboxes
+      if (bb.width >= 1 and bb.height >= 1)
+    ]
 
     for bb in bboxes:
       bb.clamp_to_screen()
