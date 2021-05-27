@@ -149,7 +149,7 @@ def convert_img_gt_to_darknet_format(
   # # For some reason darknet insists on 2-class testing but not training
   # if len(id_to_category) == 1:
   #   id_to_category =  id_to_category + ['__mft_bg__']
-  # category_to_id = dict((c, i) for i, c in enumerate(id_to_category))
+  category_to_id = dict((c, i) for i, c in enumerate(id_to_category))
 
   train_txt_lines = []
   for i, img_gt in enumerate(img_gts):
