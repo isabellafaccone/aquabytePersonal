@@ -189,6 +189,12 @@ def get_coco_summary(groundtruth_bbs, detected_bbs):
                                 'APrecision1_iou05': (r['AP'] or 0.),
                             })
                          for r in full_iou05_images)
+    for d in detected_bbs:
+        if d.img_path not in image_id_to_stats:
+            image_id_to_stats[d.img_path] = {
+                                'Recall1_iou05': 0.,
+                                'APrecision1_iou05': 0.,
+                            }
 
     overall_AP1_iou05 = np.mean([
         r['AP'] for r in full_iou05_images if r['AP'] is not None

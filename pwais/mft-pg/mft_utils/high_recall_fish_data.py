@@ -163,6 +163,9 @@ def get_img_gts(
         for bb in row['bboxes'].to_dict(orient='records')
       ]
 
+    for bb in bboxes:
+      bb.clamp_to_screen()
+
     img_path = row['img_path']
     microstamp = int(1e6 * row['timestamp'].timestamp())
     extra = {

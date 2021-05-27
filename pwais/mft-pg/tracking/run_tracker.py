@@ -1,3 +1,4 @@
+import itertools
 import os
 
 import click
@@ -7,6 +8,7 @@ import pandas as pd
 
 from mft_utils import misc as mft_misc
 from mft_utils.bbox2d import BBox2D
+from mft_utils.img_w_boxes import ImgWithBoxes
 from mft_utils.gopro_data import DATASET_NAME_TO_ITER_FACTORY
 
 # def run_tracker(
@@ -139,6 +141,8 @@ def create_runner_from_artifacts(artifact_dir):
   help="Use the model artifacts at this directory path (optional)")
 @click.option("--use_dataset", default="",
   help="Induce a sequence of detections from this dataset")
+@click.option("--use_detections_df", default="",
+  help="Induce a sequence of detections from this Pickled dataframe")
 @click.option("--tracker_algo", default="motrackers.SORT",
   help="Use this tracking algo")
 @click.option("--save_debugs", default=True, 
@@ -149,6 +153,7 @@ def run_tracker(
       use_model_run_id,
       use_model_artifact_dir,
       use_dataset,
+      use_detections_df,
       tracker_algo,
       save_debugs,
       save_to):
@@ -162,6 +167,12 @@ def run_tracker(
       "Only support local artifacts for now ..."
     use_model_artifact_dir = use_model_artifact_dir.replace('file://', '')
   
+  if use_detections_df:
+    df = pd.read_pickle(use_detections_df)
+    img_boxes = [
+      ImgWithBoxes.from_dict(r) for r in df.to_dict(orient='records')
+    ]
+
   if use_dataset:
     iter_factory = DATASET_NAME_TO_ITER_FACTORY[use_dataset]
     iter_img_gts = iter_factory()
@@ -188,6 +199,11 @@ def run_tracker(
   confidences = np.zeros((0, 1))
   class_ids = np.zeros((0, 1))
 
+  class_id_to_name = sorted(set(itertools.chain.from_iterable(
+                        (b.category_name for b in d.bboxes)
+                        for d in img_boxes)))
+  class_name_to_id = dict((v, k) for k, v in enumerate(class_id_to_name))
+
   for ib in img_boxes:
     img_path = ib.img_path
     boxes = ib.bboxes
@@ -203,50 +219,51 @@ def run_tracker(
         [b.x, b.y, b.width, b.height]
         for b in boxes
       ])
-      confidences = np.array([1 for b in boxes])
-      class_ids = np.array([1 for b in boxes])
+      confidences = np.array([b.score for b in boxes])
+      class_ids = np.array([class_name_to_id[b.category_name] for b in boxes])
 
       tracks = tracker.update(bboxes, confidences, class_ids)
       last_tracker_update_micros = ib.microstamp
 
     debug_img = imageio.imread(img_path)
 
-    def _draw_bboxes(image, bboxes, confidences, class_ids):
-      """
-      based upon motrackers.detector.draw_bboxes()
+    # def _draw_bboxes(image, bboxes, confidences, class_ids):
+    #   """
+    #   based upon motrackers.detector.draw_bboxes()
 
-      Draw the bounding boxes about detected objects in the image.
+    #   Draw the bounding boxes about detected objects in the image.
 
-      Parameters
-      ----------
-      image : numpy.ndarray
-          Image or video frame.
-      bboxes : numpy.ndarray
-          Bounding boxes pixel coordinates as (xmin, ymin, width, height)
-      confidences : numpy.ndarray
-          Detection confidence or detection probability.
-      class_ids : numpy.ndarray
-          Array containing class ids (aka label ids) of each detected object.
+    #   Parameters
+    #   ----------
+    #   image : numpy.ndarray
+    #       Image or video frame.
+    #   bboxes : numpy.ndarray
+    #       Bounding boxes pixel coordinates as (xmin, ymin, width, height)
+    #   confidences : numpy.ndarray
+    #       Detection confidence or detection probability.
+    #   class_ids : numpy.ndarray
+    #       Array containing class ids (aka label ids) of each detected object.
 
-      Returns
-      -------
-      numpy.ndarray : image with the bounding boxes drawn on it.
-      """
-      import cv2 as cv
-      BBOX_COLORS = {0: (255, 255, 0), 1: (0, 255, 0), 2: (0, 255, 255), 3: (0, 0, 255)}
-      for bb, conf, cid in zip(bboxes, confidences, class_ids):
-          clr = [int(c) for c in BBOX_COLORS[cid]]
-          cv.rectangle(image, (bb[0], bb[1]), (bb[0] + bb[2], bb[1] + bb[3]), clr, 2)
-          label = "{}:{:.4f}".format(cid, conf)
-          (label_width, label_height), baseLine = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 2)
-          y_label = max(bb[1], label_height)
-          cv.rectangle(image, (bb[0], y_label - label_height), (bb[0] + label_width, y_label + baseLine),
-                        (255, 255, 255), cv.FILLED)
-          cv.putText(image, label, (bb[0], y_label), cv.FONT_HERSHEY_SIMPLEX, 0.5, clr, 2)
-      return image
+    #   Returns
+    #   -------
+    #   numpy.ndarray : image with the bounding boxes drawn on it.
+    #   """
+    #   import cv2 as cv
+    #   BBOX_COLORS = {0: (255, 255, 0), 1: (0, 255, 0), 2: (0, 255, 255), 3: (0, 0, 255)}
+    #   for bb, conf, cid in zip(bboxes, confidences, class_ids):
+    #       clr = [int(c) for c in BBOX_COLORS[cid]]
+    #       cv.rectangle(image, (bb[0], bb[1]), (bb[0] + bb[2], bb[1] + bb[3]), clr, 2)
+    #       label = "{}:{:.4f}".format(cid, conf)
+    #       (label_width, label_height), baseLine = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 2)
+    #       y_label = max(bb[1], label_height)
+    #       cv.rectangle(image, (bb[0], y_label - label_height), (bb[0] + label_width, y_label + baseLine),
+    #                     (255, 255, 255), cv.FILLED)
+    #       cv.putText(image, label, (bb[0], y_label), cv.FONT_HERSHEY_SIMPLEX, 0.5, clr, 2)
+    #   return image
 
-
-    debug_img = _draw_bboxes(debug_img, bboxes, confidences, class_ids)
+    for bbox in boxes:
+      bbox.draw_in_image(debug_img)
+    # debug_img = _draw_bboxes(debug_img, bboxes, confidences, class_ids)
 
     debug_img = draw_tracks(debug_img, tracks)
 

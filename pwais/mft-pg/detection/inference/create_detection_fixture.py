@@ -225,6 +225,7 @@ class DetectorRunner(object):
     for i, o in enumerate(img_gts):
       img_path = o.img_path
       img_det = self.detect_on_img_path(img_path)
+      img_det.microstamp = o.microstamp
       img_det.extra.update(o.extra)
       # Record ground truth used for evaluation; also helps viz.
       img_det.bboxes_alt = copy.deepcopy(o.bboxes)

@@ -79,7 +79,7 @@ def get_sample_row_html(df, row_idx=-1):
 
 def get_time_series_report_html(df):
   def get_count_distinct(timescale):
-    return (df['microseconds'] // int(timescale)).nunique()
+    return (df['microstamp'] // int(timescale)).nunique()
 
   ts_metrics = {
     'Num Distinct Timestamps': get_count_distinct(1),
@@ -87,8 +87,8 @@ def get_time_series_report_html(df):
     'Num Distinct Hours': get_count_distinct(60 * 60 * 1e6),
     'Num Distinct Days': get_count_distinct(24 * 60 * 60 * 1e6),
     'Frames per second': (
-      float(len(df['microseconds'])) / 
-        (1e-6 * (df['microseconds'].max() - df['microseconds'].min()))),
+      float(len(df['microstamp'])) / 
+        (1e-6 * (df['microstamp'].max() - df['microstamp'].min()))),
   }
     
   tdf = pd.DataFrame([ts_metrics])
