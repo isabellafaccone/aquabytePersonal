@@ -6,12 +6,38 @@ mft-cli - This tool serves to both automate and document the MFT-PG
 development workflow.  This tool is designed to work on any host
 with Python 2.7, and on either an x86 host or an Arm host (e.g. Jetson TX2).
 
-## Example Usage
+## Playground Workflow
 $ ./mft-cli --pull-s3-artifacts
 Ensure the latest version of all S3 data & model artifacts are available.
+Note that this command may pull a lot of data into the
+`datasets/datasets_s3` subdirectory.  You may wish to symlink that
+directory to a secondary drive.
+
+See also:
+ * datasets/README.md
+ * detection/models/README.md
 
 $ ./mft-cli --build-docker
-Build all available dockerized environments
+Build all dockerized environments for the host architecture.
+
+$ ./mft-cli --shell-darknet-train
+Drop into a shell suitable for training (and testing) Darknet Yolo models.
+Note: may require CUDA 9 and not yet work on GPUs newer than 1080Ti.
+
+See also:
+ * detection/training/darknet/README.md
+ * python3 detection/training/darknet/train.py --help
+ * python3 detection/inference/create_detection_fixture.py --help (Darknet mode only)
+
+$ ./mft-cli --shell-inference
+Drop into a shell suitable for testing models and generating evaluation reports.
+
+See also:
+ * detection/inference/README.md
+ * python3 detection/inference/create_trt_engine.py --help
+ * python3 detection/inference/create_detection_fixture.py --help
+ * python3 detection/inference/create_eval_report.py --help
+ * python3 tracking/run_tracker.py --help
 
 """
 
