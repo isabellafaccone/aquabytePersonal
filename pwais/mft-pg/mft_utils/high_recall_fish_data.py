@@ -193,6 +193,51 @@ def get_img_gts(
               {'max_workers': parallel})
   return img_gts
 
+def get_img_gts_clahe(
+      in_csv_path='/opt/mft-pg/datasets/datasets_s3/high_recall_fish1/2021-05-20_high_recall_fish_detection_training_dataset_11011.csv',
+      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/high_recall_fish1/images/',
+      only_camera='left',
+      parallel=-1):
+  
+  cache_base = '/tmp/mft_pg_high_recall_fish1_clahe'
+  if not os.path.exists(cache_base):
+    mft_misc.log.info("Generating CLAHE cache to ... %s " % cache_base)
+
+    src = imgs_basedir
+    if not src.endswith('/'):
+      src = src + '/'
+    dest = cache_base
+    if not dest.endswith('/'):
+      dest = dest + '/'
+    mft_misc.run_cmd("rsync -a -v -h --size-only --progress %s %s" % (src, dest))
+
+    from oarphpy.util import all_files_recursive
+    paths = all_files_recursive(cache_base, pattern="*.jpg")
+    
+    def clahe_in_place(path):
+      import imageio
+      from mft_utils import img_processing as improc
+      img = imageio.imread(path)
+      img = improc.CLAHE_enhance(img)
+      imageio.imwrite(path, img)
+    
+    if parallel < 0:
+      parallel = os.cpu_count()
+
+    mft_misc.log.info("Applying to %s paths ... " % len(paths))
+    mft_misc.foreach_threadpool_safe_pmap(
+              clahe_in_place,
+              paths,
+              {'max_workers': parallel})
+    mft_misc.log.info("... done with CLAHE!")
+  
+  return get_img_gts(
+            in_csv_path=in_csv_path,
+            imgs_basedir=cache_base,
+            only_camera=only_camera,
+            parallel=parallel)
+
+
 DATASET_NAME_TO_ITER_FACTORY = {
 
   ## NB: At the time of writing, the first ~4420 examples have quality / darkness
@@ -200,4 +245,7 @@ DATASET_NAME_TO_ITER_FACTORY = {
   ## TODO do a fresh shuffle 
   'hrf_1.0_train': (lambda: get_img_gts()[:5400]),
   'hrf_1.0_test': (lambda: get_img_gts()[5400:]),
+
+  'hrf_clahe_1.0_train': (lambda: get_img_gts_clahe()[:5400]),
+  'hrf_clahe_1.0_test': (lambda: get_img_gts_clahe()[5400:]),
 }

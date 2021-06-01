@@ -47,7 +47,7 @@ RUN apt-get update \
             python-opencv \
             libopencv-dev \
             python3-dev \
-            vim less curl wget \
+            vim less curl wget rsync git \
             python3-pip
 
 RUN curl -sSL https://bootstrap.pypa.io/pip/3.5/get-pip.py -o get-pip.py && \
@@ -60,10 +60,18 @@ RUN pip3 install \
       imageio-ffmpeg \
       click \
       jupyter \
-      mlflow==1.14.1
+      mlflow==1.14.1 \
+      opencv-python
 
 # Thanks alot click
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
 
 ENV PYTHONPATH $PYTHONPATH:/opt/mft-pg/mft_utils
+
+RUN cd /opt/ && \
+  git clone https://github.com/pwais/oarphpy.git && \
+  cd oarphpy && git checkout v0.1.0 && \
+  pip3 install -e .
+ENV PYTHONPATH $PYTHONPATH:/opt/oarphpy
+

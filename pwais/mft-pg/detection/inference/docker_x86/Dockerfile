@@ -7,7 +7,7 @@ RUN \
 ENV DEBIAN_FRONTEND noninteractive
 RUN \
   apt-get update && apt-get install -y \
-    sudo wget curl vim git \
+    sudo wget curl vim git rsync \
     python3-pip python3-opencv
 RUN python3 -m pip install --upgrade pip
 
