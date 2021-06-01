@@ -101,5 +101,6 @@ RUN cd /opt/ && \
               # motmetrics \
               setuptools && \
         pip3 install ipyfilechooser && \
-        pip3 install -e .
+        echo "moof" 
+        # pip3 install -e .
 ENV PYTHONPATH $PYTHONPATH:/opt/multi-object-tracker
