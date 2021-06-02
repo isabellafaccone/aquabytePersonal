@@ -133,37 +133,60 @@ def spark_df_maybe_add_extra_float(
   return spark_df
 
 
-def get_latency_hist_html(df):
+def get_latency_report_html(df):
   import numpy as np
   
-  if 'latency_sec' not in df.columns or len(df) == 0:
-    return "<i>(No latency data)</i>"
+  def get_latency_report(latencies_ms, title):
+    hist, edges = np.histogram(latencies_ms, density=False, bins=100)
+
+    from bokeh.plotting import figure
+
+    fig = figure(
+            title="Latency Distribution (milliseconds)",
+            y_axis_label="Count",
+            x_axis_label="Latency (milliseconds)")
+    fig.quad(
+        top=hist, bottom=0, left=edges[:-1], right=edges[1:],
+        fill_color="blue", line_color="navy", alpha=0.85)
   
-  latencies_ms = 1e3 * df['latency_sec']
-  hist, edges = np.histogram(latencies_ms, density=False, bins=100)
+    from mft_utils.plotting import bokeh_fig_to_html
+    fig_html = bokeh_fig_to_html(fig, title=title)
 
-  from bokeh.plotting import figure
+    stats_df = pd.DataFrame([{
+      'mean': np.mean(latencies_ms),
+      'median': np.percentile(latencies_ms, 50),
+      '90th': np.percentile(latencies_ms, 90),
+      '99th': np.percentile(latencies_ms, 99),
+    }])
+    stats_html = stats_df.T.style.render()
 
-  fig = figure(
-          title="Latency Distribution (milliseconds)",
-          y_axis_label="Count",
-          x_axis_label="Latency (milliseconds)")
-  fig.quad(
-      top=hist, bottom=0, left=edges[:-1], right=edges[1:],
-      fill_color="blue", line_color="navy", alpha=0.85)
-  
-  from mft_utils.plotting import bokeh_fig_to_html
-  fig_html = bokeh_fig_to_html(fig, title='Detector_Latencies')
+    return "<b>%s</b><br/>%s<br/>%s" % (title, fig_html, stats_html)
 
-  stats_df = pd.DataFrame([{
-    'mean': np.mean(latencies_ms),
-    'median': np.percentile(latencies_ms, 50),
-    '90th': np.percentile(latencies_ms, 90),
-    '99th': np.percentile(latencies_ms, 99),
-  }])
-  stats_html = stats_df.T.style.render()
+  reports = []
+  if 'latency_sec' in df.columns and len(df) > 0:
+    latencies_ms = 1e3 * df['latency_sec']
+    
+    reports.append(get_latency_report(
+      latencies_ms, "Detector Latencies"))
+  else:
+    reports.append("<i>No detector latency data!!</i><br />")
 
-  return "%s<br />%s" % (fig_html, stats_html)
+  if len(df) > 0:
+    REPORTS_TO_MINE = {
+      'extra.preprocessor.CLAHE.latency': 'CLAHE Preprocess Latency'
+    }
+    for key, report_title in REPORTS_TO_MINE.items():
+      if key in df.columns:
+        latencies_ms = 1e3 * df[key]
+      elif key.replace('extra.', '') in df['extra'][0]:
+        key = key.replace('extra.', '')
+        latencies_ms = 1e3 * np.array([
+          float(extra[key]) for extra in df['extra']])
+      reports.append(
+          get_latency_report(latencies_ms, report_title))
+
+  return "<br/>".join(reports)
+
 
 
 def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
@@ -294,7 +317,7 @@ def detections_df_to_html(df):
 
   core_desc_html = get_core_description_html(df)
 
-  latency_html = get_latency_hist_html(df)
+  latency_html = get_latency_report_html(df)
 
   time_series_html = get_time_series_report_html(df)
 
