@@ -1,5 +1,4 @@
 import os
-from sys import exec_prefix
 
 import click
 import mlflow

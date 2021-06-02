@@ -25,6 +25,10 @@ class ImgWithBoxes(object):
   """bboxes_alt: A list of *alternative* `BBox2D` instances (e.g. 
       ground truth boxes if this instance has detection boxes)"""
 
+  preprocessor_configs = attr.ib(default=[])
+  """preprocessor_configs: A list of `str` preprocessor configurations; see
+  below load_preprocessed_img()"""
+
   extra = attr.ib(default={}, type=typing.Dict[str, str])
   """Dict[str, str]: A map for adhoc extra context"""
 
@@ -41,12 +45,26 @@ class ImgWithBoxes(object):
       return np.zeros((10, 10, 3))
 
     import imageio
-    debug = imageio.imread(self.img_path)
+    # debug = imageio.imread(self.img_path)
+    debug, _ = self.load_preprocessed_img()
     for bbox in self.bboxes:
       bbox.draw_in_image(debug)
     for bbox in self.bboxes_alt:
       bbox.draw_in_image(debug, flip_color=True)
     return debug
+
+  def load_preprocessed_img(self):
+    import time
+    import imageio
+    start = time.time()
+    img = imageio.imread(self.img_path)
+    load_time = time.time() - start
+    
+    from mft_utils.img_processing import PreprocessorRunner
+    p = PreprocessorRunner.build_from_configs(self.preprocessor_configs)
+    img, pp_to_stats = p.preprocess(img)
+    pp_to_stats['imageio_load'] = load_time
+    return img, pp_to_stats
 
   def to_html(self):
     import numpy as np

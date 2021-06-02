@@ -147,7 +147,7 @@ def get_img_gts(
   labels_df = pd.read_pickle(cleaned_df_path)
   if only_camera:
     labels_df = labels_df[labels_df['camera'] == only_camera]
-  mft_misc.log.info("Have %s labels" % len(labels_df))
+  mft_misc.log.info("Have %s labeled images" % len(labels_df))
 
   def to_img_gt(row):
     w, h = row['img_width'], row['img_height']
@@ -238,6 +238,11 @@ def get_img_gts_clahe(
             parallel=parallel)
 
 
+def with_clahe(img_gt):
+  img_gt.preprocessor_configs = ['clahe']
+  return img_gt
+
+
 DATASET_NAME_TO_ITER_FACTORY = {
 
   ## NB: At the time of writing, the first ~4420 examples have quality / darkness
@@ -247,5 +252,9 @@ DATASET_NAME_TO_ITER_FACTORY = {
   'hrf_1.0_test': (lambda: get_img_gts()[5400:]),
 
   'hrf_clahe_1.0_train': (lambda: get_img_gts_clahe()[:5400]),
-  'hrf_clahe_1.0_test': (lambda: get_img_gts_clahe()[5400:]),
+  'hrf_clahe_1.0_test': (lambda: [
+    with_clahe(img_gt) for img_gt in get_img_gts()[5400:]
+      # Apply CLAHE at inference time so that we can time it on the TX2
+  ]),
+
 }

@@ -1,3 +1,4 @@
+from multiprocessing.sharedctypes import Value
 import os
 import typing
 
@@ -153,7 +154,7 @@ class YoloAVTTRTDetector(object):
     
     import time
 
-    if not img:
+    if img is None:
       assert os.path.exists(img_path)
       
       import imageio
@@ -220,19 +221,24 @@ class YoloAVTTRTDetector(object):
 class DetectorRunner(object):
   def __call__(self, img_gts):
     import copy
+    import time
 
     img_dets = []
-    for i, o in enumerate(img_gts):
-      img_path = o.img_path
-      img_det = self.detect_on_img_path(img_path)
-      img_det.microstamp = o.microstamp
-      img_det.extra.update(o.extra)
-      # Record ground truth used for evaluation; also helps viz.
-      img_det.bboxes_alt = copy.deepcopy(o.bboxes)
-      img_dets.append(img_det)
+    for i, img_gt in enumerate(img_gts):
+      img, pp_to_stats = img_gt.load_preprocessed_img()
 
-      # if '=2019-04-30T07:53:26.905236000Z/left_frame_crop_1342_1713_3338_2323.jpg' in img_path:
-      #   import pdb; pdb.set_trace()
+      img_det = self.detect_on_img(img)
+      
+      img_det.img_path = img_gt.img_path
+      img_det.microstamp = img_gt.microstamp
+      img_det.extra.update(img_gt.extra)
+      for pp_name, pp_latency in pp_to_stats.items():
+        img_det.extra['preprocessor.' + pp_name + '.latency'] = str(pp_latency)
+
+      # Record ground truth used for evaluation; also helps viz.
+      img_det.bboxes_alt = copy.deepcopy(img_gt.bboxes)
+      img_det.preprocessor_configs = copy.deepcopy(img_gt.preprocessor_configs)
+      img_dets.append(img_det)
 
       if ((i+1) % 100) == 0:
         mft_misc.log.info('Detected %s of %s' % (i+1, len(img_gts)))
@@ -280,8 +286,8 @@ class DetectorRunner(object):
   def get_detector_info(self):
     return {'base_runner': 'base_runner'}
 
-  def detect_on_img_path(self, img_path):
-    return ImgWithBoxes(img_path=img_path)
+  def detect_on_img(self, img):
+    return ImgWithBoxes()
 
 
 class DarknetRunner(DetectorRunner):
@@ -310,8 +316,13 @@ class DarknetRunner(DetectorRunner):
       'input_h': h,
     }
     
-  def detect_on_img_path(self, img_path):
-    return self._detector.detect(img_path=img_path)
+  def detect_on_img(self, img):
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix='.png') as f:
+      import imageio
+      imageio.imwrite(f, img)
+      result = self._detector.detect(img_path=f.name)
+      return result
   
   def get_detector_info(self):
     return self._dector_info
@@ -354,9 +365,9 @@ class YoloTRTRunner(DetectorRunner):
       'input_h': h,
     }
 
-  def detect_on_img_path(self, img_path):
-    result = self._detector.detect(img_path)
-    result.extra['trt_engine_load_time_sec'] = self._engine_load_time_sec
+  def detect_on_img(self, img):
+    result = self._detector.detect(img=img)
+    result.extra['trt_engine_global_load_time_sec'] = self._engine_load_time_sec
     return result
   
   def get_detector_info(self):
@@ -373,7 +384,6 @@ def create_runner_from_artifacts(artifact_dir):
     raise ValueError("Could not resolve detector for %s" % artifact_dir)
 
 
-
 @click.command(help="Run a detector and save detections as a Pandas Dataframe")
 @click.option("--use_model_run_id", default="",
   help="Use the model with this mlflow run ID (optional)")
@@ -381,6 +391,8 @@ def create_runner_from_artifacts(artifact_dir):
   help="Use the model artifacts at this directory path (optional)")
 @click.option("--detect_on_dataset", default="gopro1_fish_test",
   help="Create a detection fixture using this input")
+@click.option("--add-preprocessors", default="",
+  help="Apply these image pre-processing algos (e.g. clahe)")
 @click.option("--detect_limit", default=-1,
   help="For testing, only run detection on this many samples")
 @click.option("--save_to", default="", 
@@ -391,6 +403,7 @@ def create_detection_fixture(
       use_model_run_id,
       use_model_artifact_dir,
       detect_on_dataset,
+      add_preprocessors,
       detect_limit,
       save_to,
       gpu_id):
@@ -433,6 +446,11 @@ def create_detection_fixture(
       import itertools
       iter_img_gts = itertools.islice(iter_img_gts, detect_limit)
     img_gts = list(iter_img_gts)
+
+    add_preprocessors = [p.strip() for p in add_preprocessors.split(',') if p]
+    if add_preprocessors:
+      for img_gt in img_gts:
+        img_gt.preprocessor_configs += add_preprocessors
 
     detector_runner = create_runner_from_artifacts(use_model_artifact_dir)
 
