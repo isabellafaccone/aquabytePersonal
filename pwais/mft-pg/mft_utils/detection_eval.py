@@ -173,16 +173,18 @@ def get_latency_report_html(df):
 
   if len(df) > 0:
     REPORTS_TO_MINE = {
-      'extra.preprocessor.CLAHE.latency': 'CLAHE Preprocess Latency'
+      'extra.preprocessor.CLAHE.latency': 'CLAHE Preprocess Latency',
     }
     for key, report_title in REPORTS_TO_MINE.items():
       if key in df.columns:
         latencies_ms = 1e3 * df[key]
+        reports.append(
+          get_latency_report(latencies_ms, report_title))
       elif key.replace('extra.', '') in df['extra'][0]:
         key = key.replace('extra.', '')
         latencies_ms = 1e3 * np.array([
           float(extra[key]) for extra in df['extra']])
-      reports.append(
+        reports.append(
           get_latency_report(latencies_ms, report_title))
 
   return "<br/>".join(reports)

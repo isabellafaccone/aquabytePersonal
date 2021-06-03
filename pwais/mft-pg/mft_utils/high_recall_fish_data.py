@@ -256,5 +256,9 @@ DATASET_NAME_TO_ITER_FACTORY = {
     with_clahe(img_gt) for img_gt in get_img_gts()[5400:]
       # Apply CLAHE at inference time so that we can time it on the TX2
   ]),
+  'hrf_clahe_1.0_train_clahe_detect': (lambda: [
+    with_clahe(img_gt) for img_gt in get_img_gts()[:5400]
+      # Apply CLAHE at inference time so that we can time it on the TX2
+  ]),
 
 }

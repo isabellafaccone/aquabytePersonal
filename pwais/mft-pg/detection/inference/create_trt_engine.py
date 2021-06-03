@@ -117,6 +117,9 @@ def create_trt_engine(
       scratch_dir,
       clean_scratch):
   
+  if use_model_artifact_dir:
+    clean_scratch = False
+
   if use_model_run_id and not use_model_artifact_dir:
     run = mlflow.get_run(use_model_run_id)
     use_model_artifact_dir = run.info.artifact_uri
