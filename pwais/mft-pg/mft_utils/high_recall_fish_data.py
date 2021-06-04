@@ -159,7 +159,7 @@ def get_img_gts(
           x=bb['xCrop'], width=bb['width'], im_width=w,
           y=bb['yCrop'], height=bb['height'], im_height=h,
           category_name=bb['category'],
-          extra={'is_partial': bb['label'] == 'PARTIAL'})
+          extra={'is_partial': str(bb['label'] == 'PARTIAL')})
         for bb in row['bboxes'].dropna().to_dict(orient='records')
       ]
 
@@ -191,7 +191,7 @@ def get_img_gts(
     parallel = os.cpu_count()
   img_gts = mft_misc.foreach_threadpool_safe_pmap(
               to_img_gt,
-              labels_df.to_dict(orient='records'),
+              labels_df.to_dict(orient='records')[:10],
               {'max_workers': parallel})
   return img_gts
 

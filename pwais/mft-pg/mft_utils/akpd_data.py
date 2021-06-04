@@ -144,7 +144,7 @@ def get_akpd_as_bbox_img_gts(
     parallel = os.cpu_count()
   img_gts = mft_misc.foreach_threadpool_safe_pmap(
               to_img_gt,
-              labels_df.to_dict(orient='records'),
+              labels_df.to_dict(orient='records')[:100],
               {'max_workers': parallel})
   return img_gts
 
@@ -159,157 +159,204 @@ def get_akpd_as_bbox_img_gts(
 
 
 
-# class SyntheticAKPDFromBBoxesGenerator(object):
+class SyntheticAKPDFromBBoxesGenerator(object):
 
-#   ASPECT_RATIO_EPS = 1e-3
-#   N_TRIALS = 10
-#   # MINIMUM_VISIBILITY_FRAC_FOR_VISIBLE = 0.85
+  ASPECT_RATIO_EPS = 1e-3
+  N_TRIALS = 10
+  # MINIMUM_VISIBILITY_FRAC_FOR_VISIBLE = 0.85
  
-#   def __init__(self, akpd_img_gts):
-#     self._akpd_img_gts = akpd_img_gts
+  def __init__(self, akpd_img_gts):
+    self._akpd_img_gts = akpd_img_gts
 
-#     aspect_ratio_to_idx = self._get_aspect_ratio_to_idx
-#     ordered = sorted(aspect_ratio_to_idx.items())
-#     self._aspects = [k for k, v in ordered]
-#     self._img_ids = [v for k, v in ordered]
+    aspect_ratio_to_idx = self._get_aspect_ratio_to_idx()
+    ordered = sorted(aspect_ratio_to_idx.items())
+    self._aspects = [k for k, v in ordered]
+    self._img_ids = [v for k, v in ordered]
 
+  def create_synth_img_gt(self, base_image, fish_bboxes):
+    """Create and return a synthesized (image, `ImgWithBoxes`) tuple
+    from the given `base_image` and target `fish_bboxes`.  We assume that
+    `fish_bboxes` are implicitly topologically sorted by Z with the 
+    nearest box descending-- the first bbox(es) in `fish_bboxes` should
+    be unoccluded, with possibly full-occluded boxes at the very end.
+    """
 
+    # Pick AKPD fish to use in the synthetic image
+    aspect_ratios = [float(b.width)/ b.height for b in fish_bboxes]
+    chosen = self._sample_best_matches(aspect_ratios)
 
-#   def _get_aspect_ratio_to_idx(self):
-#     aspect_ratio_to_idx = {}
-#     for idx, img_gt in enumerate(self._akpd_img_gts):
-#       aspect_ratio = float(img_gt.img_width) / img_gt.img_height
-#       for trial in range(self.N_TRIALS):
-#         if aspect_ratio in aspect_ratio_to_idx:
-#           aspect_ratio += self.ASPECT_RATIO_EPS # Try to include every image
-#         else:
-#           break
-#       aspect_ratio_to_idx[aspect_ratio] = idx
-#     return aspect_ratio_to_idx
-
-#   def _get_idx_of_best_match(self, aspect_ratio):
-#     import bisect
-#     nearest = bisect.bisect_left(self._aspects, aspect_ratio)
+    # Now paste each AKPD fish, starting with the most distance fish
+    aug_img = base_image.copy()
+    aug_img_gt = ImgWithBoxes()
+    for i in reversed(range(len(fish_bboxes))):
+      print('round', i)
+      dest_bbox = fish_bboxes[i]
+      akpd_img_id = chosen[i]
+      self._paste_in_place(
+        dest_bbox,
+        aug_img,
+        aug_img_gt,
+        akpd_img_id)
     
-#     left = max(0, nearest - 1)
-#     right = min(nearest, len(self._aspects) - 1)
+    self._winnow_occluded(aug_img_gt)
 
-#     left_dist = abs(self._aspects[left] - aspect_ratio)
-#     right_dist = abs(self._aspects[right] - aspect_ratio)
-#     if left_dist < right_dist:
-#       img_id = self._img_ids[left]
-#     else:
-#       img_id = self._img_ids[right]
-#     return img_id
+    return aug_img, aug_img_gt
+
+  def _get_aspect_ratio_to_idx(self):
+    aspect_ratio_to_idx = {}
+    for idx, img_gt in enumerate(self._akpd_img_gts):
+      aspect_ratio = float(img_gt.img_width) / img_gt.img_height
+      for trial in range(self.N_TRIALS):
+        if aspect_ratio in aspect_ratio_to_idx:
+          aspect_ratio += self.ASPECT_RATIO_EPS # Try to include every image
+        else:
+          break
+      aspect_ratio_to_idx[aspect_ratio] = idx
+    return aspect_ratio_to_idx
+
+  def _get_idx_of_best_match(self, aspect_ratio):
+    import bisect
+    nearest = bisect.bisect_left(self._aspects, aspect_ratio)
+    
+    left = max(0, nearest - 1)
+    right = min(nearest, len(self._aspects) - 1)
+
+    left_dist = abs(self._aspects[left] - aspect_ratio)
+    right_dist = abs(self._aspects[right] - aspect_ratio)
+    if left_dist < right_dist:
+      img_id = self._img_ids[left]
+    else:
+      img_id = self._img_ids[right]
+    return img_id
   
-#   def _sample_best_matches(self, aspect_ratios):
-#     chosen = []
-#     for aspect_ratio in aspect_ratios:
-#       img_id = None
-#       for trial in self.N_TRIALS:
-#         img_id = self._get_idx_of_best_match(aspect_ratio)
-#         if img_id in chosen:
-#           aspect_ratios += self.ASPECT_RATIO_EPS
-#         else:
-#           break
-#       assert img_id is not None
-#       chosen.append(img_id)
-#     return chosen
+  def _sample_best_matches(self, aspect_ratios):
+    chosen = []
+    for aspect_ratio in aspect_ratios:
+      img_id = None
+      for trial in range(self.N_TRIALS):
+        img_id = self._get_idx_of_best_match(aspect_ratio)
+        if img_id in chosen:
+          aspect_ratio += self.ASPECT_RATIO_EPS
+        else:
+          break
+      assert img_id is not None
+      chosen.append(img_id)
+    return chosen
 
-#   def _get_pasted(
-#         self,
-#         dest_bbox,
-#         img, aug_img_gt,
-#         akpd_img_gt, akpd_img_id):
+  def _paste_in_place(
+        self,
+        dest_bbox,
+        dest_img,
+        aug_img_gt,
+        akpd_img_id):
     
-#     akpd_img = akpd_img_gt.load_preprocessed_img()
+    print('paste')
+    print('len(aug_img_gt.bboxes)', len(aug_img_gt.bboxes))
+    akpd_img_gt = self._akpd_img_gts[akpd_img_id]
+    akpd_img, _ = akpd_img_gt.load_preprocessed_img()
 
-#     import cv2
-#     target_width, target_height = dest_bbox.width, dest_bbox.height
-#     akpd_img = cv2.resize(akpd_img, (target_width, target_height))
+    import cv2
+    target_fish_width, target_fish_height = dest_bbox.width, dest_bbox.height
+    akpd_img = cv2.resize(akpd_img, (target_fish_width, target_fish_height))
 
-#     # Paste fish image!
-#     dx1, dx2, dy1, dy2 = dest_bbox.get_x1_y1_x2_y2()
-#     img[dy1:dy2, dx1:dx2, :3] = akpd_img[:, :, :3]
+    # Paste fish image!
+    dx1, dy1, dx2, dy2 = dest_bbox.get_x1_y1_x2_y2()
+    dest_img[dy1:dy2+1, dx1:dx2+1, :3] = akpd_img[:, :, :3]
 
-#     bboxes_to_add = []
+    bboxes_to_add = []
 
-#     # Paste a FISH box ...
-#     fish_bbox = copy.deepcopy(dest_bbox)
-#     fish_bbox.category_name = 'AKPD_SYNTH_FISH'
-#     bboxes_to_add.append(fish_bbox)
+    # Paste a FISH box ...
+    fish_bbox = copy.deepcopy(dest_bbox)
+    fish_bbox.category_name = 'AKPD_SYNTH_FISH'
+    bboxes_to_add.append(fish_bbox)
     
-#     # ... and paste fish part boxes
-#     for bbox in akpd_img_gt.bboxes:
-#       part_bbox = copy.deepcopy(bbox)
-#       xmin, ymin, xmax, ymax = bbox.get_fractional_xmin_ymin_xmax_ymax()
-#       xmin = dx1 + (xmin * target_width)
-#       xmax = dx1 + (xmax * target_width)
-#       ymin = dy1 + (ymin * target_height)
-#       ymax = dy1 + (ymax * target_height)
-#       part_bbox.set_x1_y1_x2_y2(xmin, ymin, xmax, ymax)
-#       part_bbox.im_width = target_width
-#       part_bbox.im_height = target_height
+    # ... and paste fish part boxes
+    dh, dw = dest_img.shape[:2]
+    for bbox in akpd_img_gt.bboxes:
+      part_bbox = copy.deepcopy(bbox)
+      part_bbox = part_bbox.get_rescaled_to_target_image(
+                            target_fish_width, target_fish_height)
+      part_bbox.x += dest_bbox.x
+      part_bbox.y += dest_bbox.y
+      part_bbox.im_width = dw
+      part_bbox.im_height = dh
+      bboxes_to_add.append(part_bbox)
 
-#     for bbox in bboxes_to_add:
-#       bbox.extra['akpd_synth.img_fish_id'] = str(akpd_img_id)
-#       bbox.extra['_akpd_synth_occluders'] = []
+    for bbox in bboxes_to_add:
+      bbox.extra['akpd_synth.img_fish_id'] = str(akpd_img_id)
+      bbox.extra['_akpd_synth_occluders'] = []
 
-#     # Note anything that these new pasted boxes occlude
-#     for existing_bbox in aug_img_gt.bboxes:
-#       for bbox in bboxes_to_add:
-#         intersection = bbox.get_intersection_with(existing_bbox)
-#         if intersection.get_area() > 0:
-#           existing_bbox.extra['_akpd_synth_occluders'].append(bbox)
+    # Note anything that these new pasted boxes occlude
+    for existing_bbox in aug_img_gt.bboxes:
+      for bbox in bboxes_to_add:
+        if bbox.overlaps_with(existing_bbox):
+          existing_bbox.extra['_akpd_synth_occluders'].append(bbox)
+          print('added')
 
-#     aug_img_gt.bboxes += bboxes_to_add
-
-#     return img, aug_img_gt
+    import pprint
+    try:
+      pprint.pprint([b.extra['_akpd_synth_occluders'] for b in aug_img_gt.bboxes])
+    except Exception:
+      import pdb; pdb.set_trace()
+      print()
+    aug_img_gt.bboxes += bboxes_to_add
   
-#   def _winnow_occluded(self, aug_img_gt):
-#     boxes_to_keep = []
-#     for bbox in aug_img_gt.bboxes:
-#       if len(bbox.extra['_akpd_synth_occluders']):
-#         bbox.extra['akpd_synth.is_occluded'] = 'True'
-#         # visibility mask ... frac_occluded = 0
-#         # for occluder in bbox.extra['_akpd_synth_occluders']:
-#         #   intersection = bbox.get_intersection_with(occluder)
-
-#       else:
-#         bbox.extra['akpd_synth.is_occluded'] = 'False'
+  def _winnow_occluded(self, aug_img_gt):
+    import numpy as np
+    
+    boxes_to_keep = []
+    for bbox in aug_img_gt.bboxes:
+      print("bbox.extra['_akpd_synth_occluders']", bbox.extra['_akpd_synth_occluders'])
+      if not bbox.extra['_akpd_synth_occluders']:
+        bbox.extra['akpd_synth.is_occluded'] = 'False'
+      else:
+        bbox.extra['akpd_synth.is_occluded'] = 'True'
+        visible = np.ones((bbox.width, bbox.height))
+        for occluder in bbox.extra['_akpd_synth_occluders']:
+          intersection = bbox.get_intersection_with(occluder)
+          xmin, ymin, xmax, ymax = intersection.get_x1_y1_x2_y2()
+          xmin -= bbox.x
+          xmax -= bbox.x
+          ymin -= bbox.y
+          ymax -= bbox.y
+          visible[xmin:xmax+1, ymin:ymax+1] = 0
+        if visible.any():
+          num_visible = int(visible.sum())
+          bbox.extra['akpd_synth.num_visible'] = str(num_visible)
       
-#       del bbox.extra['_akpd_synth_occluders']
-#       boxes_to_keep.append(bbox)
-#     aug_img_gt.bboxes = boxes_to_keep
+          del bbox.extra['_akpd_synth_occluders']
+          boxes_to_keep.append(bbox)
+
+    aug_img_gt.bboxes = boxes_to_keep
 
 
         
 
-#     # if nearest_idx == len(self._aspects):
-#     #   nearest_idx -= 1
+    # if nearest_idx == len(self._aspects):
+    #   nearest_idx -= 1
     
-#     # right_dist = abs(self._aspects[nearest_idx + 1] - aspect_ratio)
-#     # left_dist = abs(self._aspects[nearest_idx] - aspect_ratio)
+    # right_dist = abs(self._aspects[nearest_idx + 1] - aspect_ratio)
+    # left_dist = abs(self._aspects[nearest_idx] - aspect_ratio)
     
-#     # if right_dist < left_dist:
-#     #   nearest_idx -= 1
+    # if right_dist < left_dist:
+    #   nearest_idx -= 1
 
-#     # if 0 < nearest <= len()
+    # if 0 < nearest <= len()
 
 
-# #   """
-# #      * cache a map of aspect ratio -> image path.  let OS disk cache do the actual image caching
-# #      * accept a topo-sorted list of bboxes.  bbox at front should always be z-ordered
-# #          closer than bbox at end
+#   """
+#      * cache a map of aspect ratio -> image path.  let OS disk cache do the actual image caching
+#      * accept a topo-sorted list of bboxes.  bbox at front should always be z-ordered
+#          closer than bbox at end
      
-# #      -- every time paste a fish, then need to filter / occlude / pop some bbox labels. 
-# #        PROBABLY just pop the fish parts.  maybe also BLUR those pixels!
+#      -- every time paste a fish, then need to filter / occlude / pop some bbox labels. 
+#        PROBABLY just pop the fish parts.  maybe also BLUR those pixels!
 
 
-# # https://github.com/albumentations-team/albumentations/blob/1a35d2c4198b63dbcffa3ecff15d17b0f66d7fd2/albumentations/augmentations/transforms.py#L1055
+# https://github.com/albumentations-team/albumentations/blob/1a35d2c4198b63dbcffa3ecff15d17b0f66d7fd2/albumentations/augmentations/transforms.py#L1055
 
-# #   """
-# #   pass
+#   """
+#   pass
 
 
 DATASET_NAME_TO_ITER_FACTORY = {
@@ -335,3 +382,47 @@ DATASET_NAME_TO_ITER_FACTORY = {
         kp_bbox_to_fish_scale=0.05,
         only_camera='left')[4200:]),
 }
+
+if __name__ == '__main__':
+
+  akpd_img_gts = get_akpd_as_bbox_img_gts(kp_bbox_to_fish_scale=0.05)
+  for akpd_img_gt in akpd_img_gts:
+    akpd_img_gt.bboxes = [
+      bb for bb
+      in akpd_img_gt.bboxes
+      if bb.category_name in ('UPPER_LIP', 'TAIL_NOTCH', 'DORSAL_FIN', 'PELVIC_FIN')
+    ]
+  gen = SyntheticAKPDFromBBoxesGenerator(akpd_img_gts)
+
+  from mft_utils import high_recall_fish_data as hrf_data
+  himg_gts = hrf_data.get_img_gts()
+  for sample, himg_gt in enumerate(himg_gts):
+    base_image, _ = himg_gt.load_preprocessed_img()
+
+    # Convert back to native / AKPD resolution
+    import cv2
+    native_width, native_height = 4096, 3000
+    base_image = cv2.resize(base_image, (native_width, native_height))
+    
+    full_fish = []
+    partial_fish = []
+    for bbox in himg_gt.bboxes:
+      rbbox = bbox.get_rescaled_to_target_image(native_width, native_height)
+      if rbbox.extra['is_partial'] == 'True':
+        partial_fish.append(rbbox)
+      else:
+        full_fish.append(rbbox)
+    fish_bboxes = full_fish + partial_fish
+    aug_img, aug_img_gt = gen.create_synth_img_gt(base_image, fish_bboxes)
+    
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix='.png') as f:
+      import imageio
+      imageio.imwrite(f.name, aug_img)
+
+      aug_img_gt.img_path = f.name
+      
+      with open('/opt/mft-pg/sample%s.html' % sample, 'w') as f:
+        f.write(aug_img_gt.to_html())
+        print(f.name)
+

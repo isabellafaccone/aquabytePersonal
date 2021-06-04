@@ -1,3 +1,4 @@
+import copy
 import typing
 
 import attr
@@ -163,7 +164,6 @@ class BBox2D(object):
     iy1 = max(y1, oy1)
     iy2 = min(y2, oy2)
     
-    import copy
     intersection = copy.deepcopy(self)
     intersection.set_x1_y1_x2_y2(ix1, iy1, ix2, iy2)
     return intersection
@@ -177,7 +177,6 @@ class BBox2D(object):
     uy1 = min(y1, oy1)
     uy2 = max(y2, oy2)
     
-    import copy
     union = copy.deepcopy(self)
     union.set_x1_y1_x2_y2(ux1, uy1, ux2, uy2)
     return union
@@ -189,7 +188,9 @@ class BBox2D(object):
 
   def get_area(self):
     """Area in square pixels"""
-    return self.width * self.height
+    magnitude = abs(self.width * self.height)
+    sign = 1 if (self.width >= 0 and self.height >= 0) else -1
+    return sign * magnitude
 
   def translate(self, *args):
     """Move the origin of this `BBox2D` by the given `(x, y)` value;
@@ -206,6 +207,20 @@ class BBox2D(object):
     `BBox2D`."""
     c, r, w, h = self.x, self.y, self.width, self.height
     return img[r:r+h, c:c+w, :]
+
+  def get_rescaled_to_target_image(self, target_width, target_height):
+    rescaled = copy.deepcopy(self)
+    fxmin, fymin, fxmax, fymax = rescaled.get_fractional_xmin_ymin_xmax_ymax()
+    xmin = fxmin * target_width
+    xmax = fxmax * target_width
+    ymin = fymin * target_height
+    ymax = fymax * target_height
+    rescaled.set_x1_y1_x2_y2(xmin, ymin, xmax, ymax)
+    rescaled.im_width = target_width
+    rescaled.im_height = target_height
+    rescaled.quantize()
+    rescaled.clamp_to_screen()
+    return rescaled
 
   def draw_in_image(
         self,
