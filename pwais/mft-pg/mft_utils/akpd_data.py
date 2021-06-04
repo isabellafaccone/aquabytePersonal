@@ -375,7 +375,7 @@ def generate_synth_fish_and_parts(
   
   if not only_parts:
     only_parts = ('UPPER_LIP', 'TAIL_NOTCH', 'DORSAL_FIN', 'PELVIC_FIN')
-  
+
   akpd_img_gts = get_akpd_as_bbox_img_gts(
                     kp_bbox_to_fish_scale=kp_bbox_to_fish_scale)
   for akpd_img_gt in akpd_img_gts:
@@ -389,49 +389,70 @@ def generate_synth_fish_and_parts(
   from mft_utils import high_recall_fish_data as hrf_data
   himg_gts = hrf_data.get_img_gts()
 
-  def render_synth_img(img_id):
-    himg_gt = himg_gts[img_id]
+  class Renderer(object):
+    def __init__(self, gen, himg_gts):
+      self._gen = gen
+      self._himg_gts = himg_gts
 
-    base_image, _ = himg_gt.load_preprocessed_img()
-
-    # Convert back to target resolution (e.g. native / AKPD)
-    import cv2
-    base_image = cv2.resize(base_image, (synth_img_width, synth_img_height))
+    def get_image_ids(self):
+      return list(range(len(self._himg_gts)))
     
-    # Order ground truth by Z-order
-    full_fish = []
-    partial_fish = []
-    for bbox in himg_gt.bboxes:
-      rbbox = bbox.get_rescaled_to_target_image(
-                                synth_img_width, synth_img_height)
-      if rbbox.extra['is_partial'] == 'True':
-        partial_fish.append(rbbox)
-      else:
-        full_fish.append(rbbox)
-    fish_bboxes = full_fish + partial_fish
-    aug_img, aug_img_gt = gen.create_synth_img_gt(base_image, fish_bboxes)
-    
-    mft_misc.mkdir(output_dir)
-    dest_img_path = os.path.join(output_dir, 'example_%s.png' % img_id)
-    dest_labels_path = dest_img_path + '.aug_img_gt.pkl'
-
-    import imageio
-    imageio.imwrite(dest_img_path, aug_img)
-
-    aug_img_gt.extra['akpd_synth.base_src_img_path'] = himg_gt.img_path
-    aug_img_gt.img_path = dest_img_path
-    aug_img_gt.extra.update(himg_gt.extra)
+    def render_synth_img(self, img_id):
+      import os 
+      from mft_utils import misc as mft_misc
       
-    with open(dest_labels_path, 'w') as f:
-      import pickle
-      pickle.dump(aug_img_gt, f, protocol=pickle.HIGHEST_PROTOCOL)
+      himg_gt = self._himg_gts[img_id]
 
-    mft_misc.log.info("Saved synth %s" % dest_labels_path)
+      base_image, _ = himg_gt.load_preprocessed_img()
+
+      # Convert back to target resolution (e.g. native / AKPD)
+      import cv2
+      base_image = cv2.resize(base_image, (synth_img_width, synth_img_height))
+      
+      # Order ground truth by Z-order
+      full_fish = []
+      partial_fish = []
+      for bbox in himg_gt.bboxes:
+        rbbox = bbox.get_rescaled_to_target_image(
+                                  synth_img_width, synth_img_height)
+        if rbbox.extra['is_partial'] == 'True':
+          partial_fish.append(rbbox)
+        else:
+          full_fish.append(rbbox)
+      fish_bboxes = full_fish + partial_fish
+      aug_img, aug_img_gt = self._gen.create_synth_img_gt(
+                                          base_image, fish_bboxes)
+      
+      mft_misc.mkdir(output_dir)
+      dest_img_path = os.path.join(output_dir, 'example_%s.png' % img_id)
+      dest_labels_path = dest_img_path + '.aug_img_gt.pkl'
+
+      import imageio
+      imageio.imwrite(dest_img_path, aug_img)
+
+      aug_img_gt.extra['akpd_synth.base_src_img_path'] = himg_gt.img_path
+      aug_img_gt.img_path = dest_img_path
+      aug_img_gt.extra.update(himg_gt.extra)
+        
+      with open(dest_labels_path, 'wb') as f:
+        import pickle
+        pickle.dump(aug_img_gt, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+      mft_misc.log.info("Saved synth %s" % dest_labels_path)
   
-  img_ids = range(len(himg_gts))
+  r = Renderer(gen, himg_gts)
+  img_ids = r.get_image_ids()
+
+  from oarphpy import spark as S
+  class MFTSpark(S.SessionFactory):
+    pass
+  
   mft_misc.log.info("Going to create %s synthetic images ..." % len(img_ids))
-  for img_id in img_ids:
-    render_synth_img(img_id)
+  with MFTSpark.sess() as spark:
+    task_rdd = spark.sparkContext.parallelize(img_ids, numSlices=len(img_ids))
+    task_rdd.foreach(lambda img_id: r.render_synth_img(img_id))
+
+  
   # if parallel < 0:
   #   parallel = os.cpu_count()
   # mft_misc.foreach_threadpool_safe_pmap(
