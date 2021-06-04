@@ -91,6 +91,7 @@ def get_akpd_as_bbox_img_gts(
       imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
       kp_bbox_to_fish_scale=0.1,
       only_camera='left',
+      only_parts=[],
       parallel=-1):
 
   cleaned_df_path = in_csv_path + 'cleaned.pkl'
@@ -144,7 +145,7 @@ def get_akpd_as_bbox_img_gts(
     parallel = os.cpu_count()
   img_gts = mft_misc.foreach_threadpool_safe_pmap(
               to_img_gt,
-              labels_df.to_dict(orient='records')[:100],
+              labels_df.to_dict(orient='records'),
               {'max_workers': parallel})
   return img_gts
 
@@ -280,7 +281,12 @@ class SyntheticAKPDFromBBoxesGenerator(object):
       bboxes_to_add.append(part_bbox)
 
     for bbox in bboxes_to_add:
+      bbox.extra['akpd_synth.src_img_path'] = akpd_img_gt.img_path
       bbox.extra['akpd_synth.img_fish_id'] = str(akpd_img_id)
+
+      for k, v in akpd_img_gt.extra.items():
+        bbox.extra['akpd_synth.src_img_extra.' + k] = v
+
       bbox.extra['_akpd_synth_occluders'] = []
 
     # Note anything that the new fish occludes
@@ -315,7 +321,7 @@ class SyntheticAKPDFromBBoxesGenerator(object):
         continue
 
       num_visible = int(visible.sum())
-      bbox.extra['akpd_synth.num_visible'] = str(num_visible)
+      bbox.extra['akpd_synth.num_px_visible'] = str(num_visible)
 
       bbox.extra['akpd_synth.is_occluded'] = str(
                           bool(bbox.extra['_akpd_synth_occluders']))
@@ -324,6 +330,12 @@ class SyntheticAKPDFromBBoxesGenerator(object):
       boxes_to_keep.append(bbox)
 
     aug_img_gt.bboxes = boxes_to_keep
+
+    aug_img_gt.extra['akpd_synth.num_fish_with_occluded'] = str(
+                            sum(
+                              1
+                              for bb in aug_img_gt.bboxes
+                              if bb.extra['akpd_synth.is_occluded'] == 'True'))
 
 
         
@@ -354,6 +366,77 @@ class SyntheticAKPDFromBBoxesGenerator(object):
 #   """
 #   pass
 
+def generate_synth_fish_and_parts(
+        output_dir='/opt/mft-pg/datasets/datasets_s3/synth_fish_and_parts',
+        kp_bbox_to_fish_scale=0.1,
+        synth_img_width=4096,
+        synth_img_height=3000,
+        only_parts=None,
+        parallel=2):
+  
+  if not only_parts:
+    only_parts = ('UPPER_LIP', 'TAIL_NOTCH', 'DORSAL_FIN', 'PELVIC_FIN')
+  
+  akpd_img_gts = get_akpd_as_bbox_img_gts(
+                    kp_bbox_to_fish_scale=kp_bbox_to_fish_scale)
+  for akpd_img_gt in akpd_img_gts:
+    akpd_img_gt.bboxes = [
+      bb for bb
+      in akpd_img_gt.bboxes
+      if bb.category_name in only_parts
+    ]
+  gen = SyntheticAKPDFromBBoxesGenerator(akpd_img_gts)
+
+  from mft_utils import high_recall_fish_data as hrf_data
+  himg_gts = hrf_data.get_img_gts()
+
+  def render_synth_img(img_id):
+    himg_gt = himg_gts[img_id]
+
+    base_image, _ = himg_gt.load_preprocessed_img()
+
+    # Convert back to target resolution (e.g. native / AKPD)
+    import cv2
+    base_image = cv2.resize(base_image, (synth_img_width, synth_img_height))
+    
+    # Order ground truth by Z-order
+    full_fish = []
+    partial_fish = []
+    for bbox in himg_gt.bboxes:
+      rbbox = bbox.get_rescaled_to_target_image(
+                                synth_img_width, synth_img_height)
+      if rbbox.extra['is_partial'] == 'True':
+        partial_fish.append(rbbox)
+      else:
+        full_fish.append(rbbox)
+    fish_bboxes = full_fish + partial_fish
+    aug_img, aug_img_gt = gen.create_synth_img_gt(base_image, fish_bboxes)
+    
+    dest_img_path = os.path.join(output_dir, 'example_%s.png' % img_id)
+    dest_labels_path = dest_img_path + '.aug_img_gt.pkl'
+
+    import imageio
+    imageio.imwrite(dest_img_path, aug_img)
+
+    aug_img_gt.extra['akpd_synth.base_src_img_path'] = himg_gt.img_path
+    aug_img_gt.img_path = dest_img_path
+    aug_img_gt.extra.update(himg_gt.extra)
+      
+    with open(dest_labels_path, 'w') as f:
+      import pickle
+      pickle.dump(aug_img_gt, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    mft_misc.log.info("Saved synth %s" % dest_labels_path)
+  
+  img_ids = range(len(himg_gts))
+  mft_misc.log.info("Going to create %s synthetic images ..." % len(img_ids))
+  if parallel < 0:
+    parallel = os.cpu_count()
+  mft_misc.foreach_threadpool_safe_pmap(
+              render_synth_img,
+              img_ids,
+              {'max_workers': parallel})
+
 
 DATASET_NAME_TO_ITER_FACTORY = {
 
@@ -380,45 +463,4 @@ DATASET_NAME_TO_ITER_FACTORY = {
 }
 
 if __name__ == '__main__':
-
-  akpd_img_gts = get_akpd_as_bbox_img_gts(kp_bbox_to_fish_scale=0.05, parallel=1)
-  for akpd_img_gt in akpd_img_gts:
-    akpd_img_gt.bboxes = [
-      bb for bb
-      in akpd_img_gt.bboxes
-      if bb.category_name in ('UPPER_LIP', 'TAIL_NOTCH', 'DORSAL_FIN', 'PELVIC_FIN')
-    ]
-  gen = SyntheticAKPDFromBBoxesGenerator(akpd_img_gts)
-
-  from mft_utils import high_recall_fish_data as hrf_data
-  himg_gts = hrf_data.get_img_gts(parallel=1)
-  for sample, himg_gt in enumerate(himg_gts):
-    base_image, _ = himg_gt.load_preprocessed_img()
-
-    # Convert back to native / AKPD resolution
-    import cv2
-    native_width, native_height = 4096, 3000
-    base_image = cv2.resize(base_image, (native_width, native_height))
-    
-    full_fish = []
-    partial_fish = []
-    for bbox in himg_gt.bboxes:
-      rbbox = bbox.get_rescaled_to_target_image(native_width, native_height)
-      if rbbox.extra['is_partial'] == 'True':
-        partial_fish.append(rbbox)
-      else:
-        full_fish.append(rbbox)
-    fish_bboxes = full_fish + partial_fish
-    aug_img, aug_img_gt = gen.create_synth_img_gt(base_image, fish_bboxes)
-    
-    import tempfile
-    with tempfile.NamedTemporaryFile(suffix='.png') as f:
-      import imageio
-      imageio.imwrite(f.name, aug_img)
-
-      aug_img_gt.img_path = f.name
-      
-      with open('/opt/mft-pg/sample%s.html' % sample, 'w') as f:
-        f.write(aug_img_gt.to_html())
-        print(f.name)
-
+  generate_synth_fish_and_parts()

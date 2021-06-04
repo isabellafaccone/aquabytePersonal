@@ -191,7 +191,7 @@ def get_img_gts(
     parallel = os.cpu_count()
   img_gts = mft_misc.foreach_threadpool_safe_pmap(
               to_img_gt,
-              labels_df.to_dict(orient='records')[:10],
+              labels_df.to_dict(orient='records'),
               {'max_workers': parallel})
   return img_gts
 
