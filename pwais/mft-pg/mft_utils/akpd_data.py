@@ -371,8 +371,7 @@ def generate_synth_fish_and_parts(
         kp_bbox_to_fish_scale=0.1,
         synth_img_width=4096,
         synth_img_height=3000,
-        only_parts=None,
-        parallel=2):
+        only_parts=None):
   
   if not only_parts:
     only_parts = ('UPPER_LIP', 'TAIL_NOTCH', 'DORSAL_FIN', 'PELVIC_FIN')
@@ -430,12 +429,14 @@ def generate_synth_fish_and_parts(
   
   img_ids = range(len(himg_gts))
   mft_misc.log.info("Going to create %s synthetic images ..." % len(img_ids))
-  if parallel < 0:
-    parallel = os.cpu_count()
-  mft_misc.foreach_threadpool_safe_pmap(
-              render_synth_img,
-              img_ids,
-              {'max_workers': parallel})
+  for img_id in img_ids:
+    render_synth_img(img_id)
+  # if parallel < 0:
+  #   parallel = os.cpu_count()
+  # mft_misc.foreach_threadpool_safe_pmap(
+  #             render_synth_img,
+  #             img_ids,
+  #             {'max_workers': parallel})
 
 
 DATASET_NAME_TO_ITER_FACTORY = {
