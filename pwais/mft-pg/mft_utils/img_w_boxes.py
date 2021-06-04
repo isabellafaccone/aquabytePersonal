@@ -16,7 +16,7 @@ class ImgWithBoxes(object):
   img_height = attr.ib(default=0)
   """img_height: Height of image in pixels (if known)"""
 
-  bboxes = attr.ib(default=[])
+  bboxes = attr.ib(default=attr.Factory(list))
   """bboxes: A list of `BBox2D` instances"""
 
   microstamp = attr.ib(default=0)
@@ -27,11 +27,11 @@ class ImgWithBoxes(object):
   latency_sec = attr.ib(type=float, default=-1.)
   """float, optional: Detector latency, if applicable"""
 
-  bboxes_alt = attr.ib(default=[])
+  bboxes_alt = attr.ib(default=attr.Factory(list))
   """bboxes_alt: A list of *alternative* `BBox2D` instances (e.g. 
       ground truth boxes if this instance has detection boxes)"""
 
-  preprocessor_configs = attr.ib(default=[])
+  preprocessor_configs = attr.ib(default=attr.Factory(list))
   """preprocessor_configs: A list of `str` preprocessor configurations; see
   below load_preprocessed_img()"""
 

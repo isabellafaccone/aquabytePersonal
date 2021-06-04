@@ -189,7 +189,6 @@ class SyntheticAKPDFromBBoxesGenerator(object):
     aug_img = base_image.copy()
     aug_img_gt = ImgWithBoxes()
     for i in reversed(range(len(fish_bboxes))):
-      print('round', i)
       dest_bbox = fish_bboxes[i]
       akpd_img_id = chosen[i]
       self._paste_in_place(
@@ -250,8 +249,6 @@ class SyntheticAKPDFromBBoxesGenerator(object):
         aug_img_gt,
         akpd_img_id):
     
-    print('paste')
-    print('len(aug_img_gt.bboxes)', len(aug_img_gt.bboxes))
     akpd_img_gt = self._akpd_img_gts[akpd_img_id]
     akpd_img, _ = akpd_img_gt.load_preprocessed_img()
 
@@ -286,19 +283,16 @@ class SyntheticAKPDFromBBoxesGenerator(object):
       bbox.extra['akpd_synth.img_fish_id'] = str(akpd_img_id)
       bbox.extra['_akpd_synth_occluders'] = []
 
-    # Note anything that these new pasted boxes occlude
+    # Note anything that the new fish occludes
     for existing_bbox in aug_img_gt.bboxes:
-      for bbox in bboxes_to_add:
-        if bbox.overlaps_with(existing_bbox):
-          existing_bbox.extra['_akpd_synth_occluders'].append(bbox)
-          print('added')
+      if existing_bbox.category_name == 'AKPD_SYNTH_FISH':
+        continue
+      if fish_bbox.overlaps_with(existing_bbox):
+        existing_bbox.extra['_akpd_synth_occluders'].append(fish_bbox)
+      # for bbox in bboxes_to_add:
+      #   if bbox.overlaps_with(existing_bbox):
+      #     existing_bbox.extra['_akpd_synth_occluders'].append(bbox)
 
-    import pprint
-    try:
-      pprint.pprint([b.extra['_akpd_synth_occluders'] for b in aug_img_gt.bboxes])
-    except Exception:
-      import pdb; pdb.set_trace()
-      print()
     aug_img_gt.bboxes += bboxes_to_add
   
   def _winnow_occluded(self, aug_img_gt):
@@ -306,26 +300,28 @@ class SyntheticAKPDFromBBoxesGenerator(object):
     
     boxes_to_keep = []
     for bbox in aug_img_gt.bboxes:
-      print("bbox.extra['_akpd_synth_occluders']", bbox.extra['_akpd_synth_occluders'])
-      if not bbox.extra['_akpd_synth_occluders']:
-        bbox.extra['akpd_synth.is_occluded'] = 'False'
-      else:
-        bbox.extra['akpd_synth.is_occluded'] = 'True'
-        visible = np.ones((bbox.width, bbox.height))
-        for occluder in bbox.extra['_akpd_synth_occluders']:
-          intersection = bbox.get_intersection_with(occluder)
-          xmin, ymin, xmax, ymax = intersection.get_x1_y1_x2_y2()
-          xmin -= bbox.x
-          xmax -= bbox.x
-          ymin -= bbox.y
-          ymax -= bbox.y
-          visible[xmin:xmax+1, ymin:ymax+1] = 0
-        if visible.any():
-          num_visible = int(visible.sum())
-          bbox.extra['akpd_synth.num_visible'] = str(num_visible)
+      visible = np.ones((bbox.width, bbox.height))
+      for occluder in bbox.extra['_akpd_synth_occluders']:
+        intersection = bbox.get_intersection_with(occluder)
+        xmin, ymin, xmax, ymax = intersection.get_x1_y1_x2_y2()
+        xmin -= bbox.x
+        xmax -= bbox.x
+        ymin -= bbox.y
+        ymax -= bbox.y
+        visible[xmin:xmax+1, ymin:ymax+1] = 0
+
+      if not visible.any():
+        # Skip this box
+        continue
+
+      num_visible = int(visible.sum())
+      bbox.extra['akpd_synth.num_visible'] = str(num_visible)
+
+      bbox.extra['akpd_synth.is_occluded'] = str(
+                          bool(bbox.extra['_akpd_synth_occluders']))
+      del bbox.extra['_akpd_synth_occluders']
       
-          del bbox.extra['_akpd_synth_occluders']
-          boxes_to_keep.append(bbox)
+      boxes_to_keep.append(bbox)
 
     aug_img_gt.bboxes = boxes_to_keep
 
@@ -385,7 +381,7 @@ DATASET_NAME_TO_ITER_FACTORY = {
 
 if __name__ == '__main__':
 
-  akpd_img_gts = get_akpd_as_bbox_img_gts(kp_bbox_to_fish_scale=0.05)
+  akpd_img_gts = get_akpd_as_bbox_img_gts(kp_bbox_to_fish_scale=0.05, parallel=1)
   for akpd_img_gt in akpd_img_gts:
     akpd_img_gt.bboxes = [
       bb for bb
@@ -395,7 +391,7 @@ if __name__ == '__main__':
   gen = SyntheticAKPDFromBBoxesGenerator(akpd_img_gts)
 
   from mft_utils import high_recall_fish_data as hrf_data
-  himg_gts = hrf_data.get_img_gts()
+  himg_gts = hrf_data.get_img_gts(parallel=1)
   for sample, himg_gt in enumerate(himg_gts):
     base_image, _ = himg_gt.load_preprocessed_img()
 
