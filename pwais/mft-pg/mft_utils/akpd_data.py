@@ -411,6 +411,7 @@ def generate_synth_fish_and_parts(
     fish_bboxes = full_fish + partial_fish
     aug_img, aug_img_gt = gen.create_synth_img_gt(base_image, fish_bboxes)
     
+    mft_misc.mkdir(output_dir)
     dest_img_path = os.path.join(output_dir, 'example_%s.png' % img_id)
     dest_labels_path = dest_img_path + '.aug_img_gt.pkl'
 
