@@ -181,6 +181,8 @@ def get_img_gts(
     }
     return ImgWithBoxes(
                       img_path=img_path,
+                      img_width=w,
+                      img_height=h,
                       bboxes=bboxes,
                       microstamp=microstamp,
                       extra=extra)

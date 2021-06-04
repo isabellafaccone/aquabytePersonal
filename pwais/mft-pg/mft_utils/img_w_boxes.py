@@ -10,6 +10,12 @@ class ImgWithBoxes(object):
   img_path = attr.ib(default="")
   """img_path: Path to the image"""
 
+  img_width = attr.ib(default=0)
+  """img_width: Width of image in pixels (if known)"""
+  
+  img_height = attr.ib(default=0)
+  """img_height: Height of image in pixels (if known)"""
+
   bboxes = attr.ib(default=[])
   """bboxes: A list of `BBox2D` instances"""
 

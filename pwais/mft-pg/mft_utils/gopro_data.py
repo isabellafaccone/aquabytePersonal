@@ -75,6 +75,8 @@ def iter_gopro1_img_gts(
     
     yield ImgWithBoxes(
             img_path=img_path,
+            img_width=w,
+            img_height=h,
             bboxes=bboxes,
             microstamp=microstamp)
 
