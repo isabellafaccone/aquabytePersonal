@@ -453,12 +453,34 @@ def generate_synth_fish_and_parts(
     task_rdd.foreach(lambda img_id: r.render_synth_img(img_id))
 
   
-  # if parallel < 0:
-  #   parallel = os.cpu_count()
-  # mft_misc.foreach_threadpool_safe_pmap(
-  #             render_synth_img,
-  #             img_ids,
-  #             {'max_workers': parallel})
+def get_synth_fish_and_parts_img_gts(
+        data_dir='/opt/mft-pg/datasets/datasets_s3/synth_fish_and_parts',
+        parallel=-1):
+  
+  paths = [
+    os.path.join(data_dir, fname)
+    for fname in os.listdir(data_dir)
+    if fname.endswith('.aug_img_gt.pkl')
+  ]
+
+  def load_img_gt(path):
+    import pickle
+    
+    from mft_utils.bbox2d import BBox2D
+    from mft_utils.img_w_boxes import ImgWithBoxes
+
+    with open(path, 'rb') as f:
+      return pickle.load(f)
+
+  if parallel < 0:
+    parallel = os.cpu_count()
+  img_gts = mft_misc.foreach_threadpool_safe_pmap(
+              load_img_gt,
+              paths,
+              {'max_workers': parallel})
+  mft_misc.log.info(
+    "Loaded %s records for synth_fish_and_parts" % len(img_gts))
+  return img_gts
 
 
 DATASET_NAME_TO_ITER_FACTORY = {
@@ -483,6 +505,11 @@ DATASET_NAME_TO_ITER_FACTORY = {
       get_akpd_as_bbox_img_gts(
         kp_bbox_to_fish_scale=0.05,
         only_camera='left')[4200:]),
+    
+  'akpd1.0_synth_fish_and_parts.0.1.train': (lambda :
+      get_synth_fish_and_parts_img_gts()[:4980]),
+  'akpd1.0_synth_fish_and_parts.0.1.test': (lambda :
+      get_synth_fish_and_parts_img_gts()[4980:]),
 }
 
 if __name__ == '__main__':
