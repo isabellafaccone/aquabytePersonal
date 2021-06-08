@@ -1,3 +1,5 @@
+import copy
+
 import pandas as pd
 
 """
@@ -212,6 +214,7 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
     CONF_KV = {
       'spark.files.overwrite': 'true',
         # Make it easy to have multiple invocations of parent function
+      'spark.driver.memory': '16g',
     }
     #   'spark.pyspark.python': 'python3',
     #   'spark.driverEnv.PYTHONPATH': '/opt/mft-pg:/opt/oarphpy',
@@ -269,7 +272,14 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
       spark_rows = [
         S.RowAdapter.to_row(r) for r in df.to_dict(orient='records')
       ]
-      schema = S.RowAdapter.to_schema(df.to_dict(orient='records')[0])
+      schema_row = copy.deepcopy(df.to_dict(orient='records')[0])
+      if not schema_row['bboxes']:
+        for row in df.to_dict(orient='records'):
+          if row['bboxes']:
+            schema_row['bboxes'] = copy.deepcopy(row['bboxes'])
+            break
+        assert schema_row['bboxes'], 'hacks! need row prototype and sniffing failed'
+      schema = S.RowAdapter.to_schema(schema_row)#df.to_dict(orient='records')[0])
       df = spark.createDataFrame(spark_rows, schema=schema)
     
     df = df.persist()

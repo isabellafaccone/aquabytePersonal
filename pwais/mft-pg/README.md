@@ -23,7 +23,6 @@ runtime environments. Try `$ ./mft-cli --help` to start.
   * Devise and test a tracklet scorer https://aquabyte.atlassian.net/browse/ENGALL-2650
   * Rough "back-test" of tracklet scorer: compare tracklet scores vs AKPD scores on past data https://aquabyte.atlassian.net/browse/ENGALL-2711
   * Rough "forward-test" of tracklet scorer: compare tracklet scores vs AKPD scores on (unlabeled) GoPro data https://aquabyte.atlassian.net/browse/ENGALL-2712
-  * 
 
 ### Production-oriented Demo
   * Production-like docker image for Detector+Tracker https://aquabyte.atlassian.net/browse/ENGALL-2677

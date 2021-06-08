@@ -265,7 +265,7 @@ class SyntheticAKPDFromBBoxesGenerator(object):
 
     # Paste a FISH box ...
     fish_bbox = copy.deepcopy(dest_bbox)
-    fish_bbox.category_name = 'AKPD_SYNTH_FISH'
+    fish_bbox.category_name = 'FISH'
     bboxes_to_add.append(fish_bbox)
     
     # ... and paste fish part boxes
@@ -291,7 +291,7 @@ class SyntheticAKPDFromBBoxesGenerator(object):
 
     # Note anything that the new fish occludes
     for existing_bbox in aug_img_gt.bboxes:
-      if existing_bbox.category_name == 'AKPD_SYNTH_FISH':
+      if existing_bbox.category_name == 'FISH':
         continue
       if fish_bbox.overlaps_with(existing_bbox):
         existing_bbox.extra['_akpd_synth_occluders'].append(fish_bbox)

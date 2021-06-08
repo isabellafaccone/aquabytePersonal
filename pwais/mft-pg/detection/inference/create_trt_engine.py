@@ -10,7 +10,7 @@ from mft_utils import misc as mft_misc
 def create_trt_from_darknet_yolo(
       yolo_config_path="yolov3.cfg",
       yolo_weights_path="yolov3.weights",
-      out_dir="/tmp/"):
+      outdir="/tmp/"):
 
   # The Yolo conversion scripts below take in config / weights files
   # with the name pattern `yolov3-WxH.cfg` where W and H are the
@@ -49,9 +49,9 @@ def create_trt_from_darknet_yolo(
     """)
     assert os.path.exists(trt_engine_path), trt_engine_path
   
-    out_yolo_onnx_path = os.path.join(out_dir, 'yolov3.onnx')
+    out_yolo_onnx_path = os.path.join(outdir, 'yolov3.onnx')
     out_trt_engine_path = os.path.join(
-                              out_dir,
+                              outdir,
                               ('yolov3.' + 
                                 mft_misc.cuda_get_device_trt_engine_name() + 
                                 '.trt'))
@@ -74,11 +74,11 @@ class TRTBuilder(object):
   def __init__(self, artifact_dir):
     self._artifact_dir = artifact_dir
 
-  def __call__(self, workdir):
+  def __call__(self, outdir):
     pass
 
 class AVTTRTDemosYoloBuilder(TRTBuilder):
-  def __call__(self, workdir):
+  def __call__(self, outdir):
     assert os.path.exists('/opt/tensorrt_demos'), \
       "This builder designed to work with https://github.com/jkjung-avt/tensorrt_demos"
     
@@ -93,7 +93,7 @@ class AVTTRTDemosYoloBuilder(TRTBuilder):
     create_trt_from_darknet_yolo(
       yolo_config_path=yolo_config_path,
       yolo_weights_path=yolo_weights_path,
-      out_dir=workdir)
+      outdir=outdir)
 
 
 def create_trt_runner_from_artifacts(artifact_dir):
@@ -109,16 +109,17 @@ def create_trt_runner_from_artifacts(artifact_dir):
   help="Use the model with this mlflow run ID (optional)")
 @click.option("--use_model_artifact_dir", default="",
   help="Use the model artifacts at this directory path (optional)")
-@click.option("--scratch_dir", default="/tmp")
-@click.option("--clean_scratch", default=True, type=bool)
 def create_trt_engine(
       use_model_run_id,
-      use_model_artifact_dir,
-      scratch_dir,
-      clean_scratch):
+      use_model_artifact_dir):
   
   if use_model_artifact_dir:
-    clean_scratch = False
+    outdir = use_model_artifact_dir
+  else:
+    outdir = os.path.join(
+                  '/tmp/mft-create_trt_engine',
+                  use_model_run_id or 'anon_run')
+    mft_misc.mkdir(outdir)
 
   if use_model_run_id and not use_model_artifact_dir:
     run = mlflow.get_run(use_model_run_id)
@@ -129,12 +130,6 @@ def create_trt_engine(
 
   assert use_model_artifact_dir, "Need some model artifacts to TensorRT-ize"
 
-  workdir = os.path.join(
-                  scratch_dir,
-                  'mft-create_trt_engine',
-                  use_model_run_id or 'anon_run')
-  mft_misc.mkdir(workdir)
-
   trt_runner = create_trt_runner_from_artifacts(use_model_artifact_dir)
 
   run_id = use_model_run_id or None
@@ -142,16 +137,16 @@ def create_trt_engine(
     # mlflow.log_param('trt_parent_run_id', use_model_run_id)
 
     import time
-    mft_misc.log.info('Runing TRT runner with workspace to %s ...' % workdir)
+    mft_misc.log.info('Runing TRT runner and saving to %s ...' % outdir)
     start = time.time()
-    trt_runner(workdir)
+    trt_runner(outdir)
     duration = time.time() - start
 
     mlflow.log_metric('total_trt_build_time_sec', duration)
-    mlflow.log_artifacts(workdir)
-
-    if clean_scratch:
-      mft_misc.run_cmd("rm -rf %s" % workdir)
+    
+    mft_misc.log.info('Total TRT build time %s' % duration)
+    mft_misc.log.info('Artifacts saved to %s' % outdir)
+    # mlflow.log_artifacts(outdir)
 
 if __name__ == "__main__":
   create_trt_engine()

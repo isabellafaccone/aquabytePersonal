@@ -1,3 +1,4 @@
+import time
 import typing
 
 import attr
@@ -32,8 +33,12 @@ class ImgWithBoxes(object):
       ground truth boxes if this instance has detection boxes)"""
 
   preprocessor_configs = attr.ib(default=attr.Factory(list))
-  """preprocessor_configs: A list of `str` preprocessor configurations; see
-  below load_preprocessed_img()"""
+  """preprocessor_configs: A list of `str` Image preprocessor configurations;
+  see below load_preprocessed_img()"""
+
+  postprocessors_configs = attr.ib(default=attr.Factory(list))
+  """postprocessors_configs: A list of `str` ImgWithBoxes postprocessor
+  configurations; see below run_postprocessors()"""
 
   extra = attr.ib(default={}, type=typing.Dict[str, str])
   """Dict[str, str]: A map for adhoc extra context"""
@@ -72,9 +77,24 @@ class ImgWithBoxes(object):
     pp_to_stats['imageio_load'] = load_time
     return img, pp_to_stats
 
+  def run_postprocessors(self):
+    
+
   def to_html(self):
     import numpy as np
     debug_img = self.get_debug_image()
+    # debug_img_size = max(debug_img.shape[:2])
+    # if debug_img_size > 1000:
+    #   h, w = debug_img.shape[:2]
+    #   if h > w:
+    #     scale = 1000. / h
+    #   else:
+    #     scale = 1000. / w
+    #   target_h, target_w = int(scale * h), int(scale * w)
+
+    #   import cv2
+    #   debug_img = cv2.resize(debug_img, (target_w, target_h))
+    #   print('resized', debug_img.shape)
 
     from oarphpy.plotting import img_to_data_uri
     w = debug_img.shape[1]

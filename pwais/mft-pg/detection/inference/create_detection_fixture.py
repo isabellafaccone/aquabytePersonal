@@ -243,7 +243,8 @@ class DetectorRunner(object):
       if ((i+1) % 100) == 0:
         mft_misc.log.info('Detected %s of %s' % (i+1, len(img_gts)))
 
-    mft_misc.log.info('Running COCO merics ...')
+    # Run COCO now so that it's easier to browse a model zoo by COCO metrics
+    mft_misc.log.info('Running COCO metrics ...')
     from mft_utils import coco_detection_metrics as coco_metrics
     metrics = coco_metrics.get_coco_summary(img_gts, img_dets)
     mft_misc.log.info('... done')
@@ -309,7 +310,7 @@ class DarknetRunner(DetectorRunner):
                       meta_path=meta_path)
     
     w, h = mft_misc.darknet_get_yolo_input_wh(config_path)
-    self._dector_info = {
+    self._detector_info = {
       'config_path': config_path,
       'weights_path': weights_path,
       'input_w': w,
@@ -325,7 +326,7 @@ class DarknetRunner(DetectorRunner):
       return result
   
   def get_detector_info(self):
-    return self._dector_info
+    return self._detector_info
 
 
 class YoloTRTRunner(DetectorRunner):
@@ -348,6 +349,9 @@ class YoloTRTRunner(DetectorRunner):
     category_id_to_name = [
       c.strip() for c in open(yolo_names_path, 'r').readlines()
     ]
+    category_id_to_name = [
+      (c if (c != 'AKPD_SYNTH_FISH') else 'FISH')
+      for c in category_id_to_name]
 
     self._detector = YoloAVTTRTDetector(
                         trt_engine_path,
@@ -358,7 +362,7 @@ class YoloTRTRunner(DetectorRunner):
     self._engine_load_time_sec = self._detector.engine_load_time_sec
     mlflow.log_metric('trt_engine_load_time_sec', self._engine_load_time_sec)
 
-    self._dector_info = {
+    self._detector_info = {
       'trt_engine_name': engine_name,
       'config_path': yolo_config_path,
       'input_w': w,
@@ -371,7 +375,7 @@ class YoloTRTRunner(DetectorRunner):
     return result
   
   def get_detector_info(self):
-    return self._dector_info
+    return self._detector_info
 
 
 def create_runner_from_artifacts(artifact_dir):
@@ -393,6 +397,8 @@ def create_runner_from_artifacts(artifact_dir):
   help="Create a detection fixture using this input")
 @click.option("--add-preprocessors", default="",
   help="Apply these image pre-processing algos (e.g. clahe)")
+@click.option("--add-postprocessors", default="",
+  help="Apply these ImgWithBoxes algos (e.g. COSAScorer)")
 @click.option("--detect_limit", default=-1,
   help="For testing, only run detection on this many samples")
 @click.option("--save_to", default="", 
@@ -404,6 +410,7 @@ def create_detection_fixture(
       use_model_artifact_dir,
       detect_on_dataset,
       add_preprocessors,
+      add_postprocessors,
       detect_limit,
       save_to,
       gpu_id):
@@ -448,9 +455,10 @@ def create_detection_fixture(
     img_gts = list(iter_img_gts)
 
     add_preprocessors = [p.strip() for p in add_preprocessors.split(',') if p]
-    if add_preprocessors:
-      for img_gt in img_gts:
-        img_gt.preprocessor_configs += add_preprocessors
+    add_postprocessors = [p.strip() for p in add_postprocessors.split(',') if p]
+    for img_gt in img_gts:
+      img_gt.preprocessor_configs += add_preprocessors
+      img_gt.postprocessors_configs += add_postprocessors
 
     detector_runner = create_runner_from_artifacts(use_model_artifact_dir)
 

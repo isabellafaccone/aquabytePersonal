@@ -119,6 +119,9 @@ class BBox2D(object):
       self.width == self.im_width and
       self.height == self.im_height)
 
+  def get_center_xy(self):
+    return self.x + .5 * self.width, self.y + .5 * self.height
+
   def get_corners(self):
     """Return all four corners, starting from the origin, in CCW order."""
     return (
