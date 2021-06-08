@@ -1,4 +1,5 @@
 import copy
+from multiprocessing.sharedctypes import Value
 import typing
 
 import attr
@@ -258,3 +259,42 @@ class BBox2D(object):
     draw_bbox_in_image(
       img, self, color=color, thickness=thickness, label_txt=str(id_value))
 
+  def to_html(self, debug_img_src=None):
+    debug_img_html = '<i>(No image)</i>'
+    if debug_img_src is not None:
+      if hasattr(debug_img_src, 'load_preprocessed_img'):
+        debug_img, _ = debug_img_src.load_preprocessed_img()
+      elif hasattr(debug_img_src, 'shape'):
+        debug_img = debug_img_src
+      else:
+        raise ValueError("dont know what to do with debug image src")
+
+      self.draw_in_image(debug_img)
+
+      from oarphpy.plotting import img_to_data_uri
+      w = debug_img.shape[1]
+      debug_img_html = """
+        <img width="{width}" src="{src}" /><br/>
+        <i>To view full resolution: right click and open image in new tab</i>
+      """.format(
+            src=img_to_data_uri(debug_img),
+            width="80%" if w > 800 else w)
+    
+    props = dict(
+      (k, getattr(self, k, None))
+      for k in (
+        'x', 'y', 'width', 'height',
+        'im_width', 'im_height',
+        'category_name',
+        'track_id',
+        'score',
+      )
+    )
+    for k, v in sorted(self.extra.items()):
+      props['extra.' + k] = str(v)
+    
+    import pandas as pd
+    props_html = pd.DataFrame([props]).T.style.render()
+
+    return "%s<br/>%s<br/>" % (debug_img_html, props_html)
+    

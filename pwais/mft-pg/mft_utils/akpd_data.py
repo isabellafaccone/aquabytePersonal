@@ -464,13 +464,22 @@ def get_synth_fish_and_parts_img_gts(
   ]
 
   def load_img_gt(path):
+    import attr
     import pickle
     
     from mft_utils.bbox2d import BBox2D
     from mft_utils.img_w_boxes import ImgWithBoxes
 
     with open(path, 'rb') as f:
-      return pickle.load(f)
+      v = pickle.load(f)
+      v.postprocessor_to_result = {}
+      v.extra = v.postprocessor_configs
+      v.postprocessor_configs = []
+      # HACKS!!! need to use rowadapter or something
+      return v
+      # d = v.__dict__()#attr.asdict(v, recurse=False)
+      # return ImgWithBoxes(**d)
+        # hack because attrs doesn't use kwarg init ..
 
   if parallel < 0:
     parallel = os.cpu_count()

@@ -1,4 +1,3 @@
-import time
 import typing
 
 import attr
@@ -36,11 +35,15 @@ class ImgWithBoxes(object):
   """preprocessor_configs: A list of `str` Image preprocessor configurations;
   see below load_preprocessed_img()"""
 
-  postprocessors_configs = attr.ib(default=attr.Factory(list))
+  postprocessor_configs = attr.ib(default=attr.Factory(list))
   """postprocessors_configs: A list of `str` ImgWithBoxes postprocessor
   configurations; see below run_postprocessors()"""
 
-  extra = attr.ib(default={}, type=typing.Dict[str, str])
+  postprocessor_to_result = attr.ib(default=attr.Factory(dict), type=typing.Dict[str, str])
+  """Dict[str, str]: A map of postprocessor -> pickled (result, stats) tuple;
+  see run_postprocessors() and get_postprocessor_result() below."""
+
+  extra = attr.ib(default=attr.Factory(dict), type=typing.Dict[str, str])
   """Dict[str, str]: A map for adhoc extra context"""
 
   @classmethod
@@ -78,7 +81,22 @@ class ImgWithBoxes(object):
     return img, pp_to_stats
 
   def run_postprocessors(self):
-    
+    from mft_utils.img_bbox_postprocessing import PostrocessorRunner
+    p = PostrocessorRunner.build_from_configs(self.postprocessor_configs)
+    pp_to_res_stats = p.postprocess(self)
+
+    import pickle
+    self.postprocessor_to_result = dict(
+      (k, pickle.dumps(v, protocol=pickle.HIGHEST_PROTOCOL))
+      for k, v in pp_to_res_stats.items())
+
+  def get_postprocessor_result(self, postproc_name):
+    v = self.postprocessor_to_result.get(postproc_name)
+    if v is None:
+      return None
+    else:
+      from mft_utils.img_bbox_postprocessing import decode_postproc_result
+      return decode_postproc_result(v)
 
   def to_html(self):
     import numpy as np

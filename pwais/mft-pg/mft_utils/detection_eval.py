@@ -216,9 +216,6 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
         # Make it easy to have multiple invocations of parent function
       'spark.driver.memory': '16g',
     }
-    #   'spark.pyspark.python': 'python3',
-    #   'spark.driverEnv.PYTHONPATH': '/opt/mft-pg:/opt/oarphpy',
-    # }
 
   from oarphpy import plotting as opl
   class Plotter(opl.HistogramWithExamplesPlotter):
@@ -278,7 +275,8 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
           if row['bboxes']:
             schema_row['bboxes'] = copy.deepcopy(row['bboxes'])
             break
-        assert schema_row['bboxes'], 'hacks! need row prototype and sniffing failed'
+        assert schema_row['bboxes'], \
+          'hacks! need row prototype and sniffing failed'
       schema = S.RowAdapter.to_schema(schema_row)#df.to_dict(orient='records')[0])
       df = spark.createDataFrame(spark_rows, schema=schema)
     
@@ -323,6 +321,127 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
     #   f.write(total_html)
     # return total_html
 
+def get_bbox_histogram_with_examples_htmls(df, bbox_miners=[], spark=None):
+  from mft_utils import misc as mft_misc
+
+  if not bbox_miners:
+    bbox_miners = [
+      'meta:extra:SAO_score',
+    ]
+  
+  mft_misc.log.info(
+    "Histogram-with-examples BBox Miners: %s" % (bbox_miners,))
+
+  from oarphpy import plotting as opl
+  class BBoxPlotter(opl.HistogramWithExamplesPlotter):
+    NUM_BINS = 20
+    ROWS_TO_DISPLAY_PER_BUCKET = 10
+
+    def display_bucket(self, sub_pivot, bucket_id, irows):
+      # Sample from irows using reservior sampling
+      import random
+      rand = random.Random(1337)
+      rows = []
+      for i, row in enumerate(irows):
+        r = rand.randint(0, i)
+        if r < self.ROWS_TO_DISPLAY_PER_BUCKET:
+          if i < self.ROWS_TO_DISPLAY_PER_BUCKET:
+            rows.insert(r, row)
+          else:
+            rows[r] = row
+      
+      # Deserialize collected rows
+      from oarphpy import spark as S
+      rows = [
+        S.RowAdapter.from_row(r) for r in rows
+      ]
+
+      # Now render each row to HTML
+      from mft_utils.img_w_boxes import ImgWithBoxes
+      from mft_utils.bbox2d import BBox2D
+      row_htmls = []
+      for row in rows:
+        bbox = row['bbox']
+        img_w_boxes = ImgWithBoxes.from_dict(row)
+        row_htmls.append(bbox.to_html(debug_img_src=img_w_boxes))
+      
+      HTML = """
+      <b>Pivot: {spv} Bucket: {bucket_id} </b> <br/>
+      
+      {row_bodies}
+      """.format(
+            spv=sub_pivot,
+            bucket_id=bucket_id,
+            row_bodies="<br/><br/><br/>".join(row_htmls))
+      
+      return bucket_id, HTML
+
+
+
+
+  from oarphpy import spark as S
+  class MFTSpark(S.SessionFactory):
+    CONF_KV = {
+      'spark.files.overwrite': 'true',
+        # Make it easy to have multiple invocations of parent function
+      'spark.driver.memory': '16g',
+    }
+
+  miner_to_html = {}
+  with MFTSpark.sess(spark) as spark:
+    import pyspark.sql
+    if not isinstance(df, pyspark.sql.DataFrame):
+      spark_rows = [
+        S.RowAdapter.to_row(r) for r in df.to_dict(orient='records')
+      ]
+      schema_row = copy.deepcopy(df.to_dict(orient='records')[0])
+      if not schema_row['bboxes']:
+        for row in df.to_dict(orient='records'):
+          if row['bboxes']:
+            schema_row['bboxes'] = copy.deepcopy(row['bboxes'])
+            break
+        assert schema_row['bboxes'], \
+          'hacks! need row prototype and sniffing failed'
+      if not schema_row['bboxes_alt']:
+        for row in df.to_dict(orient='records'):
+          if row['bboxes_alt']:
+            schema_row['bboxes_alt'] = copy.deepcopy(row['bboxes_alt'])
+            break
+        assert schema_row['bboxes_alt'], \
+          'hacks! need row prototype and sniffing failed'
+      schema = S.RowAdapter.to_schema(schema_row)#df.to_dict(orient='records')[0])
+      df = spark.createDataFrame(spark_rows, schema=schema)
+    
+    from pyspark.sql import functions as F
+    df = df.withColumn('bbox', F.explode('bboxes'))
+    df = df.withColumn('extra', df['bbox.extra'])
+
+    df = df.persist()
+    plotter = BBoxPlotter()
+    for hist_col in bbox_miners:
+      if hist_col.startswith('meta:'):
+        if hist_col.startswith('meta:extra:'):
+          key = hist_col.replace('meta:extra:', '')
+          outcol = key.replace('.', '_')
+          
+          df = spark_df_maybe_add_extra_float(df, key=key, outcol=outcol)
+          df = df.persist()
+          hist_col = outcol
+      
+      if hist_col not in df.columns:
+        mft_misc.log.info("Skipping col / miner: %s" % hist_col)
+        continue
+
+      fig = plotter.run(df, hist_col)
+
+      from mft_utils.plotting import bokeh_fig_to_html
+      fig_html = bokeh_fig_to_html(fig, title=hist_col)
+
+      miner_to_html[hist_col] = fig_html
+  return miner_to_html
+
+
+
 def detections_df_to_html(df):
 
   sample_html = get_sample_row_html(df)
@@ -333,7 +452,9 @@ def detections_df_to_html(df):
 
   time_series_html = get_time_series_report_html(df)
 
-  hist_col_to_html = get_histogram_with_examples_htmls(df)
+  hist_col_to_html = {}#get_histogram_with_examples_htmls(df)
+
+  bbox_report_to_html = get_bbox_histogram_with_examples_htmls(df)
 
   hist_agg_html = "<br/><br/>".join(
     """
@@ -341,6 +462,13 @@ def detections_df_to_html(df):
       <div width='90%%' height='1000px' style='border-style:dotted;overflow-y:auto'>%s</div>
     """ % (k, v)
     for k, v in hist_col_to_html.items())
+
+  bbox_agg_html = "<br/><br/>".join(
+    """
+      <h2>%s</h2><br/>
+      <div width='90%%' height='1000px' style='border-style:dashed;overflow-y:auto'>%s</div>
+    """ % (k, v)
+    for k, v in bbox_report_to_html.items())
 
   return """
     {sample_html}<br/><br/>
@@ -357,12 +485,18 @@ def detections_df_to_html(df):
 
     <br/><br/>
     
-    <h1>Histograms with Examples</h1><br/>
+    <h1>Images: Histograms with Examples</h1><br/>
     {hist_agg_html}
+    <br/><br/>
+
+    <h1>BBoxes: Histograms with Examples</h1><br/>
+    {bbox_agg_html}
+
     """.format(
       sample_html=sample_html,
       core_desc_html=core_desc_html,
       latency_html=latency_html,
       time_series_html=time_series_html,
-      hist_agg_html=hist_agg_html)
+      hist_agg_html=hist_agg_html,
+      bbox_agg_html=bbox_agg_html)
 

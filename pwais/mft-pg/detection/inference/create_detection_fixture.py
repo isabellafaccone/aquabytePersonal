@@ -238,6 +238,11 @@ class DetectorRunner(object):
       # Record ground truth used for evaluation; also helps viz.
       img_det.bboxes_alt = copy.deepcopy(img_gt.bboxes)
       img_det.preprocessor_configs = copy.deepcopy(img_gt.preprocessor_configs)
+      
+      # Run postprocessing now
+      img_det.postprocessor_configs += img_gt.postprocessor_configs
+      img_det.run_postprocessors()
+      
       img_dets.append(img_det)
 
       if ((i+1) % 100) == 0:
@@ -349,9 +354,6 @@ class YoloTRTRunner(DetectorRunner):
     category_id_to_name = [
       c.strip() for c in open(yolo_names_path, 'r').readlines()
     ]
-    category_id_to_name = [
-      (c if (c != 'AKPD_SYNTH_FISH') else 'FISH')
-      for c in category_id_to_name]
 
     self._detector = YoloAVTTRTDetector(
                         trt_engine_path,
@@ -398,7 +400,7 @@ def create_runner_from_artifacts(artifact_dir):
 @click.option("--add-preprocessors", default="",
   help="Apply these image pre-processing algos (e.g. clahe)")
 @click.option("--add-postprocessors", default="",
-  help="Apply these ImgWithBoxes algos (e.g. COSAScorer)")
+  help="Apply these ImgWithBoxes algos (e.g. SAOScorer)")
 @click.option("--detect_limit", default=-1,
   help="For testing, only run detection on this many samples")
 @click.option("--save_to", default="", 
@@ -458,7 +460,7 @@ def create_detection_fixture(
     add_postprocessors = [p.strip() for p in add_postprocessors.split(',') if p]
     for img_gt in img_gts:
       img_gt.preprocessor_configs += add_preprocessors
-      img_gt.postprocessors_configs += add_postprocessors
+      img_gt.postprocessor_configs += add_postprocessors
 
     detector_runner = create_runner_from_artifacts(use_model_artifact_dir)
 
