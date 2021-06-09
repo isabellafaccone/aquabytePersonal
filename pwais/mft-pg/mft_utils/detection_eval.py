@@ -2,25 +2,36 @@ import copy
 
 import pandas as pd
 
-"""
-
-sample image at top
-core stuff
-latency distribution
-(future: ram distribution)
 
 
-(for each hist with examples, prolly wanna link it ....)
-per-image average scores histogram with examples
+def to_spark_df(spark, pdf):
+  import pyspark.sql
+  if isinstance(pdf, pyspark.sql.DataFrame):
+    return pdf
 
-precisions histogram with examples
-
-recalls histogram with examples
-
-for each optional attribute:
-  histogram with examples
-
-"""
+  import copy
+  from oarphpy import spark as S
+  spark_rows = [
+    S.RowAdapter.to_row(r) for r in pdf.to_dict(orient='records')
+  ]
+  schema_row = copy.deepcopy(pdf.to_dict(orient='records')[0])
+  if not schema_row['bboxes']:
+    for row in pdf.to_dict(orient='records'):
+      if row['bboxes']:
+        schema_row['bboxes'] = copy.deepcopy(row['bboxes'])
+        break
+    assert schema_row['bboxes'], \
+      'hacks! need row prototype and sniffing failed'
+  if not schema_row['bboxes_alt']:
+    for row in pdf.to_dict(orient='records'):
+      if row['bboxes_alt']:
+        schema_row['bboxes_alt'] = copy.deepcopy(row['bboxes_alt'])
+        break
+    assert schema_row['bboxes_alt'], \
+      'hacks! need row prototype and sniffing failed'
+  schema = S.RowAdapter.to_schema(schema_row)
+  df = spark.createDataFrame(spark_rows, schema=schema)
+  return df
 
 
 def get_core_description_html(df):
@@ -100,6 +111,7 @@ def spark_df_add_mean_bbox_score(
         spark_df,
         bbox_col='bboxes',
         outcol='mean_bbox_score'):
+  
   from pyspark.sql.functions import udf
   from pyspark.sql.types import DoubleType
 
@@ -115,8 +127,8 @@ def spark_df_add_mean_bbox_score(
 def spark_df_maybe_add_extra_float(
         spark_df,
         key='my_key',
-        default_value=-1.,
         outcol=''):
+
   from pyspark.sql.functions import udf
   from pyspark.sql.types import DoubleType
 
@@ -127,12 +139,67 @@ def spark_df_maybe_add_extra_float(
   if not has_extra_key:
     return spark_df
 
-  def get_extra(extra):
-    return float(extra.get(key, default_value))
-  mean_bbox_score_udf = udf(lambda x: get_extra(x), DoubleType())
+  spark_df = spark_df.withColumn(outcol, spark_df['extra'][key].cast('float'))
 
-  spark_df = spark_df.withColumn(outcol, mean_bbox_score_udf(spark_df.extra))
   return spark_df
+
+def spark_df_maybe_add_postprocessor_score(
+        spark_df,
+        name='',
+        outcol=''):
+
+    if not outcol:
+      outcol = name
+    
+    postproc_key = name
+    postproc_extract_score = lambda v: float('nan')
+    if name in ('max_SAO_score', 'min_SAO_score'):
+      postproc_key = 'SAOScorer'
+      def get_fish_scores(res):
+        if not res.fish_clusters:
+          return [float('nan')]
+        else:
+          return [
+            float(c[0].extra['SAO_score'])
+            for c in res.fish_clusters
+          ]
+      if name == 'max_SAO_score':
+        postproc_extract_score = lambda res: max(get_fish_scores(res))
+      else:
+        postproc_extract_score = lambda res: min(get_fish_scores(res))
+
+
+    sample_row = spark_df.select('postprocessor_to_result').first()[0]
+    if postproc_key in sample_row.keys():
+      from pyspark.sql.functions import udf
+
+      def get_pp_result_as_Row(pp_to_result):
+        result_pkl, stats = pp_to_result[postproc_key]
+        
+        from mft_utils.img_bbox_postprocessing import decode_postproc_result
+        result = decode_postproc_result(result_pkl)
+
+        from oarphpy.spark import RowAdapter
+        return RowAdapter.to_row(result)
+
+      from oarphpy.spark import RowAdapter
+      schema = RowAdapter.to_schema(get_pp_result_as_Row(sample_row))
+
+      get_pp_result_as_Row_udf = udf(lambda x: get_pp_result_as_Row(x), schema)
+
+      result_col_name = 'postproc_result_' + postproc_key
+      spark_df = spark_df.withColumn(
+                  result_col_name,
+                  get_pp_result_as_Row_udf(spark_df['postprocessor_to_result']))
+      
+      from pyspark.sql.types import DoubleType
+      score_result_udf = udf(lambda x: postproc_extract_score(x), DoubleType())
+      spark_df = spark_df.withColumn(
+                  outcol,
+                  score_result_udf(spark_df[result_col_name]))
+
+    return spark_df
+
 
 
 def get_latency_report_html(df):
@@ -177,6 +244,14 @@ def get_latency_report_html(df):
     REPORTS_TO_MINE = {
       'extra.preprocessor.CLAHE.latency': 'CLAHE Preprocess Latency',
     }
+
+    from mft_utils.img_w_boxes import ImgWithBoxes
+    img_bb = ImgWithBoxes.from_dict(df.to_dict(orient='records')[0])
+    for postproc_key in img_bb.postprocessor_to_result.keys():
+      REPORTS_TO_MINE['postproc.' + postproc_key] = (
+        "Postprocessor Latency: %s" % postproc_key)
+
+
     for key, report_title in REPORTS_TO_MINE.items():
       if key in df.columns:
         latencies_ms = 1e3 * df[key]
@@ -186,6 +261,16 @@ def get_latency_report_html(df):
         key = key.replace('extra.', '')
         latencies_ms = 1e3 * np.array([
           float(extra[key]) for extra in df['extra']])
+        reports.append(
+          get_latency_report(latencies_ms, report_title))
+      elif key.startswith('postproc.'):
+        postproc_key = key.replace('postproc.', '')
+        latencies_ms = []
+        for pp_to_result in df['postprocessor_to_result']:
+          entry = pp_to_result[postproc_key]
+          result_pkl, p_time_sec = entry
+          latencies_ms.append(1e3 * p_time_sec)
+        latencies_ms = np.array(latencies_ms)
         reports.append(
           get_latency_report(latencies_ms, report_title))
 
@@ -198,13 +283,16 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
 
   if not hist_cols:
     hist_cols = [
-      'img_coco_metrics_APrecision1_iou05',
-      'img_coco_metrics_Recall1_iou05',
-      'meta:mean_bbox_score',
-      'meta:extra:akpd.blurriness',
-      'meta:extra:akpd.darkness',
-      'meta:extra:akpd.quality',
-      'meta:extra:akpd.mean_luminance',
+      # 'img_coco_metrics_APrecision1_iou05',
+      # 'img_coco_metrics_Recall1_iou05',
+      # 'meta:mean_bbox_score',
+      'meta:postprocessor:max_SAO_score',
+      'meta:postprocessor:min_SAO_score',
+      # 'meta:extra:akpd.blurriness',
+      # 'meta:extra:akpd.darkness',
+      # 'meta:extra:akpd.quality',
+      # 'meta:extra:akpd.mean_luminance',
+      # 'meta:extra:akpd_synth.num_fish_with_occluded',
     ]
 
   mft_misc.log.info("Histogram-with-examples-ifying cols: %s" % (hist_cols,))
@@ -245,10 +333,20 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
       from mft_utils.img_w_boxes import ImgWithBoxes
       row_htmls = []
       for row in rows:
-        obj = ImgWithBoxes.from_dict(row)
-        for bb in obj.bboxes_alt:
-          bb.category_name = "GT:" + bb.category_name
-        row_htmls.append(obj.to_html())
+        img_bb = ImgWithBoxes.from_dict(row)
+
+        pp_result_key = None
+        for key in row.asDict().keys():
+          if key.startswith('postproc_result_'):
+            pp_result_key = key.replace('postproc_result_', '')
+        
+        if pp_result_key:
+          pp_result = img_bb.get_postprocessor_result(pp_result_key)
+          row_htmls.append(pp_result.to_html(debug_img_src=img_bb))
+        else:
+          for bb in img_bb.bboxes_alt:
+            bb.category_name = "GT:" + bb.category_name
+          row_htmls.append(img_bb.to_html())
       
       HTML = """
       <b>Pivot: {spv} Bucket: {bucket_id} </b> <br/>
@@ -264,25 +362,12 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
 
   col_to_html = {}
   with MFTSpark.sess(spark) as spark:
-    import pyspark.sql
-    if not isinstance(df, pyspark.sql.DataFrame):
-      spark_rows = [
-        S.RowAdapter.to_row(r) for r in df.to_dict(orient='records')
-      ]
-      schema_row = copy.deepcopy(df.to_dict(orient='records')[0])
-      if not schema_row['bboxes']:
-        for row in df.to_dict(orient='records'):
-          if row['bboxes']:
-            schema_row['bboxes'] = copy.deepcopy(row['bboxes'])
-            break
-        assert schema_row['bboxes'], \
-          'hacks! need row prototype and sniffing failed'
-      schema = S.RowAdapter.to_schema(schema_row)#df.to_dict(orient='records')[0])
-      df = spark.createDataFrame(spark_rows, schema=schema)
+    df = to_spark_df(spark, df)
     
-    df = df.persist()
+    base_df = df.repartition('img_path').persist()
     plotter = Plotter()
     for hist_col in hist_cols:
+      df = base_df
       if hist_col.startswith('meta:'):
         if hist_col == 'meta:mean_bbox_score':
           df = spark_df_add_mean_bbox_score(df)
@@ -292,6 +377,13 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
           key = hist_col.replace('meta:extra:', '')
           outcol = key.replace('.', '_')
           df = spark_df_maybe_add_extra_float(df, key=key, outcol=outcol)
+          df = df.persist()
+          hist_col = outcol
+        elif hist_col.startswith('meta:postprocessor:'):
+          key = hist_col.replace('meta:postprocessor:', '')
+          outcol = key.replace('.', '_')
+          df = spark_df_maybe_add_postprocessor_score(
+                    df, name=key, outcol=outcol)
           df = df.persist()
           hist_col = outcol
       
@@ -326,7 +418,9 @@ def get_bbox_histogram_with_examples_htmls(df, bbox_miners=[], spark=None):
 
   if not bbox_miners:
     bbox_miners = [
-      'meta:extra:SAO_score',
+      'meta:score',
+      # 'meta:extra:SAO_score',
+      'alt:meta:extra:akpd_synth.num_px_visible',
     ]
   
   mft_misc.log.info(
@@ -389,42 +483,33 @@ def get_bbox_histogram_with_examples_htmls(df, bbox_miners=[], spark=None):
 
   miner_to_html = {}
   with MFTSpark.sess(spark) as spark:
-    import pyspark.sql
-    if not isinstance(df, pyspark.sql.DataFrame):
-      spark_rows = [
-        S.RowAdapter.to_row(r) for r in df.to_dict(orient='records')
-      ]
-      schema_row = copy.deepcopy(df.to_dict(orient='records')[0])
-      if not schema_row['bboxes']:
-        for row in df.to_dict(orient='records'):
-          if row['bboxes']:
-            schema_row['bboxes'] = copy.deepcopy(row['bboxes'])
-            break
-        assert schema_row['bboxes'], \
-          'hacks! need row prototype and sniffing failed'
-      if not schema_row['bboxes_alt']:
-        for row in df.to_dict(orient='records'):
-          if row['bboxes_alt']:
-            schema_row['bboxes_alt'] = copy.deepcopy(row['bboxes_alt'])
-            break
-        assert schema_row['bboxes_alt'], \
-          'hacks! need row prototype and sniffing failed'
-      schema = S.RowAdapter.to_schema(schema_row)#df.to_dict(orient='records')[0])
-      df = spark.createDataFrame(spark_rows, schema=schema)
+    orig_df = to_spark_df(spark, df)
     
-    from pyspark.sql import functions as F
-    df = df.withColumn('bbox', F.explode('bboxes'))
-    df = df.withColumn('extra', df['bbox.extra'])
-
-    df = df.persist()
     plotter = BBoxPlotter()
     for hist_col in bbox_miners:
+      df = orig_df.repartition('bboxes')
+
+      if hist_col.startswith('alt:'):
+        box_col = 'bboxes_alt'
+        hist_col = hist_col.replace('alt:', '')
+      else:
+        box_col = 'bboxes'
+
+      from pyspark.sql import functions as F
+      df = df.withColumn('bbox', F.explode(box_col))
+      df = df.withColumn('extra', df['bbox.extra'])
+      df = df.withColumn('bbox_detector_score', df['bbox.score'])
+      df = df.persist()
+
       if hist_col.startswith('meta:'):
-        if hist_col.startswith('meta:extra:'):
+        if hist_col == 'meta:score':
+          hist_col = 'bbox_detector_score'
+        elif hist_col.startswith('meta:extra:'):
           key = hist_col.replace('meta:extra:', '')
           outcol = key.replace('.', '_')
           
           df = spark_df_maybe_add_extra_float(df, key=key, outcol=outcol)
+
           df = df.persist()
           hist_col = outcol
       
@@ -452,7 +537,7 @@ def detections_df_to_html(df):
 
   time_series_html = get_time_series_report_html(df)
 
-  hist_col_to_html = {}#get_histogram_with_examples_htmls(df)
+  hist_col_to_html = get_histogram_with_examples_htmls(df)
 
   bbox_report_to_html = get_bbox_histogram_with_examples_htmls(df)
 

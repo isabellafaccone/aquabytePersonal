@@ -39,7 +39,7 @@ class ImgWithBoxes(object):
   """postprocessors_configs: A list of `str` ImgWithBoxes postprocessor
   configurations; see below run_postprocessors()"""
 
-  postprocessor_to_result = attr.ib(default=attr.Factory(dict), type=typing.Dict[str, str])
+  postprocessor_to_result = attr.ib(default=attr.Factory(dict))
   """Dict[str, str]: A map of postprocessor -> pickled (result, stats) tuple;
   see run_postprocessors() and get_postprocessor_result() below."""
 
@@ -87,14 +87,17 @@ class ImgWithBoxes(object):
 
     import pickle
     self.postprocessor_to_result = dict(
-      (k, pickle.dumps(v, protocol=pickle.HIGHEST_PROTOCOL))
-      for k, v in pp_to_res_stats.items())
+      (k, 
+        (pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL),
+         stats))
+      for k, (res, stats) in pp_to_res_stats.items())
 
   def get_postprocessor_result(self, postproc_name):
-    v = self.postprocessor_to_result.get(postproc_name)
-    if v is None:
+    entry = self.postprocessor_to_result.get(postproc_name)
+    if entry is None:
       return None
     else:
+      v, stats = entry
       from mft_utils.img_bbox_postprocessing import decode_postproc_result
       return decode_postproc_result(v)
 

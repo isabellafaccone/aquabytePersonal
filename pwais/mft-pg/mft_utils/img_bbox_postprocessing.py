@@ -57,12 +57,14 @@ def salmon_orthogonality_score(
   part_dists_scaled = (part_centers - fish_center) / fish_size
 
   part_distance_score = np.mean(2. * np.abs(part_dists_scaled))
-  part_distance_score = min(1., part_distance_score)
+  part_distance_score = min(1., part_distance_score) + 1e-10
 
-  num_parts_score = float(len(part_bboxes)) / len(expected_parts)
-  num_parts_score = min(1., num_parts_score)
+  num_expected = len(expected_parts)
+  num_parts_score = (
+    1. - abs(float(len(part_bboxes)) - num_expected) / num_expected)
+  num_parts_score = min(max(num_parts_score, 0.), 1.) + 1e-10
 
-  return 2. / (part_distance_score + num_parts_score)
+  return 2. / ( 1. / part_distance_score + 1. / num_parts_score)
 
   
 
@@ -112,10 +114,84 @@ class PostprocessorBase(object):
 class SAOScorerResults(object):
   
   fish_clusters = attr.ib(default=attr.Factory(list))
-  
+  """bboxes: A list-of-list of `BBox2D` instances, where each sub-list is a
+  cluster of bounding boxes for a single fish.  For each inner-list cluster,
+  the first bbox is the bbox around the whole fish, and the rest are 
+  part associations."""
+
   # config_str = attr.ib(default="")
 
-  # TODO: to_html() for plots
+  def get_debug_image(self, base_img_src=None):
+    import copy
+    import cv2
+    from mft_utils.bbox2d import BBox2D
+
+    if hasattr(base_img_src, 'load_preprocessed_img'):
+      debug_image, _ = base_img_src.load_preprocessed_img()
+    elif hasattr(base_img_src, 'shape'):
+      debug_image = base_img_src
+    else:
+      debug_image = None
+
+    for fish_cluster in self.fish_clusters:
+      fish = fish_cluster[0]
+      parts = fish_cluster[1:]
+      
+      fish = copy.deepcopy(fish)
+      fish.category_name = (
+        fish.category_name + ', SAO Score: %s' % fish.extra['SAO_score'])
+      debug_image = BBox2D.draw_all_in_img_src(fish_cluster, debug_image)
+
+      # Draw association lines
+      fish_center = fish.get_center_xy()
+      fish_x, fish_y = int(fish_center[0]), int(fish_center[1])
+      for part in parts:
+        part_center = part.get_center_xy()
+        p_x, p_y = int(part_center[0]), int(part_center[1])
+        WHITE_BGR = (255, 255, 255)
+        THICKNESS = 3
+        cv2.line(
+          debug_image, (fish_x, fish_y), (p_x, p_y), WHITE_BGR, THICKNESS)
+    
+    return debug_image
+
+  def to_html(self, debug_img_src=None):
+    import pandas as pd
+    from oarphpy.plotting import img_to_data_uri
+    
+    debug_img = self.get_debug_image(base_img_src=debug_img_src)
+    if debug_img is None:
+      debug_img_html = "<i>(No fish clusters and no debug image)</i>"
+    else:
+      w = debug_img.shape[1]
+      debug_img_html = """
+        <img width="{width}" src="{src}" /><br/>
+        <i>To view full resolution: right click and open image in new tab</i>
+      """.format(
+            src=img_to_data_uri(debug_img),
+            width="80%" if w > 800 else w)
+
+    fish_htmls = []
+    for fish_cluster in self.fish_clusters:
+      fish = fish_cluster[0]
+
+      props = dict(
+        (k, getattr(fish, k, None))
+        for k in (
+          'x', 'y', 'width', 'height',
+          'track_id',
+          'score',
+        )
+      )
+      for k, v in sorted(fish.extra.items()):
+        props['extra.' + k] = str(v)
+    
+      fish_htmls.append(
+        pd.DataFrame([props]).T.style.render())
+    
+    desc_html = "<br/>".join(fish_htmls)
+
+    return "%s<br/>%s<br/>" % (debug_img_html, desc_html)
 
 
 class SAOScorer(PostprocessorBase):
@@ -124,7 +200,7 @@ class SAOScorer(PostprocessorBase):
   def __call__(self, img_det):
 
     for bbox in img_det.bboxes:
-      bbox.extra['SAO_score'] = str('0')
+      bbox.extra['SAO_score'] = str(float('nan'))
 
     completed_fishes = asssociate_fish_parts(img_det.bboxes)
     for completed_fish in completed_fishes:

@@ -259,17 +259,28 @@ class BBox2D(object):
     draw_bbox_in_image(
       img, self, color=color, thickness=thickness, label_txt=str(id_value))
 
+  def draw_in_img_src(self, img_src, **draw_kwargs):
+    if hasattr(img_src, 'load_preprocessed_img'):
+      debug_img, _ = img_src.load_preprocessed_img()
+    elif hasattr(img_src, 'shape'):
+      debug_img = img_src
+    else:
+      debug_img = np.zeroes((self.im_height, self.im_width, 3))
+
+    self.draw_in_image(debug_img, **draw_kwargs)
+    return debug_img
+
+  @classmethod
+  def draw_all_in_img_src(cls, bboxes, img_src, **draw_kwargs):
+    debug_img = img_src
+    for bbox in bboxes:
+      debug_img = bbox.draw_in_img_src(debug_img, **draw_kwargs)
+    return debug_img
+
   def to_html(self, debug_img_src=None):
     debug_img_html = '<i>(No image)</i>'
     if debug_img_src is not None:
-      if hasattr(debug_img_src, 'load_preprocessed_img'):
-        debug_img, _ = debug_img_src.load_preprocessed_img()
-      elif hasattr(debug_img_src, 'shape'):
-        debug_img = debug_img_src
-      else:
-        raise ValueError("dont know what to do with debug image src")
-
-      self.draw_in_image(debug_img)
+      debug_img = self.draw_in_img_src(debug_img_src)
 
       from oarphpy.plotting import img_to_data_uri
       w = debug_img.shape[1]
