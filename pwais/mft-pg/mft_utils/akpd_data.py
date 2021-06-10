@@ -322,6 +322,7 @@ class SyntheticAKPDFromBBoxesGenerator(object):
 
       num_visible = int(visible.sum())
       bbox.extra['akpd_synth.num_px_visible'] = str(num_visible)
+      bbox.extra['frac_px_visible'] = str(float(num_visible) / bbox.get_area())
 
       bbox.extra['akpd_synth.is_occluded'] = str(
                           bool(bbox.extra['_akpd_synth_occluders']))
@@ -371,6 +372,7 @@ def generate_synth_fish_and_parts(
         kp_bbox_to_fish_scale=0.1,
         synth_img_width=4096,
         synth_img_height=3000,
+        swap_partial_fish_with_akpd_chance=0.5,
         only_parts=None):
   
   if not only_parts:
@@ -390,14 +392,18 @@ def generate_synth_fish_and_parts(
   himg_gts = hrf_data.get_img_gts()
 
   class Renderer(object):
-    def __init__(self, gen, himg_gts):
+    def __init__(self, gen, himg_gts, swap_partial_fish_with_akpd_chance):
       self._gen = gen
       self._himg_gts = himg_gts
+      self._swap_partial_fish_with_akpd_chance = swap_partial_fish_with_akpd_chance
 
     def get_image_ids(self):
       return list(range(len(self._himg_gts)))
     
     def render_synth_img(self, img_id):
+      import random
+      swap_rand = random.Random(1337)
+      
       import os 
       from mft_utils import misc as mft_misc
       
@@ -416,6 +422,9 @@ def generate_synth_fish_and_parts(
         rbbox = bbox.get_rescaled_to_target_image(
                                   synth_img_width, synth_img_height)
         if rbbox.extra['is_partial'] == 'True':
+          if self._swap_partial_fish_with_akpd_chance > 0:
+            if swap_rand.random() > self._swap_partial_fish_with_akpd_chance:
+              continue
           partial_fish.append(rbbox)
         else:
           full_fish.append(rbbox)
@@ -440,7 +449,7 @@ def generate_synth_fish_and_parts(
 
       mft_misc.log.info("Saved synth %s" % dest_labels_path)
   
-  r = Renderer(gen, himg_gts)
+  r = Renderer(gen, himg_gts, swap_partial_fish_with_akpd_chance)
   img_ids = r.get_image_ids()
 
   from oarphpy import spark as S

@@ -178,6 +178,7 @@ def get_img_gts(
       'pen_id': row['pen_id'],
       'labeler.skip_reasons': str(row['skip_reasons']),
       'labeler.meta_tags': str(row['meta_tags']),
+      # TODO: bbox.extra['frac_px_visible'] = str(float(num_visible) / bbox.get_area())
     }
     return ImgWithBoxes(
                       img_path=img_path,

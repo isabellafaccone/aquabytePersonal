@@ -12,7 +12,7 @@ RUN \
 RUN python3 -m pip install --upgrade pip
 
 RUN pip3 install \
-      bokeh \
+      bokeh==1.0.4 \
       imageio \
       pandas \
       pycuda \

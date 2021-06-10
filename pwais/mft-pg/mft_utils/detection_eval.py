@@ -283,16 +283,16 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
 
   if not hist_cols:
     hist_cols = [
-      # 'img_coco_metrics_APrecision1_iou05',
-      # 'img_coco_metrics_Recall1_iou05',
-      # 'meta:mean_bbox_score',
+      'img_coco_metrics_APrecision1_iou05',
+      'img_coco_metrics_Recall1_iou05',
+      'meta:mean_bbox_score',
       'meta:postprocessor:max_SAO_score',
       'meta:postprocessor:min_SAO_score',
-      # 'meta:extra:akpd.blurriness',
-      # 'meta:extra:akpd.darkness',
-      # 'meta:extra:akpd.quality',
-      # 'meta:extra:akpd.mean_luminance',
-      # 'meta:extra:akpd_synth.num_fish_with_occluded',
+      'meta:extra:akpd.blurriness',
+      'meta:extra:akpd.darkness',
+      'meta:extra:akpd.quality',
+      'meta:extra:akpd.mean_luminance',
+      'meta:extra:akpd_synth.num_fish_with_occluded',
     ]
 
   mft_misc.log.info("Histogram-with-examples-ifying cols: %s" % (hist_cols,))
@@ -419,8 +419,8 @@ def get_bbox_histogram_with_examples_htmls(df, bbox_miners=[], spark=None):
   if not bbox_miners:
     bbox_miners = [
       'meta:score',
-      # 'meta:extra:SAO_score',
-      'alt:meta:extra:akpd_synth.num_px_visible',
+      'meta:extra:SAO_score',
+      'alt:meta:extra:frac_px_visible',
     ]
   
   mft_misc.log.info(
@@ -544,14 +544,14 @@ def detections_df_to_html(df):
   hist_agg_html = "<br/><br/>".join(
     """
       <h2>%s</h2><br/>
-      <div width='90%%' height='1000px' style='border-style:dotted;overflow-y:auto'>%s</div>
+      <div width='90%%' height='1000px' style='resize:both;border-style:inset;border-width: 5px;overflow-y:auto'>%s</div>
     """ % (k, v)
     for k, v in hist_col_to_html.items())
 
   bbox_agg_html = "<br/><br/>".join(
     """
       <h2>%s</h2><br/>
-      <div width='90%%' height='1000px' style='border-style:dashed;overflow-y:auto'>%s</div>
+      <div width='90%%' height='1000px' style='resize:both;border-style:dashed double none;border-width: 5px;overflow-y:auto'>%s</div>
     """ % (k, v)
     for k, v in bbox_report_to_html.items())
 

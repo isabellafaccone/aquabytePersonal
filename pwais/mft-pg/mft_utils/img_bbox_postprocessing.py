@@ -137,9 +137,12 @@ class SAOScorerResults(object):
       fish = fish_cluster[0]
       parts = fish_cluster[1:]
       
+      # Include the actual score for the fish in the debug image
       fish = copy.deepcopy(fish)
       fish.category_name = (
         fish.category_name + ', SAO Score: %s' % fish.extra['SAO_score'])
+      fish_cluster[0] = fish
+      
       debug_image = BBox2D.draw_all_in_img_src(fish_cluster, debug_image)
 
       # Draw association lines
