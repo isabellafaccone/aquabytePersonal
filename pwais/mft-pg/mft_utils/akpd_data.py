@@ -418,12 +418,14 @@ def generate_synth_fish_and_parts(
       # Order ground truth by Z-order
       full_fish = []
       partial_fish = []
+      unswapped_fish = []
       for bbox in himg_gt.bboxes:
         rbbox = bbox.get_rescaled_to_target_image(
                                   synth_img_width, synth_img_height)
         if rbbox.extra['is_partial'] == 'True':
           if self._swap_partial_fish_with_akpd_chance > 0:
             if swap_rand.random() > self._swap_partial_fish_with_akpd_chance:
+              unswapped_fish.append(rbbox)
               continue
           partial_fish.append(rbbox)
         else:
@@ -431,7 +433,8 @@ def generate_synth_fish_and_parts(
       fish_bboxes = full_fish + partial_fish
       aug_img, aug_img_gt = self._gen.create_synth_img_gt(
                                           base_image, fish_bboxes)
-      
+      aug_img_gt.bboxes += unswapped_fish
+
       mft_misc.mkdir(output_dir)
       dest_img_path = os.path.join(output_dir, 'example_%s.png' % img_id)
       dest_labels_path = dest_img_path + '.aug_img_gt.pkl'
