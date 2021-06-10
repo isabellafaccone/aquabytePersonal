@@ -368,7 +368,7 @@ class SyntheticAKPDFromBBoxesGenerator(object):
 #   pass
 
 def generate_synth_fish_and_parts(
-        output_dir='/opt/mft-pg/datasets/datasets_s3/synth_fish_and_parts',
+        output_dir='/opt/mft-pg/datasets/datasets_s3/synth_fish_and_parts2',
         kp_bbox_to_fish_scale=0.1,
         synth_img_width=4096,
         synth_img_height=3000,
@@ -463,7 +463,7 @@ def generate_synth_fish_and_parts(
 
   
 def get_synth_fish_and_parts_img_gts(
-        data_dir='/opt/mft-pg/datasets/datasets_s3/synth_fish_and_parts',
+        data_dir='/opt/mft-pg/datasets/datasets_s3/synth_fish_and_parts2',
         parallel=-1):
   
   paths = [
@@ -525,8 +525,15 @@ DATASET_NAME_TO_ITER_FACTORY = {
         only_camera='left')[4200:]),
     
   'akpd1.0_synth_fish_and_parts.0.1.train': (lambda :
-      get_synth_fish_and_parts_img_gts()[:4980]),
+      get_synth_fish_and_parts_img_gts(
+        data_dir='/opt/mft-pg/datasets/datasets_s3/synth_fish_and_parts')[:4980]),
   'akpd1.0_synth_fish_and_parts.0.1.test': (lambda :
+      get_synth_fish_and_parts_img_gts(
+        data_dir='/opt/mft-pg/datasets/datasets_s3/synth_fish_and_parts')[4980:]),
+  
+  'akpd1.1_synth_fish_and_parts.0.1.train': (lambda :
+      get_synth_fish_and_parts_img_gts()[:4980]),
+  'akpd1.1_synth_fish_and_parts.0.1.test': (lambda :
       get_synth_fish_and_parts_img_gts()[4980:]),
 }
 
