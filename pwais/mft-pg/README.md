@@ -32,3 +32,9 @@ runtime environments. Try `$ ./mft-cli --help` to start.
 
 
 
+#### pwais scratchpad
+ * tracks df has track ids added.
+ * dropping a track or end of track triggers a tracklet score run and tracklet gets score
+ * add in eval a tracklet miner
+ * fish counts per hour!!!
+ * MOTS is TBD ...

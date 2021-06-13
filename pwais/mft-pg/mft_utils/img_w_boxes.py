@@ -24,8 +24,11 @@ class ImgWithBoxes(object):
 
   ## Stats and Misc (optional)
 
-  latency_sec = attr.ib(type=float, default=-1.)
+  detector_latency_sec = attr.ib(type=float, default=-1.)
   """float, optional: Detector latency, if applicable"""
+
+  tracker_latency_sec = attr.ib(type=float, default=-1.)
+  """float, optional: Tracker latency, if applicable"""
 
   bboxes_alt = attr.ib(default=attr.Factory(list))
   """bboxes_alt: A list of *alternative* `BBox2D` instances (e.g. 
@@ -53,7 +56,13 @@ class ImgWithBoxes(object):
       if f.name in d)
     return cls(**kwargs)
 
-  def get_debug_image(self):
+  def get_debug_image(
+        self,
+        identify_by='category_name',
+        alt_identify_by='',
+        only_track_id='',
+        show_alt=True):
+    
     import numpy as np
     if not self.img_path:
       return np.zeros((10, 10, 3))
@@ -62,9 +71,13 @@ class ImgWithBoxes(object):
     # debug = imageio.imread(self.img_path)
     debug, _ = self.load_preprocessed_img()
     for bbox in self.bboxes:
-      bbox.draw_in_image(debug)
-    for bbox in self.bboxes_alt:
-      bbox.draw_in_image(debug, flip_color=True)
+      if only_track_id and bbox.track_id != only_track_id:
+        continue
+      bbox.draw_in_image(debug, identify_by=identify_by)
+    if show_alt:
+      for bbox in self.bboxes_alt:
+        bbox.draw_in_image(
+          debug, identify_by=(alt_identify_by or identify_by), flip_color=True)
     return debug
 
   def load_preprocessed_img(self):
@@ -130,7 +143,8 @@ class ImgWithBoxes(object):
       'microstamp': self.microstamp,
       'num_boxes': len(self.bboxes),
       'img_path': self.img_path,
-      'latency_sec': self.latency_sec,
+      'detector_latency_sec': self.detector_latency_sec,
+      'tracker_latency_sec': self.tracker_latency_sec,
       'mean_bbox_score': np.mean([bb.score for bb in self.bboxes] or [-1.]),
     }
     for k, v in sorted(self.extra.items()):

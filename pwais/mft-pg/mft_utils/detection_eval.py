@@ -123,6 +123,13 @@ def spark_df_add_mean_bbox_score(
   spark_df = spark_df.withColumn(outcol, mean_bbox_score_udf(bbox_col))
   return spark_df
 
+def spark_df_add_num_bboxes(spark_df,
+        bbox_col='bboxes',
+        outcol='num_bboxes'):
+  
+  from pyspark.sql import functions as F
+  spark_df = spark_df.withColumn(outcol, F.size(spark_df[bbox_col]))
+  return spark_df
 
 def spark_df_maybe_add_extra_float(
         spark_df,
@@ -232,8 +239,8 @@ def get_latency_report_html(df):
     return "<b>%s</b><br/>%s<br/>%s" % (title, fig_html, stats_html)
 
   reports = []
-  if 'latency_sec' in df.columns and len(df) > 0:
-    latencies_ms = 1e3 * df['latency_sec']
+  if 'detector_latency_sec' in df.columns and len(df) > 0:
+    latencies_ms = 1e3 * df['detector_latency_sec']
     
     reports.append(get_latency_report(
       latencies_ms, "Detector Latencies"))
@@ -283,8 +290,9 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
 
   if not hist_cols:
     hist_cols = [
-      'img_coco_metrics_APrecision1_iou05',
-      'img_coco_metrics_Recall1_iou05',
+      'meta:extra:coco_metrics_APrecision1_iou05',
+      'meta:extra:coco_metrics_Recall1_iou05',
+      'meta:num_bboxes',
       'meta:mean_bbox_score',
       'meta:postprocessor:max_SAO_score',
       'meta:postprocessor:min_SAO_score',
@@ -373,6 +381,10 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
           df = spark_df_add_mean_bbox_score(df)
           df = df.persist()
           hist_col = 'mean_bbox_score'
+        elif hist_col == 'meta:num_bboxes':
+          df = spark_df_add_num_bboxes(df)
+          df = df.persist()
+          hist_col = 'num_bboxes'
         elif hist_col.startswith('meta:extra:'):
           key = hist_col.replace('meta:extra:', '')
           outcol = key.replace('.', '_')
@@ -478,16 +490,20 @@ def get_bbox_histogram_with_examples_htmls(df, bbox_miners=[], spark=None):
     CONF_KV = {
       'spark.files.overwrite': 'true',
         # Make it easy to have multiple invocations of parent function
-      'spark.driver.memory': '16g',
+      'spark.driver.memory': '24g',
     }
 
   miner_to_html = {}
   with MFTSpark.sess(spark) as spark:
     orig_df = to_spark_df(spark, df)
+    orig_df = orig_df.repartition(
+                orig_df.rdd.getNumPartitions() * 50,
+                'bboxes')
+    orig_df = orig_df.persist()
     
     plotter = BBoxPlotter()
     for hist_col in bbox_miners:
-      df = orig_df.repartition('bboxes')
+      df = orig_df
 
       if hist_col.startswith('alt:'):
         box_col = 'bboxes_alt'

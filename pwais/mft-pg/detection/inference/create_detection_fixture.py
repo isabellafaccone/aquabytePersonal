@@ -8,24 +8,11 @@ import mlflow
 
 import pandas as pd
 
+from mft_utils import df_util
 from mft_utils import misc as mft_misc
 from mft_utils.bbox2d import BBox2D
 from mft_utils.img_w_boxes import ImgWithBoxes
 
-
-
-def df_add_static_col(df, colname, v, empty_v=None):
-  import six
-  if empty_v is None:
-    if hasattr(v, 'items'):
-      empty_v = {}
-    elif isinstance(v, list):
-      empty_v = []
-    elif isinstance(v, six.string_types):
-      empty_v = ''
-    else:
-      empty_v = v
-  df.insert(0, colname, [v] + ([empty_v] * max(0, len(df) - 1)))
 
 
 ###############################################################################
@@ -64,7 +51,7 @@ class DarknetDetector(object):
                           self._meta,
                           img_path.encode("ascii"),
                           confidence_thresh)
-    latency_sec = time.time() - start
+    detector_latency_sec = time.time() - start
     bboxes = []
     for detection in detections:
       pred_class = detection[0].strip()
@@ -101,7 +88,7 @@ class DarknetDetector(object):
     return ImgWithBoxes(
               img_path=img_path,
               bboxes=bboxes,
-              latency_sec=latency_sec)
+              detector_latency_sec=detector_latency_sec)
 
 
 class YoloAVTTRTDetector(object):
@@ -176,7 +163,7 @@ class YoloAVTTRTDetector(object):
 
     inf_start = time.time()
     boxes, confs, clss = self._trt_yolo.detect(img, confidence_thresh)
-    latency_sec = time.time() - inf_start
+    detector_latency_sec = time.time() - inf_start
 
     bboxes = []
     for bb, score, clazz in zip(boxes, confs, clss):
@@ -207,7 +194,7 @@ class YoloAVTTRTDetector(object):
     return ImgWithBoxes(
               img_path=img_path,
               bboxes=bboxes,
-              latency_sec=latency_sec,
+              detector_latency_sec=detector_latency_sec,
               extra={
                 'confidence_thresh': str(confidence_thresh),
                 'resize_time_sec': str(resize_time_sec),
@@ -254,21 +241,18 @@ class DetectorRunner(object):
     metrics = coco_metrics.get_coco_summary(img_gts, img_dets)
     mft_misc.log.info('... done')
 
-    import attr
-    rows = []
     for dt in img_dets:
       img_metrics = metrics['image_id_to_stats'][dt.img_path]
       dt.extra.update(
         ('coco_metrics_' + k, str(v))
         for k, v in img_metrics.items())
 
-      row = attr.asdict(dt, recurse=False)
-      row.update(
-        ('img_coco_metrics_' + k, v)
-        for k, v in img_metrics.items())
-      rows.append(row)
+      # row = attr.asdict(dt, recurse=False)
+      # row.update(
+      #   ('img_coco_metrics_' + k, v)
+      #   for k, v in img_metrics.items())
 
-    df = pd.DataFrame(rows)
+    df = df_util.to_df(img_dets)
     SKIP_GLOBAL_METRIC_KEYS = (
       'image_id_to_stats',
     )
@@ -276,10 +260,10 @@ class DetectorRunner(object):
       if k in SKIP_GLOBAL_METRIC_KEYS:
         continue
       v = metrics[k]
-      df_add_static_col(df, 'coco_' + k, v)
+      df_util.df_add_static_col(df, 'coco_' + k, v)
     
-    df_add_static_col(df, 'detector_runner', self.get_runner_name())
-    df_add_static_col(df, 'detector_info', self.get_detector_info())
+    df_util.df_add_static_col(df, 'detector_runner', self.get_runner_name())
+    df_util.df_add_static_col(df, 'detector_info', self.get_detector_info())
     # df.insert(0, 'detector_runner', self.get_runner_name())
     # df.insert(0, 'detector_info', self.get_detector_info())
 
@@ -469,14 +453,11 @@ def create_detection_fixture(
     df = detector_runner(img_gts)
     d_time = time.time() - start
     
-    df_add_static_col(df, 'dataset', detect_on_dataset)
-    df_add_static_col(df, 'model_artifact_dir', use_model_artifact_dir)
-    df_add_static_col(df, 'model_run_id', use_model_run_id)
-    # df.insert(0, 'dataset', detect_on_dataset)
-    # df.insert(0, 'model_artifact_dir', use_model_artifact_dir)
-    # df.insert(0, 'model_run_id', use_model_run_id)
+    df_util.df_add_static_col(df, 'dataset', detect_on_dataset)
+    df_util.df_add_static_col(df, 'model_artifact_dir', use_model_artifact_dir)
+    df_util.df_add_static_col(df, 'model_run_id', use_model_run_id)
 
-    mlflow.log_metric('mean_latency_ms', 1e3 * df['latency_sec'].mean())
+    mlflow.log_metric('mean_latency_ms', 1e3 * df['detector_latency_sec'].mean())
 
     mlflow.log_metric('total_detection_time_sec', d_time)
 
@@ -484,7 +465,9 @@ def create_detection_fixture(
       df.to_pickle(save_to)
     else:
       import tempfile
-      fname = detector_runner.get_runner_name() + '.detections_df.pkl'
+      fname = (
+        detector_runner.get_runner_name() + '.' + detect_on_dataset
+        + '.detections_df.pkl')
       save_to = os.path.join(tempfile.gettempdir(), fname)
       df.to_pickle(save_to)
       mlflow.log_artifact(save_to)

@@ -32,6 +32,7 @@ https://drive.google.com/drive/u/0/folders/1hp-VDyQ2NpKKsG9TfLobjbwAOyDNeQJH
 
 These are 512px-by-512px crops from a production camera (at the time of
 writing) that include fish bounding boxes (annotated as full or partial).
+FMI: https://aquabyte.atlassian.net/browse/ENGALL-2394 
 
 The dataset was pulled (and can be updated) as follows:
 

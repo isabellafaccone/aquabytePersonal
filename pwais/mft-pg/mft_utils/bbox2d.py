@@ -41,6 +41,9 @@ class BBox2D(object):
   score = attr.ib(type=float, default=0)
   """float, optional: A score associated with this box."""
 
+  tracker_ignore = attr.ib(default=False)
+  """bool, optional: A tracker should not track this bounding box"""
+
   extra = attr.ib(default=attr.Factory(dict), type=typing.Dict[str, str])
   """Dict[str, str]: A map for adhoc extra context"""
 

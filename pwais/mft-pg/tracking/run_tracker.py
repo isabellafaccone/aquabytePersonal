@@ -1,3 +1,4 @@
+import copy
 import itertools
 import os
 
@@ -6,8 +7,9 @@ import mlflow
 
 import pandas as pd
 
+from mft_utils import df_util
 from mft_utils import misc as mft_misc
-from mft_utils.bbox2d import BBox2D
+from mft_utils import tracking
 from mft_utils.img_w_boxes import ImgWithBoxes
 from mft_utils.gopro_data import DATASET_NAME_TO_ITER_FACTORY
 
@@ -45,84 +47,100 @@ from mft_utils.gopro_data import DATASET_NAME_TO_ITER_FACTORY
 #     print('tracked', idx, img_path)
 #   writer.close()
 
-class TrackerRunner(object):
+class TrackerRunnerBase(object):
 
-  def update_and_get_tracks(self, bboxes):
-    return bboxes # list of BBox2D
-    # return bboxes (with track ids and maybe Track objects and other metadata)
+  @classmethod
+  def get_name(cls):
+    return str(cls.__name__)
+  
+  def get_tracker_info(self):
+    return {}
+
+  def update_and_fill_tracks(self, imbb):
+    return None
   
   def track_all(
         self,
         imbbs,
-        ablate_input_to_fps=-1, #######################???????????????????????????????????
+        ablate_input_to_fps=-1,
         debug_output_path='',
-        debug_threads=-1):
+        debug_parallel=-1):
 
-    import copy
-    import os
-    import time
-
-    import imageio
-
+    if ablate_input_to_fps >= 0:
+      target_period_micros = int((1. / ablate_input_to_fps) * 1e6)
+      last_tracker_update_micros = -target_period_micros
+    else:
+      last_tracker_update_micros = -1
+    
     imbbs_out = []
-    for i, ib in enumerate(imbbs):
-      update_start = time.time()
-      boxes_out = self.update_and_get_tracks(ib.bboxes)
-      track_latency_sec = time.time() - update_start
+    for i in range(len(imbbs)):
+      imbb = copy.deepcopy(imbbs[i])
+      if not imbb.bboxes_alt:
+        imbb.bboxes_alt = copy.deepcopy(imbb.bboxes)
 
-      ib_out = copy.deepcopy(ib)
-      ib_out.bboxes = boxes_out
-      ib_out.extra['track_latency_sec'] = track_latency_sec
-      imbbs_out.append(ib_out)
+      should_update = (
+        (ablate_input_to_fps < 0) or
+        imbb.microstamp >= (last_tracker_update_micros + target_period_micros)
+      )
+      if should_update:
+        self.update_and_fill_tracks(imbb)
+        imbb.extra['did_run_tracker'] = 'True'
+      else:
+        imbb.extra['did_run_tracker'] = 'False'
+      
+      imbbs_out.append(imbb)
 
       if ((i+1) % 100) == 0:
-        mft_misc.log.info('Detected %s of %s' % (i+1, len(imbbs)))
+        mft_misc.log.info('Tracked %s of %s' % (i+1, len(imbbs)))
+
+    df = df_util.to_obj_df(imbbs_out)
+    df_util.df_add_static_col(
+      df, 'tracker_name', self.get_name())
+    df_util.df_add_static_col(
+      df, 'tracker_info', self.get_tracker_info())
+    df_util.df_add_static_col(
+      df, 'tracker_ablate_input_to_fps', ablate_input_to_fps)
+
+    # TODO: MOT metrics ... ? or in eval report
 
     if debug_output_path:
 
       ## Render debug video
       debug_video_dest = os.path.join(debug_output_path, 'tracks_debug.mp4')
-      def render_debug_frame(idx):
-        import imageio
-        ib = imbbs_out[idx]
-        debug_img = imageio.imread(ib.img_path)
-        for bbox in ib.bboxes:
-          bbox.draw_in_image(debug_img, identify_by='track_id')
-        return debug_img
-      
-      n_tasks = len(imbbs_out)
-      max_workers = os.cpu_count() if debug_threads < 0 else debug_threads
-      iter_debugs = mft_misc.futures_threadpool_safe_pmap(
-                    render_debug_frame,
-                    range(n_tasks),
-                    threadpool_kwargs={'max_workers': max_workers})
-      writer = imageio.get_writer(debug_video_dest, fps=60)
-      for i, debug_img in enumerate(iter_debugs):
-        writer.append_data(debug_img)
-        if ((i+1) % 100) == 0:
-          mft_misc.log.info(
-            '... wrote %s of %s frames to %s' % (
-              i+1, n_tasks, debug_video_dest))
-      writer.close()
+      tracking.write_debug_video(
+        debug_video_dest, imbbs_out, parallel=debug_parallel)
 
-    return imbbs_out
+    return df
 
 
-    # output new df with:
-    #  * for each image include tracker latency
-    #  * for each bbox include a track_id
+class MOTrackerRunner(TrackerRunnerBase):
+  def __init__(self, tracker_type):
+    self._motracker = tracking.MOTrackersTracker(tracker_type=tracker_type)
 
-    # return img_bboxes_df
+  def get_tracker_info(self):
+    return dict(
+      tracker_type=self._motracker.tracker_type,
+      tracker_kwargs=self._motracker.tracke_params,
+    )
+  
+  def update_and_fill_tracks(self, imbb):
+    return self._motracker.update_and_set_tracks(imbb)
 
 
-def create_runner_from_artifacts(artifact_dir):
-  pass
-  # if os.path.exists(os.path.join(artifact_dir, 'yolov3.trt')):
-  #   return YoloTRTRunner(artifact_dir)
-  # elif os.path.exists(os.path.join(artifact_dir, 'yolov3_final.weights')):
-  #   return DarknetRunner(artifact_dir)
-  # else:
-  #   raise ValueError("Could not resolve detector for %s" % artifact_dir)
+class TrackerRunner(object):
+
+  def __init__(self):
+    self._tracker = None
+
+  
+
+
+def create_runner_from_conf(tracker_conf):
+  if tracker_conf.startswith('motrackers.'):
+    tracker_conf = tracker_conf.replace('motrackers.', '')
+    return MOTrackerRunner(tracker_conf)
+  else:
+    raise ValueError("Could not resolve tracker for %s" % tracker_conf)
 
 
 
@@ -143,10 +161,10 @@ def create_runner_from_artifacts(artifact_dir):
   help="Induce a sequence of detections from this dataset")
 @click.option("--use_detections_df", default="",
   help="Induce a sequence of detections from this Pickled dataframe")
-@click.option("--tracker_algo", default="motrackers.SORT",
-  help="Use this tracking algo")
-@click.option("--save_debugs", default=True, 
-  help="Save debug output as well as tracking results")
+@click.option("--tracker_conf", default="motrackers.SORT",
+  help="Use this tracking config")
+@click.option("--ablate_input_to_fps", default=-1,
+  help="Ablate input to this Frames Per Second")
 @click.option("--save_to", default="", 
   help="Leave blank to write to a tempdir & log via mlflow")
 def run_tracker(
@@ -154,8 +172,8 @@ def run_tracker(
       use_model_artifact_dir,
       use_dataset,
       use_detections_df,
-      tracker_algo,
-      save_debugs,
+      tracker_conf,
+      ablate_input_to_fps,
       save_to):
   
   
@@ -166,110 +184,137 @@ def run_tracker(
     assert 'file://' in use_model_artifact_dir, \
       "Only support local artifacts for now ..."
     use_model_artifact_dir = use_model_artifact_dir.replace('file://', '')
+    save_to = save_to or use_model_artifact_dir
   
   if use_detections_df:
     df = pd.read_pickle(use_detections_df)
     img_boxes = [
       ImgWithBoxes.from_dict(r) for r in df.to_dict(orient='records')
     ]
+    save_to = save_to or os.path.dirname(use_detections_df)
 
   if use_dataset:
     iter_factory = DATASET_NAME_TO_ITER_FACTORY[use_dataset]
     iter_img_gts = iter_factory()
     img_boxes = list(iter_img_gts)
+    
+    save_to = save_to or '/tmp/debug_' + use_dataset
+    mft_misc.mkdir(save_to)
 
   assert img_boxes, "Need some image-boxes to run on"
+  assert os.path.exists(save_to), "Need some directory to save output"
+
+  runner = create_runner_from_conf(tracker_conf)
+  df = runner.track_all(
+                img_boxes,
+                ablate_input_to_fps=ablate_input_to_fps,
+                debug_output_path=save_to)
   
+  obj_df = df_util.to_obj_df(df)
+  obj_df.to_pickle(os.path.join(save_to, 'tracks_df.pkl'))
 
 
-  import numpy as np
-  import imageio
-  from motrackers import CentroidTracker, CentroidKF_Tracker, SORT, IOUTracker
-  from motrackers.utils import draw_tracks
 
-  tracker = SORT(max_lost=3, tracker_output_format='mot_challenge', iou_threshold=0.3)
 
-  writer = imageio.get_writer('tracks.mp4', fps=60)
-  TARGET_FPS = 60.
-  TARGET_PERIOD_MICROS = int((1. / TARGET_FPS) * 1e6)
-  last_tracker_update_micros = -TARGET_PERIOD_MICROS
+  # import numpy as np
+  # import imageio
+  # from motrackers import CentroidTracker, CentroidKF_Tracker, SORT, IOUTracker
+  # from motrackers.utils import draw_tracks
+
+  # tracker = SORT(max_lost=3, tracker_output_format='mot_challenge', iou_threshold=0.3)
+
+  # writer = imageio.get_writer('tracks.mp4', fps=60)
+  # TARGET_FPS = 60.
+  # TARGET_PERIOD_MICROS = int((1. / TARGET_FPS) * 1e6)
+  # last_tracker_update_micros = -TARGET_PERIOD_MICROS
   
-  tracks = []
-  bboxes = np.zeros((0, 4))
-  confidences = np.zeros((0, 1))
-  class_ids = np.zeros((0, 1))
+  # tracks = []
+  # bboxes = np.zeros((0, 4))
+  # confidences = np.zeros((0, 1))
+  # class_ids = np.zeros((0, 1))
 
-  class_id_to_name = sorted(set(itertools.chain.from_iterable(
-                        (b.category_name for b in d.bboxes)
-                        for d in img_boxes)))
-  class_name_to_id = dict((v, k) for k, v in enumerate(class_id_to_name))
+  # class_id_to_name = sorted(set(itertools.chain.from_iterable(
+  #                       (b.category_name for b in d.bboxes)
+  #                       for d in img_boxes)))
+  # class_name_to_id = dict((v, k) for k, v in enumerate(class_id_to_name))
 
-  for ib in img_boxes:
-    img_path = ib.img_path
-    boxes = ib.bboxes
+  # for ib in img_boxes:
+  #   img_path = ib.img_path
+  #   boxes = ib.bboxes
 
-    # bboxes = np.array([
-    #   [b['x_min_pixels'], b['y_min_pixels'], b['width_pixels'], b['height_pixels']]
-    #   for b in boxes
-    # ])
+  #   # bboxes = np.array([
+  #   #   [b['x_min_pixels'], b['y_min_pixels'], b['width_pixels'], b['height_pixels']]
+  #   #   for b in boxes
+  #   # ])
     
 
-    if ib.microstamp >= (last_tracker_update_micros + TARGET_PERIOD_MICROS):
-      bboxes = np.array([
-        [b.x, b.y, b.width, b.height]
-        for b in boxes
-      ])
-      confidences = np.array([b.score for b in boxes])
-      class_ids = np.array([class_name_to_id[b.category_name] for b in boxes])
+  #   if ib.microstamp >= (last_tracker_update_micros + TARGET_PERIOD_MICROS):
+  #     bboxes = np.array([
+  #       [b.x, b.y, b.width, b.height]
+  #       for b in boxes
+  #     ])
+  #     confidences = np.array([b.score for b in boxes])
+  #     class_ids = np.array([class_name_to_id[b.category_name] for b in boxes])
 
-      tracks = tracker.update(bboxes, confidences, class_ids)
-      last_tracker_update_micros = ib.microstamp
+  #     import time
+  #     start = time.time()
+  #     tracks = tracker.update(bboxes, confidences, class_ids)
+  #     print('update time', time.time() - start)
+  #     # print(bboxes - np.array([[t[2], t[3], t[4], t[5]] for t in tracks]))
+  #     print('given but not tracked',
+  #       set(tuple(b) for b in bboxes) - 
+  #       set((t[2], t[3], t[4], t[5]) for t in tracks))
+  #     print('tracked but not given',
+  #       set((t[2], t[3], t[4], t[5]) for t in tracks) - 
+  #       set(tuple(b) for b in bboxes))
+      
+  #     last_tracker_update_micros = ib.microstamp
 
-    debug_img = imageio.imread(img_path)
+  #   debug_img = imageio.imread(img_path)
 
-    # def _draw_bboxes(image, bboxes, confidences, class_ids):
-    #   """
-    #   based upon motrackers.detector.draw_bboxes()
+  #   # def _draw_bboxes(image, bboxes, confidences, class_ids):
+  #   #   """
+  #   #   based upon motrackers.detector.draw_bboxes()
 
-    #   Draw the bounding boxes about detected objects in the image.
+  #   #   Draw the bounding boxes about detected objects in the image.
 
-    #   Parameters
-    #   ----------
-    #   image : numpy.ndarray
-    #       Image or video frame.
-    #   bboxes : numpy.ndarray
-    #       Bounding boxes pixel coordinates as (xmin, ymin, width, height)
-    #   confidences : numpy.ndarray
-    #       Detection confidence or detection probability.
-    #   class_ids : numpy.ndarray
-    #       Array containing class ids (aka label ids) of each detected object.
+  #   #   Parameters
+  #   #   ----------
+  #   #   image : numpy.ndarray
+  #   #       Image or video frame.
+  #   #   bboxes : numpy.ndarray
+  #   #       Bounding boxes pixel coordinates as (xmin, ymin, width, height)
+  #   #   confidences : numpy.ndarray
+  #   #       Detection confidence or detection probability.
+  #   #   class_ids : numpy.ndarray
+  #   #       Array containing class ids (aka label ids) of each detected object.
 
-    #   Returns
-    #   -------
-    #   numpy.ndarray : image with the bounding boxes drawn on it.
-    #   """
-    #   import cv2 as cv
-    #   BBOX_COLORS = {0: (255, 255, 0), 1: (0, 255, 0), 2: (0, 255, 255), 3: (0, 0, 255)}
-    #   for bb, conf, cid in zip(bboxes, confidences, class_ids):
-    #       clr = [int(c) for c in BBOX_COLORS[cid]]
-    #       cv.rectangle(image, (bb[0], bb[1]), (bb[0] + bb[2], bb[1] + bb[3]), clr, 2)
-    #       label = "{}:{:.4f}".format(cid, conf)
-    #       (label_width, label_height), baseLine = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 2)
-    #       y_label = max(bb[1], label_height)
-    #       cv.rectangle(image, (bb[0], y_label - label_height), (bb[0] + label_width, y_label + baseLine),
-    #                     (255, 255, 255), cv.FILLED)
-    #       cv.putText(image, label, (bb[0], y_label), cv.FONT_HERSHEY_SIMPLEX, 0.5, clr, 2)
-    #   return image
+  #   #   Returns
+  #   #   -------
+  #   #   numpy.ndarray : image with the bounding boxes drawn on it.
+  #   #   """
+  #   #   import cv2 as cv
+  #   #   BBOX_COLORS = {0: (255, 255, 0), 1: (0, 255, 0), 2: (0, 255, 255), 3: (0, 0, 255)}
+  #   #   for bb, conf, cid in zip(bboxes, confidences, class_ids):
+  #   #       clr = [int(c) for c in BBOX_COLORS[cid]]
+  #   #       cv.rectangle(image, (bb[0], bb[1]), (bb[0] + bb[2], bb[1] + bb[3]), clr, 2)
+  #   #       label = "{}:{:.4f}".format(cid, conf)
+  #   #       (label_width, label_height), baseLine = cv.getTextSize(label, cv.FONT_HERSHEY_SIMPLEX, 0.5, 2)
+  #   #       y_label = max(bb[1], label_height)
+  #   #       cv.rectangle(image, (bb[0], y_label - label_height), (bb[0] + label_width, y_label + baseLine),
+  #   #                     (255, 255, 255), cv.FILLED)
+  #   #       cv.putText(image, label, (bb[0], y_label), cv.FONT_HERSHEY_SIMPLEX, 0.5, clr, 2)
+  #   #   return image
 
-    for bbox in boxes:
-      bbox.draw_in_image(debug_img)
-    # debug_img = _draw_bboxes(debug_img, bboxes, confidences, class_ids)
+  #   for bbox in boxes:
+  #     bbox.draw_in_image(debug_img)
+  #   # debug_img = _draw_bboxes(debug_img, bboxes, confidences, class_ids)
 
-    debug_img = draw_tracks(debug_img, tracks)
+  #   debug_img = draw_tracks(debug_img, tracks)
 
-    writer.append_data(debug_img)
-    print('tracked', img_path)
-  writer.close()
+  #   writer.append_data(debug_img)
+  #   print('tracked', img_path)
+  # writer.close()
 
 """
 cd /opt/ && \
@@ -379,7 +424,7 @@ class Tracker(object):
   #   df = detector_runner(iter_img_gts)
   #   d_time = time.time() - start
     
-  #   mlflow.log_metric('mean_latency_ms', 1e3 * df['latency_sec'].mean())
+  #   mlflow.log_metric('mean_latency_ms', 1e3 * df['detector_latency_sec'].mean())
 
   #   mlflow.log_metric('total_detection_time_sec', d_time)
 
