@@ -147,3 +147,21 @@ def download_from_s3(uris, dest_root, parallel=-1):
     download,
     uris,
     threadpool_kwargs={'max_workers': max_workers})
+
+
+def mp4_video_to_inline_html(video_bytes=None, video_path=''):
+  if not video_bytes:
+    with open(video_path, 'rb') as f:
+      video_bytes = f.read()
+
+  from base64 import b64encode
+  data = b64encode(video_bytes).decode('ascii')
+  
+  from six.moves.urllib import parse
+  html = """
+  <video controls>
+	  <source type="video/mp4" src="data:video/mp4;base64,{}">
+  </video>
+  """.format(parse.quote(data))
+  
+  return html

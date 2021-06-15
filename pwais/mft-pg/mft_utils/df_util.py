@@ -19,18 +19,18 @@ def to_obj_df(v):
   if isinstance(v, pd.DataFrame):
     rows = [RowAdapter.to_row(d) for d in v.to_dict(orient='records')]
   else:
-    rows = [RowAdapter.to_row(o) for o in v]
-  
+    rows = [RowAdapter.to_row(o).asDict() for o in v]
+
   df = pd.DataFrame(rows)
   return df
 
 def read_obj_df(path):
   from oarphpy.spark import RowAdapter
+  from pyspark.sql import Row
   df = pd.read_pickle(path)
   
   from mft_utils.img_w_boxes import ImgWithBoxes
   from mft_utils.bbox2d import BBox2D
-  imbbs = [RowAdapter.from_row(d) for d in df.to_dict(orient='records')]
-
+  imbbs = [RowAdapter.from_row(Row(**d)) for d in df.to_dict(orient='records')]
   df.insert(0, 'img_bb', imbbs)
   return df

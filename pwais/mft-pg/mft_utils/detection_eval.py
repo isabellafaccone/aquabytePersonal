@@ -2,6 +2,8 @@ import copy
 
 import pandas as pd
 
+from mft_utils import plotting as mft_plotting
+
 
 
 def to_spark_df(spark, pdf):
@@ -90,22 +92,7 @@ def get_sample_row_html(df, row_idx=-1):
   return sample_row_html
 
 
-def get_time_series_report_html(df):
-  def get_count_distinct(timescale):
-    return (df['microstamp'] // int(timescale)).nunique()
 
-  ts_metrics = {
-    'Num Distinct Timestamps': get_count_distinct(1),
-    'Num Distinct Minutes': get_count_distinct(60 * 1e6),
-    'Num Distinct Hours': get_count_distinct(60 * 60 * 1e6),
-    'Num Distinct Days': get_count_distinct(24 * 60 * 60 * 1e6),
-    'Frames per second': (
-      float(len(df['microstamp'])) / 
-        (1e-6 * (df['microstamp'].max() - df['microstamp'].min()))),
-  }
-    
-  tdf = pd.DataFrame([ts_metrics])
-  return tdf.T.style.render()
 
 def spark_df_add_mean_bbox_score(
         spark_df,
@@ -211,38 +198,12 @@ def spark_df_maybe_add_postprocessor_score(
 
 def get_latency_report_html(df):
   import numpy as np
-  
-  def get_latency_report(latencies_ms, title):
-    hist, edges = np.histogram(latencies_ms, density=False, bins=100)
-
-    from bokeh.plotting import figure
-
-    fig = figure(
-            title="Latency Distribution (milliseconds)",
-            y_axis_label="Count",
-            x_axis_label="Latency (milliseconds)")
-    fig.quad(
-        top=hist, bottom=0, left=edges[:-1], right=edges[1:],
-        fill_color="blue", line_color="navy", alpha=0.85)
-  
-    from mft_utils.plotting import bokeh_fig_to_html
-    fig_html = bokeh_fig_to_html(fig, title=title)
-
-    stats_df = pd.DataFrame([{
-      'mean': np.mean(latencies_ms),
-      'median': np.percentile(latencies_ms, 50),
-      '90th': np.percentile(latencies_ms, 90),
-      '99th': np.percentile(latencies_ms, 99),
-    }])
-    stats_html = stats_df.T.style.render()
-
-    return "<b>%s</b><br/>%s<br/>%s" % (title, fig_html, stats_html)
 
   reports = []
   if 'detector_latency_sec' in df.columns and len(df) > 0:
     latencies_ms = 1e3 * df['detector_latency_sec']
     
-    reports.append(get_latency_report(
+    reports.append(mft_plotting.get_latency_report(
       latencies_ms, "Detector Latencies"))
   else:
     reports.append("<i>No detector latency data!!</i><br />")
@@ -263,13 +224,13 @@ def get_latency_report_html(df):
       if key in df.columns:
         latencies_ms = 1e3 * df[key]
         reports.append(
-          get_latency_report(latencies_ms, report_title))
+          mft_plotting.get_latency_report(latencies_ms, report_title))
       elif key.replace('extra.', '') in df['extra'][0]:
         key = key.replace('extra.', '')
         latencies_ms = 1e3 * np.array([
           float(extra[key]) for extra in df['extra']])
         reports.append(
-          get_latency_report(latencies_ms, report_title))
+          mft_plotting.get_latency_report(latencies_ms, report_title))
       elif key.startswith('postproc.'):
         postproc_key = key.replace('postproc.', '')
         latencies_ms = []
@@ -279,7 +240,7 @@ def get_latency_report_html(df):
           latencies_ms.append(1e3 * p_time_sec)
         latencies_ms = np.array(latencies_ms)
         reports.append(
-          get_latency_report(latencies_ms, report_title))
+          mft_plotting.get_latency_report(latencies_ms, report_title))
 
   return "<br/>".join(reports)
 
@@ -551,7 +512,7 @@ def detections_df_to_html(df):
 
   latency_html = get_latency_report_html(df)
 
-  time_series_html = get_time_series_report_html(df)
+  # time_series_html = get_time_series_report_html(df)
 
   hist_col_to_html = get_histogram_with_examples_htmls(df)
 
@@ -579,12 +540,6 @@ def detections_df_to_html(df):
     <h2>Latencies</h2><br/>
     {latency_html}
     <br/><br/>
-
-    <h2>Time Series Info</h2>
-    {time_series_html}
-    <br/><br/>
-
-    <br/><br/>
     
     <h1>Images: Histograms with Examples</h1><br/>
     {hist_agg_html}
@@ -597,7 +552,7 @@ def detections_df_to_html(df):
       sample_html=sample_html,
       core_desc_html=core_desc_html,
       latency_html=latency_html,
-      time_series_html=time_series_html,
+      # time_series_html=time_series_html,
       hist_agg_html=hist_agg_html,
       bbox_agg_html=bbox_agg_html)
 

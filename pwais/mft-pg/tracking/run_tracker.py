@@ -58,7 +58,7 @@ class TrackerRunnerBase(object):
 
   def update_and_fill_tracks(self, imbb):
     return None
-  
+
   def track_all(
         self,
         imbbs,
@@ -66,26 +66,38 @@ class TrackerRunnerBase(object):
         debug_output_path='',
         debug_parallel=-1):
 
-    if ablate_input_to_fps >= 0:
+    ablation_mode = (ablate_input_to_fps >= 0)
+
+    if ablation_mode:
       target_period_micros = int((1. / ablate_input_to_fps) * 1e6)
       last_tracker_update_micros = -target_period_micros
     else:
+      target_period_micros = -1
       last_tracker_update_micros = -1
     
     imbbs_out = []
+    last_bbs = []
     for i in range(len(imbbs)):
       imbb = copy.deepcopy(imbbs[i])
-      if not imbb.bboxes_alt:
+      if ablation_mode:
         imbb.bboxes_alt = copy.deepcopy(imbb.bboxes)
+        imbb.extra['tracker_gt_is_ablation'] = 'True'
+      else:
+        imbb.extra['tracker_gt_is_ablation'] = 'False'
 
       should_update = (
-        (ablate_input_to_fps < 0) or
+        (not ablation_mode) or
         imbb.microstamp >= (last_tracker_update_micros + target_period_micros)
       )
+
       if should_update:
         self.update_and_fill_tracks(imbb)
         imbb.extra['did_run_tracker'] = 'True'
+        if ablation_mode:
+          last_bbs = copy.deepcopy(imbb.bboxes)
+        last_tracker_update_micros = imbb.microstamp
       else:
+        imbb.bboxes = copy.deepcopy(last_bbs)
         imbb.extra['did_run_tracker'] = 'False'
       
       imbbs_out.append(imbb)
@@ -101,14 +113,12 @@ class TrackerRunnerBase(object):
     df_util.df_add_static_col(
       df, 'tracker_ablate_input_to_fps', ablate_input_to_fps)
 
-    # TODO: MOT metrics ... ? or in eval report
+    # if debug_output_path:
 
-    if debug_output_path:
-
-      ## Render debug video
-      debug_video_dest = os.path.join(debug_output_path, 'tracks_debug.mp4')
-      tracking.write_debug_video(
-        debug_video_dest, imbbs_out, parallel=debug_parallel)
+    #   ## Render debug video
+    #   debug_video_dest = os.path.join(debug_output_path, 'tracks_debug.mp4')
+    #   tracking.write_debug_video(
+    #     debug_video_dest, imbbs_out, parallel=debug_parallel)
 
     return df
 
@@ -116,6 +126,7 @@ class TrackerRunnerBase(object):
 class MOTrackerRunner(TrackerRunnerBase):
   def __init__(self, tracker_type):
     self._motracker = tracking.MOTrackersTracker(tracker_type=tracker_type)
+    self._last_bb = []
 
   def get_tracker_info(self):
     return dict(
@@ -124,7 +135,10 @@ class MOTrackerRunner(TrackerRunnerBase):
     )
   
   def update_and_fill_tracks(self, imbb):
-    return self._motracker.update_and_set_tracks(imbb)
+    res = self._motracker.update_and_fill_tracks(imbb)
+    self._last_bb = copy.deepcopy(imbb.bboxes)
+    return res
+
 
 
 class TrackerRunner(object):
@@ -187,9 +201,10 @@ def run_tracker(
     save_to = save_to or use_model_artifact_dir
   
   if use_detections_df:
-    df = pd.read_pickle(use_detections_df)
+    detections_df = pd.read_pickle(use_detections_df)
     img_boxes = [
-      ImgWithBoxes.from_dict(r) for r in df.to_dict(orient='records')
+      ImgWithBoxes.from_dict(r)
+      for r in detections_df.to_dict(orient='records')
     ]
     save_to = save_to or os.path.dirname(use_detections_df)
 
@@ -210,8 +225,31 @@ def run_tracker(
                 ablate_input_to_fps=ablate_input_to_fps,
                 debug_output_path=save_to)
   
+  df_util.df_add_static_col(
+    df,
+    'dataset',
+    use_dataset or detections_df['dataset'][0])
+  df_util.df_add_static_col(
+    df,
+    'model_artifact_dir',
+    use_model_artifact_dir or (
+      detections_df['model_artifact_dir'][0] if use_detections_df
+      else 'anon'))
+  df_util.df_add_static_col(
+    df,
+    'model_run_id',
+    use_model_run_id or (
+      detections_df['model_run_id'][0] if use_detections_df
+      else 'anon'))
+
   obj_df = df_util.to_obj_df(df)
-  obj_df.to_pickle(os.path.join(save_to, 'tracks_df.pkl'))
+  
+  df_dest_fname = 'tracks_df.pkl'
+  if use_detections_df:
+    df_dest_fname = os.path.basename(use_detections_df) + '.' + df_dest_fname
+  elif use_dataset:
+    df_dest_fname = use_dataset + '.' + df_dest_fname
+  obj_df.to_pickle(os.path.join(save_to, df_dest_fname))
 
 
 

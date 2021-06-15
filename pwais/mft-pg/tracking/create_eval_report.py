@@ -7,7 +7,7 @@ from mft_utils import misc as mft_misc
 
 
 
-@click.command(help="Using a detections fixture(s), create an evaluation report(s)")
+@click.command(help="Using a tracking fixture(s), create an evaluation report(s)")
 @click.option("--use_model_run_id", default="",
   help="Use the model with this mlflow run ID (optional)")
 @click.option("--use_model_artifact_dir", default="",
@@ -30,26 +30,21 @@ def create_eval_report(
     mlflow.log_param('parent_run_id', use_model_run_id)
 
     for fname in os.listdir(use_model_artifact_dir):
-      if not fname.endswith('.detections_df.pkl'):
+      if not fname.endswith('.tracks_df.pkl'):
         continue
         
-      det_path = os.path.join(use_model_artifact_dir, fname)
-      mft_misc.log.info("Using detections %s" % det_path)
+      t_path = os.path.join(use_model_artifact_dir, fname)
+      mft_misc.log.info("Using tracks %s" % t_path)
 
-      # import pandas as pd
-      # df = pd.read_pickle(det_path)
       from mft_utils import df_util
-      df = df_util.read_obj_df(det_path)
-
-      from mft_utils import detection_eval as d_eval
-
-      html = d_eval.detections_df_to_html(df)
-      dest_path = det_path + '.eval.html'
+      df = df_util.read_obj_df(t_path)
+      
+      from mft_utils import tracking_eval as t_eval
+      html = t_eval.tracks_df_to_html(df)
+      dest_path = t_path + '.eval.html'
       with open(dest_path, 'w') as f:
         f.write(html)
       mft_misc.log.info("Saved report to %s" % dest_path)
-
-      # mlflow.log_artifact(dest_path)
 
 
 if __name__ == "__main__":

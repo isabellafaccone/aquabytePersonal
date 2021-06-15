@@ -5,7 +5,7 @@ from mft_utils import misc as mft_misc
   
 
 BASE_DEBUG_IMG_KWARGS = dict(
-  identify_by='track_id', 
+  identify_by='track_id',
   only_track_id='',
   show_alt=True,
   alt_identify_by='category_name',
@@ -14,7 +14,7 @@ BASE_DEBUG_IMG_KWARGS = dict(
 def write_debug_video(
         outpath,
         imbbs,
-        video_height=500,
+        video_height=800,
         fps=-1,
         parallel=-1,
         debug_img_kwargs=BASE_DEBUG_IMG_KWARGS):
@@ -22,6 +22,8 @@ def write_debug_video(
   if not imbbs:
     return None
   
+  imbbs = sorted(imbbs, key=lambda imbb: imbb.microstamp)
+
   if fps < 0:
     import numpy as np
     microstamps = np.array([i.microstamp for i in imbbs])
@@ -81,11 +83,9 @@ class MOTrackersTracker(object):
         self,
         tracker_type='SORT',
         tracker_kwargs={},
-        class_name_to_id={},
-        include_eval_output=True):
+        class_name_to_id={}):
     
     self._class_name_to_id = class_name_to_id
-    self._include_eval_output = include_eval_output
     
     if tracker_type == 'SORT':
       from motrackers import SORT
@@ -100,7 +100,7 @@ class MOTrackersTracker(object):
     self.tracker_type = tracker_type
     self.tracke_params = tracker_kwargs
 
-  def update_and_set_tracks(self, img_bb):
+  def update_and_fill_tracks(self, img_bb):
     bboxes = img_bb.bboxes
 
     bbox_coords_to_bbox = {}
@@ -146,7 +146,3 @@ class MOTrackersTracker(object):
       bbox = bbox_coords_to_bbox[track_bb_key]
       bbox.track_id = str(track_id)
       bbox.extra['tracker_confidence'] = str(confidence)
-
-      if self._include_eval_output:
-        output = ','.join(str(v) for v in track)
-        bbox.extra['tracker.mot_challenge_output'] = output

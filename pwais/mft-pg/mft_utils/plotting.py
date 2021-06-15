@@ -60,7 +60,7 @@ def draw_bbox_in_image(np_image, bbox, color=None, label_txt='', thickness=2):
   
   Based upon PSegs: https://github.com/pwais/psegs/blob/d24fac31a9be8d43ae0de51d6a6ca807b3c36379/psegs/util/plotting.py#L37
   """
-  
+
   bbox = copy.deepcopy(bbox)
   if not isinstance(bbox, BBox2D):
     bbox = BBox2D.from_x1_y1_x2_y2(*bbox)
@@ -150,3 +150,32 @@ def bokeh_fig_to_html(fig, title=''):
   # from bokeh.embed import file_html
   # html = file_html(fig, CDN, title)
   # return html
+
+
+def get_latency_report(latencies_ms, title):
+  import numpy as np
+  hist, edges = np.histogram(latencies_ms, density=False, bins=100)
+
+  from bokeh.plotting import figure
+
+  fig = figure(
+          title="Latency Distribution (milliseconds)",
+          y_axis_label="Count",
+          x_axis_label="Latency (milliseconds)")
+  fig.quad(
+      top=hist, bottom=0, left=edges[:-1], right=edges[1:],
+      fill_color="blue", line_color="navy", alpha=0.85)
+
+  from mft_utils.plotting import bokeh_fig_to_html
+  fig_html = bokeh_fig_to_html(fig, title=title)
+
+  import pandas as pd
+  stats_df = pd.DataFrame([{
+    'mean': np.mean(latencies_ms),
+    'median': np.percentile(latencies_ms, 50),
+    '90th': np.percentile(latencies_ms, 90),
+    '99th': np.percentile(latencies_ms, 99),
+  }])
+  stats_html = stats_df.T.style.render()
+
+  return "<b>%s</b><br/>%s<br/>%s" % (title, fig_html, stats_html)

@@ -63,21 +63,23 @@ class ImgWithBoxes(object):
         only_track_id='',
         show_alt=True):
     
-    import numpy as np
     if not self.img_path:
+      import numpy as np
       return np.zeros((10, 10, 3))
 
-    import imageio
-    # debug = imageio.imread(self.img_path)
     debug, _ = self.load_preprocessed_img()
-    for bbox in self.bboxes:
-      if only_track_id and bbox.track_id != only_track_id:
-        continue
-      bbox.draw_in_image(debug, identify_by=identify_by)
+    
+    # Draw non-alt on top of alt, so draw alt first
     if show_alt:
       for bbox in self.bboxes_alt:
         bbox.draw_in_image(
           debug, identify_by=(alt_identify_by or identify_by), flip_color=True)
+    
+    for bbox in self.bboxes:
+      if only_track_id and bbox.track_id != only_track_id:
+        continue
+      bbox.draw_in_image(debug, identify_by=identify_by)
+    
     return debug
 
   def load_preprocessed_img(self):
