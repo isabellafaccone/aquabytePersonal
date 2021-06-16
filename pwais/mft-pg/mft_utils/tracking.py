@@ -66,7 +66,7 @@ def write_debug_video(
   iter_debugs = iter_in_order(iter_t_debug)
 
   import imageio
-  writer = imageio.get_writer(outpath, fps=fps)
+  writer = imageio.get_writer(outpath, fps=fps, quality=8)
   mft_misc.log.info('Generating tracker debug video ...')
   for i, debug_img in enumerate(iter_debugs):
     writer.append_data(debug_img)

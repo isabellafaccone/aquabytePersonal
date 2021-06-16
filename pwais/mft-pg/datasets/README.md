@@ -99,3 +99,12 @@ from mft_utils import misc as mft_misc
 mft_misc.download_from_s3(uris, 'datasets/datasets_s3/akpd1/images')
 
 ```
+
+### `datasets_s3/akpd_correlates`
+
+This dataset is a sample of AKPD *production recordsings* that Alok selected
+for https://aquabyte.atlassian.net/browse/ENGALL-2711 .  The dataset
+has AKPD keypoints/scores, left/right images, and camera intrinsics for
+*production inference results*.  This is NOT human ground truth, but a trace
+of production behavior.
+

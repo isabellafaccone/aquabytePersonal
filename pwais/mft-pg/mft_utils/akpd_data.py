@@ -32,10 +32,6 @@ def create_cleaned_df(
     keypoints_raw = row['keypoints']
     keypoints_dict = ast.literal_eval(keypoints_raw)
 
-    base_extra = {
-      'akpd.camera_metadata': row['camera_metadata'], # is a str
-    }
-
     for camera in ['left', 'right']:
       
       img_s3_uri = row[camera + '_image_url']
@@ -86,18 +82,103 @@ def create_cleaned_df(
   return pd.DataFrame(rows_out)
 
 
+def create_cleaned_correlates_df(
+    in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd_correlates/akpd_score_dataset.csv',
+    imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd_correlates/images/'):
+  """Clean the given AKPD Correlates CSV data and return a
+  cleaned DataFrame."""
+
+  import os
+
+  import imageio
+  import pandas as pd
+
+  df_in = pd.read_csv(in_csv_path)
+
+  # LOL those annotations aren't JSONs, they're string-ified python dicts :(
+  import ast
+
+  rows_out = []
+  images_seen = set()
+  for i, row in enumerate(df_in.to_dict(orient='records')):
+    t = pd.to_datetime(row['captured_at'])
+    microstamp = int(1e6 * t.timestamp())
+    
+    keypoints_raw = row['annotation']
+    keypoints_dict = ast.literal_eval(keypoints_raw)
+
+    process_info_raw = row['process_info']
+    process_info_dict = ast.literal_eval(process_info_raw) or {}
+
+    for camera in ['left', 'right']:
+      
+      img_s3_uri = row[camera + '_crop_url']
+      if 'https://s3-eu-west-1.amazonaws.com/aquabyte-crops/' in img_s3_uri:
+        img_path = img_s3_uri.replace('https://s3-eu-west-1.amazonaws.com/aquabyte-crops/', imgs_basedir)
+      elif 'https://aquabyte-crops.s3.eu-west-1.amazonaws.com/' in img_s3_uri:
+        img_path = img_s3_uri.replace('https://aquabyte-crops.s3.eu-west-1.amazonaws.com/', imgs_basedir)
+      elif 'http://aquabyte-crops.s3.eu-west-1.amazonaws.com/' in img_s3_uri:
+        img_path = img_s3_uri.replace('http://aquabyte-crops.s3.eu-west-1.amazonaws.com/', imgs_basedir)
+      elif 's3://aquabyte-crops/' in img_s3_uri:
+        img_path = img_s3_uri.replace('s3://aquabyte-crops/', imgs_basedir)
+      else:
+        raise ValueError(img_s3_uri)
+
+      assert os.path.exists(img_path), img_path
+
+      if img_path in images_seen:
+        print(img_path, 'is a dupe')
+        continue
+      images_seen.add(img_path)
+
+      img = imageio.imread(img_path)
+      h, w = img.shape[:2]
+
+      camera_kps = keypoints_dict[camera + 'Crop']
+      kp_df = pd.DataFrame(camera_kps)
+
+      crop_meta = ast.literal_eval(row[camera + '_crop_metadata'])
+      quality = crop_meta.get('qualityScore', {})
+      rows_out.append({
+        'camera': camera,
+        'captured_at': pd.to_datetime(row['captured_at']),
+        'img_path': img_path,
+        'img_height': h,
+        'img_width': w,
+        'keypoints': kp_df,
+
+        'estimated_weight_g': row['estimated_weight_g'],
+        'akpd_score': row['akpd_score'],
+        'estimated_length_mm': row['estimated_length_mm'],
+        'estimated_k_factor': row['estimated_k_factor'],
+
+        'akpd_model': process_info_dict.get('akpd_model', ''),
+        'biomass_model': process_info_dict.get('biomass_model', ''),
+        'k_factor_model': process_info_dict.get('k_factor_model', ''),
+        'akpd_scorer_model': process_info_dict.get('akpd_scorer_model', ''),
+
+        'camera_metadata': row['camera_metadata'], # str
+      })
+    
+    if (i+1) % 100 == 0:
+      print("... cleaned %s of %s ..." % (i+1, len(df_in)))
+  
+  return pd.DataFrame(rows_out)
+
+
+
 def get_akpd_as_bbox_img_gts(
       in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd1/2021-05-19_akpd_representative_training_dataset_10K.csv',
       imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd1/images/',
       kp_bbox_to_fish_scale=0.1,
       only_camera='left',
-      only_parts=[],
+      cleaner_func=create_cleaned_df,
       parallel=-1):
 
   cleaned_df_path = in_csv_path + 'cleaned.pkl'
   if not os.path.exists(cleaned_df_path):
     mft_misc.log.info("Cleaning labels and caching cleaned copy ...")
-    df = create_cleaned_df(in_csv_path=in_csv_path, imgs_basedir=imgs_basedir)
+    df = cleaner_func(in_csv_path=in_csv_path, imgs_basedir=imgs_basedir)
     df.to_pickle(cleaned_df_path)
   
   mft_misc.log.info("Using cached / cleaned labels at %s" % cleaned_df_path)
@@ -128,11 +209,29 @@ def get_akpd_as_bbox_img_gts(
     extra = {
       # 'akpd.camera_metadata': row['camera_metadata'], # str
       'camera': row['camera'],
-      'akpd.quality': str(row['quality']),
-      'akpd.blurriness': str(row['blurriness']),
-      'akpd.darkness': str(row['darkness']),
-      'akpd.mean_luminance': str(row['mean_luminance']),
+
+      # Only available in AKPD ground truth e.g.
+      # 2021-05-19_akpd_representative_training_dataset_10K.csv
+      'akpd.quality': row.get('quality', float('nan')),
+      'akpd.blurriness': row.get('blurriness', float('nan')),
+      'akpd.darkness': row.get('darkness', float('nan')),
+      'akpd.mean_luminance': row.get('mean_luminance', float('nan')),
+
+      # Only available in AKPD production trace e.g.
+      # akpd_correlates/akpd_score_dataset.csv
+      'akpd.prod_trace.estimated_weight_g': 
+        row.get('estimated_weight_g', float('nan')),
+      'akpd.prod_trace.akpd_score': row.get('akpd_score', float('nan')),
+      'akpd.prod_trace.estimated_length_mm': row.get('estimated_length_mm', float('nan')),
+      'akpd.prod_trace.estimated_k_factor': row.get('estimated_k_factor', float('nan')),
+      'akpd.prod_trace.akpd_model': row.get('akpd_model', ''),
+      'akpd.prod_trace.biomass_model': row.get('biomass_model', ''),
+      'akpd.prod_trace.k_factor_model': row.get('k_factor_model', ''),
+      'akpd.prod_trace.akpd_scorer_model': row.get('akpd_scorer_model', ''),
+    
     }
+    extra = dict((k, str(v)) for k, v in extra.items())
+
     return ImgWithBoxes(
                       img_path=img_path,
                       img_width=w,
@@ -148,6 +247,22 @@ def get_akpd_as_bbox_img_gts(
               labels_df.to_dict(orient='records'),
               {'max_workers': parallel})
   return img_gts
+
+
+def get_akpd_correlates_as_bbox_img_gts(
+      in_csv_path='/opt/mft-pg/datasets/datasets_s3/akpd_correlates/akpd_score_dataset.csv',
+      imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd_correlates/images/',
+      kp_bbox_to_fish_scale=0.1,
+      only_camera='', # Important: select BOTH cameras, sometimes one has trimmed fish but not the other
+      parallel=-1):
+  
+  return get_akpd_as_bbox_img_gts(
+            in_csv_path=in_csv_path,
+            imgs_basedir=imgs_basedir,
+            kp_bbox_to_fish_scale=kp_bbox_to_fish_scale,
+            only_camera=only_camera,
+            cleaner_func=create_cleaned_correlates_df,
+            parallel=parallel)
 
 
 # def get_akpd_as_bbox_img_gts_with_ablated_parts(
@@ -425,6 +540,10 @@ def generate_synth_fish_and_parts(
         if rbbox.extra['is_partial'] == 'True':
           if self._swap_partial_fish_with_akpd_chance > 0:
             if swap_rand.random() > self._swap_partial_fish_with_akpd_chance:
+              # NB: we moved on to another dataset: 
+              print('note: this part is currently segfaulting opencv for some reason :(')
+              print('note: this part is currently segfaulting opencv for some reason :(')
+              print('note: this part is currently segfaulting opencv for some reason :(')
               unswapped_fish.append(rbbox)
               continue
           partial_fish.append(rbbox)
@@ -538,6 +657,9 @@ DATASET_NAME_TO_ITER_FACTORY = {
       get_synth_fish_and_parts_img_gts()[:4980]),
   'akpd1.1_synth_fish_and_parts.0.1.test': (lambda :
       get_synth_fish_and_parts_img_gts()[4980:]),
+  
+  'akpd_correlates_1_full': (lambda :
+      get_akpd_correlates_as_bbox_img_gts()),
 }
 
 if __name__ == '__main__':

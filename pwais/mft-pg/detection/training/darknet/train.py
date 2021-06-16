@@ -293,8 +293,8 @@ def install_dataset(mlflow, model_workdir, dataset_name):
     # Need this for inference... it's not in the model config
     mlflow.log_artifact(out_names_path)
 
-  elif dataset_name.startswith('akpd1') or dataset_name.startswith('hrf_'):
-    if dataset_name.startswith('akpd1'):
+  elif dataset_name.startswith('akpd') or dataset_name.startswith('hrf_'):
+    if dataset_name.startswith('akpd'):
       from mft_utils.akpd_data import DATASET_NAME_TO_ITER_FACTORY
       assert dataset_name in DATASET_NAME_TO_ITER_FACTORY, (
         dataset_name, 'not in', DATASET_NAME_TO_ITER_FACTORY.keys())
