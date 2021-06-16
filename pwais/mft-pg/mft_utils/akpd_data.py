@@ -104,7 +104,7 @@ def create_cleaned_correlates_df(
     t = pd.to_datetime(row['captured_at'])
     microstamp = int(1e6 * t.timestamp())
     
-    keypoints_raw = row['annotation']
+    keypoints_raw = row['annotation'] # These are predictions!!
     keypoints_dict = ast.literal_eval(keypoints_raw)
 
     process_info_raw = row['process_info']
@@ -136,9 +136,7 @@ def create_cleaned_correlates_df(
 
       camera_kps = keypoints_dict[camera + 'Crop']
       kp_df = pd.DataFrame(camera_kps)
-
-      crop_meta = ast.literal_eval(row[camera + '_crop_metadata'])
-      quality = crop_meta.get('qualityScore', {})
+      
       rows_out.append({
         'camera': camera,
         'captured_at': pd.to_datetime(row['captured_at']),
@@ -240,12 +238,10 @@ def get_akpd_as_bbox_img_gts(
                       microstamp=microstamp,
                       extra=extra)
 
-  if parallel < 0:
-    parallel = os.cpu_count()
   img_gts = mft_misc.foreach_threadpool_safe_pmap(
               to_img_gt,
               labels_df.to_dict(orient='records'),
-              {'max_workers': parallel})
+              parallel=parallel)
   return img_gts
 
 

@@ -252,7 +252,7 @@ class DetectorRunner(object):
       #   ('img_coco_metrics_' + k, v)
       #   for k, v in img_metrics.items())
 
-    df = df_util.to_df(img_dets)
+    df = df_util.to_obj_df(img_dets)
     SKIP_GLOBAL_METRIC_KEYS = (
       'image_id_to_stats',
     )
@@ -461,17 +461,19 @@ def create_detection_fixture(
 
     mlflow.log_metric('total_detection_time_sec', d_time)
 
-    if save_to:
-      df.to_pickle(save_to)
-    else:
-      import tempfile
-      fname = (
-        detector_runner.get_runner_name() + '.' + detect_on_dataset
-        + '.detections_df.pkl')
-      save_to = os.path.join(tempfile.gettempdir(), fname)
-      df.to_pickle(save_to)
-      mlflow.log_artifact(save_to)
-    mft_misc.log.info('Saved %s' % save_to)
+    fname = (
+      detector_runner.get_runner_name() + '.' + detect_on_dataset
+      + '.detections_df.pkl')
+    if use_model_artifact_dir:
+      save_to = use_model_artifact_dir
+    if not save_to:
+      save_to = '/tmp/'
+    
+    df_path = os.path.join(save_to, fname)
+    df.to_pickle(df_path)
+    mlflow.log_artifact(df_path)
+
+    mft_misc.log.info('Saved %s' % df_path)
 
 
 if __name__ == "__main__":

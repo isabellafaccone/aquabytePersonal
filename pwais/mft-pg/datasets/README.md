@@ -108,3 +108,32 @@ has AKPD keypoints/scores, left/right images, and camera intrinsics for
 *production inference results*.  This is NOT human ground truth, but a trace
 of production behavior.
 
+The dataset was pulled (and can be updated) as follows:
+
+In a host shell (dockerized environment not required):
+```
+$ cd mft-pg/
+$ mkdir -p datasets/datasets_s3/akpd_correlates/images
+$ python3
+import pandas as pd
+df = pd.read_csv('datasets/datasets_s3/akpd_correlates/akpd_score_dataset.csv')
+uris = []
+uris += list(df['left_crop_url'])
+uris += list(df['right_crop_url'])
+def fixed(uri):
+  if 'https://s3-eu-west-1.amazonaws.com/aquabyte-crops/' in uri:
+    return uri.replace('https://s3-eu-west-1.amazonaws.com/aquabyte-crops/', 's3://aquabyte-crops/')
+  elif 'https://aquabyte-crops.s3.eu-west-1.amazonaws.com/' in uri:
+    return uri.replace('https://aquabyte-crops.s3.eu-west-1.amazonaws.com/', 's3://aquabyte-crops/')
+  elif 'http://aquabyte-crops.s3.eu-west-1.amazonaws.com/' in uri:
+    return uri.replace('http://aquabyte-crops.s3.eu-west-1.amazonaws.com/', 's3://aquabyte-crops/')
+  elif 's3://aquabyte-crops/' in uri:
+    return uri
+  else:
+    raise ValueError(uri)
+
+uris = [fixed(u) for u in uris]
+from mft_utils import misc as mft_misc
+mft_misc.download_from_s3(uris, 'datasets/datasets_s3/akpd_correlates/images')
+
+```

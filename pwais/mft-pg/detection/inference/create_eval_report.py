@@ -32,6 +32,12 @@ def create_eval_report(
     for fname in os.listdir(use_model_artifact_dir):
       if not fname.endswith('.detections_df.pkl'):
         continue
+      print(fname)
+      if 'akpd_correlates_1_full' not in fname:
+        print('akpd_correlates_1_full')
+        print('akpd_correlates_1_full')
+        print('akpd_correlates_1_full')
+        continue
         
       det_path = os.path.join(use_model_artifact_dir, fname)
       mft_misc.log.info("Using detections %s" % det_path)

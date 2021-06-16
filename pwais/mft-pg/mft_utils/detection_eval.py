@@ -81,7 +81,7 @@ def get_sample_row_html(df, row_idx=-1):
   
   if len(df) > 0:
     sample_row = df.iloc[row_idx]
-    obj = ImgWithBoxes.from_dict(sample_row)
+    obj = sample_row['img_bb']
     for bb in obj.bboxes_alt:
       bb.category_name = "GT:" + bb.category_name
 
@@ -131,6 +131,11 @@ def spark_df_maybe_add_extra_float(
 
   has_extra_key = key in spark_df.select('extra').first().extra
   if not has_extra_key:
+    return spark_df
+
+  vals = spark_df.select(spark_df['extra'][key].cast('float').alias(outcol))
+  num_non_nas = vals.na.drop().count()
+  if num_non_nas == 0:
     return spark_df
 
   spark_df = spark_df.withColumn(outcol, spark_df['extra'][key].cast('float'))
@@ -213,8 +218,7 @@ def get_latency_report_html(df):
       'extra.preprocessor.CLAHE.latency': 'CLAHE Preprocess Latency',
     }
 
-    from mft_utils.img_w_boxes import ImgWithBoxes
-    img_bb = ImgWithBoxes.from_dict(df.to_dict(orient='records')[0])
+    img_bb = df.to_dict(orient='records')[0]['img_bb']
     for postproc_key in img_bb.postprocessor_to_result.keys():
       REPORTS_TO_MINE['postproc.' + postproc_key] = (
         "Postprocessor Latency: %s" % postproc_key)
@@ -301,8 +305,7 @@ def get_histogram_with_examples_htmls(df, hist_cols=[], spark=None):
       # Now render each row to HTML
       from mft_utils.img_w_boxes import ImgWithBoxes
       row_htmls = []
-      for row in rows:
-        img_bb = ImgWithBoxes.from_dict(row)
+      for img_bb in rows:
 
         pp_result_key = None
         for key in row.asDict().keys():
@@ -416,20 +419,15 @@ def get_bbox_histogram_with_examples_htmls(df, bbox_miners=[], spark=None):
             rows.insert(r, row)
           else:
             rows[r] = row
-      
-      # Deserialize collected rows
-      from oarphpy import spark as S
-      rows = [
-        S.RowAdapter.from_row(r) for r in rows
-      ]
 
       # Now render each row to HTML
       from mft_utils.img_w_boxes import ImgWithBoxes
       from mft_utils.bbox2d import BBox2D
       row_htmls = []
       for row in rows:
-        bbox = row['bbox']
-        img_w_boxes = ImgWithBoxes.from_dict(row)
+        from oarphpy import spark as S
+        bbox = S.RowAdapter.from_row(row['bbox'])
+        img_w_boxes = S.RowAdapter.from_row(row['img_bb'])
         row_htmls.append(bbox.to_html(debug_img_src=img_w_boxes))
       
       HTML = """
