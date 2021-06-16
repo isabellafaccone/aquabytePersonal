@@ -1,0 +1,55 @@
+version: '3.3'
+
+services:
+  rishabh-research:
+    image: rishabh-research:1.0 
+    build:
+        context: ./
+        dockerfile: Dockerfile
+    command: "tail -f /dev/null"
+    volumes:
+      - /data/alok/biomass_estimation/playground/:/data/alok/biomass_estimation/playground
+    secrets:  
+      - aws_credentials
+      - snowflake_credentials
+      - sql_credentials
+      - prod_sql_credentials
+      - prod_research_sql_credentials
+      - prod_research_write_sql_credentials
+      - data_warehouse_sql_credentials
+    environment:
+      - AWS_CREDENTIALS=/run/secrets/aws_credentials
+      - SNOWFLAKE_CREDENTIALS=/run/secrets/snowflake_credentials
+      - SQL_CREDENTIALS=/run/secrets/sql_credentials
+      - PROD_SQL_CREDENTIALS=/run/secrets/prod_sql_credentials
+      - PROD_RESEARCH_SQL_CREDENTIALS=/run/secrets/prod_research_sql_credentials
+      - PROD_RESEARCH_WRITE_SQL_CREDENTIALS=/run/secrets/prod_research_write_sql_credentials
+      - DATA_WAREHOUSE_SQL_CREDENTIALS=/run/secrets/data_warehouse_sql_credentials
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    ports:
+      - "6665:6665"
+    container_name:
+      rishabh-research
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]    
+
+secrets:
+  aws_credentials:
+    file: ./credentials/aws_credentials.json
+  snowflake_credentials:
+    file: ./credentials/snowflake_credentials.json
+  sql_credentials:
+    file: ./credentials/sql_credentials.json
+  prod_sql_credentials:
+    file: ./credentials/prod_sql_credentials.json
+  prod_research_sql_credentials:
+    file: ./credentials/prod_research_sql_credentials.json
+  prod_research_write_sql_credentials:
+    file: ./credentials/prod_research_write_sql_credentials.json
+  data_warehouse_sql_credentials:
+    file: ./credentials/data_warehouse_sql_credentials.json 
