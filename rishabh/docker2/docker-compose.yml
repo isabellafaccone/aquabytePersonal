@@ -3,12 +3,10 @@ version: '3.3'
 services:
   rishabh-research:
     image: rishabh-research:1.0 
-    build:
-        context: ./
-        dockerfile: Dockerfile
-    command: "tail -f /dev/null"
+    command: "jupyter notebook --allow-root --port 9998 --ip 0.0.0.0"
     volumes:
-      - /data/alok/biomass_estimation/playground/:/data/alok/biomass_estimation/playground
+      - /data/alok/biomass_estimation/playground/:/root/biomass_estimation/playground/data
+      - /home/ubuntu/rishabh/production_algo/image_quality/:/root/image_quality
     secrets:  
       - aws_credentials
       - snowflake_credentials
@@ -28,7 +26,7 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=all
     ports:
-      - "6665:6665"
+      - "9998:9998"
     container_name:
       rishabh-research
     ipc: host
