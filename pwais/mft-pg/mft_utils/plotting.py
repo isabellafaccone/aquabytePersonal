@@ -179,3 +179,38 @@ def get_latency_report(latencies_ms, title):
   stats_html = stats_df.T.style.render()
 
   return "<b>%s</b><br/>%s<br/>%s" % (title, fig_html, stats_html)
+
+def gen_corr_plot_html(
+        xs, ys,
+        slope=1.,
+        intercept=0.,
+        x_title='',
+        y_title='',
+        stats_kv={}):
+  
+  from bokeh.plotting import figure
+
+  title = f"Correlation report for {y_title} vs {x_title}"
+  fig = figure(
+          title=title,
+          y_axis_label=y_title,
+          x_axis_label=x_title)
+  fig.circle(xs, ys, color='orange')
+
+  from bokeh.models import Slope
+  line = Slope(gradient=slope, y_intercept=intercept, line_color='blue')
+  fig.add_layout(line)
+
+  from mft_utils.plotting import bokeh_fig_to_html
+  fig_html = bokeh_fig_to_html(fig, title=title)
+
+  import pandas as pd
+  stats = dict(stats_kv)
+  stats.update({
+    'Coefficient': slope,
+    'Intercept': intercept,
+  })
+  stats_df = pd.DataFrame([stats])
+  stats_html = stats_df.T.style.render()
+
+  return f"{fig_html}<br/ >{stats_html}"

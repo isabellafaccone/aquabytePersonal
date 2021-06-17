@@ -11,28 +11,51 @@ def to_spark_df(spark, pdf):
   if isinstance(pdf, pyspark.sql.DataFrame):
     return pdf
 
+  # def to_row(v):
+  #   from oarphpy import spark as S  
+  #   return S.RowAdapter.to_row(v)
+  
+  # rdd = spark.sparkContext.parallelize(
+  #   pdf.to_dict(orient='records'), numSlices=(len(pdf) // 10))
+  # row_rdd = rdd.map(to_row)
+  # df = spark.createDataFrame(row_rdd, samplingRatio=1)
+  # return df
+
+
+
   import copy
-  from oarphpy import spark as S
-  spark_rows = [
-    S.RowAdapter.to_row(r) for r in pdf.to_dict(orient='records')
-  ]
+  def to_row(v):
+    from oarphpy.spark import RowAdapter
+    return RowAdapter.to_row(v)
+  dict_rdd = spark.sparkContext.parallelize(pdf.to_dict(orient='records'))
+  row_rdd = dict_rdd.map(to_row)
+
   schema_row = copy.deepcopy(pdf.to_dict(orient='records')[0])
   if not schema_row['bboxes']:
     for row in pdf.to_dict(orient='records'):
       if row['bboxes']:
-        schema_row['bboxes'] = copy.deepcopy(row['bboxes'])
+        for bb in row['bboxes']:
+          if bb['extra']:
+            schema_row['bboxes'] = [copy.deepcopy(bb)]
+        if not schema_row['bboxes']:
+          schema_row['bboxes'] = copy.deepcopy(row['bboxes'])  
         break
     assert schema_row['bboxes'], \
       'hacks! need row prototype and sniffing failed'
   if not schema_row['bboxes_alt']:
     for row in pdf.to_dict(orient='records'):
       if row['bboxes_alt']:
-        schema_row['bboxes_alt'] = copy.deepcopy(row['bboxes_alt'])
+        for bb in row['bboxes_alt']:
+          if bb['extra']:
+            schema_row['bboxes_alt'] = [copy.deepcopy(bb)]
+        if not schema_row['bboxes_alt']:
+          schema_row['bboxes_alt'] = copy.deepcopy(row['bboxes_alt'])  
         break
     assert schema_row['bboxes_alt'], \
       'hacks! need row prototype and sniffing failed'
-  schema = S.RowAdapter.to_schema(schema_row)
-  df = spark.createDataFrame(spark_rows, schema=schema)
+  from oarphpy.spark import RowAdapter
+  schema = RowAdapter.to_schema(schema_row)
+  df = spark.createDataFrame(row_rdd, schema=schema)
   return df
 
 
@@ -428,7 +451,8 @@ def get_bbox_histogram_with_examples_htmls(df, bbox_miners=[], spark=None):
         from oarphpy import spark as S
         bbox = S.RowAdapter.from_row(row['bbox'])
         img_w_boxes = S.RowAdapter.from_row(row['img_bb'])
-        row_htmls.append(bbox.to_html(debug_img_src=img_w_boxes))
+        debug = img_w_boxes.get_debug_image(include_postprocessors=True)
+        row_htmls.append(bbox.to_html(debug_img_src=debug))
       
       HTML = """
       <b>Pivot: {spv} Bucket: {bucket_id} </b> <br/>
@@ -455,9 +479,7 @@ def get_bbox_histogram_with_examples_htmls(df, bbox_miners=[], spark=None):
   miner_to_html = {}
   with MFTSpark.sess(spark) as spark:
     orig_df = to_spark_df(spark, df)
-    orig_df = orig_df.repartition(
-                orig_df.rdd.getNumPartitions() * 50,
-                'bboxes')
+    orig_df = orig_df.repartition('bboxes')
     orig_df = orig_df.persist()
     
     plotter = BBoxPlotter()
@@ -502,7 +524,207 @@ def get_bbox_histogram_with_examples_htmls(df, bbox_miners=[], spark=None):
 
 
 
+def get_bbox_corr_report_htmls(
+        pdf,
+        reports=[],
+        box_category_to_compare='FISH',
+        min_IOU=0.7,
+        spark=None):
+
+  from mft_utils import misc as mft_misc
+
+  if not reports:
+    reports = [
+      # bbox attribute   -> bbox_alt attribute
+      ('extra:SAO_score', 'extra:akpd.prod_trace.akpd_score'),
+      ('extra:SAO_score', 'extra:akpd.prod_trace.estimated_length_mm'),
+      ('extra:SAO_score', 'extra:akpd.prod_trace.estimated_k_factor'),
+      ('extra:SAO_score', 'extra:akpd.prod_trace.estimated_weight_g'),
+    ]
+  
+  mft_misc.log.info(
+    "Histogram-with-examples correlation reports: %s" % (reports,))
+
+
+  from oarphpy import spark as S
+  class MFTSpark(S.SessionFactory):
+    CONF_KV = {
+      'spark.files.overwrite': 'true',
+        # Make it easy to have multiple invocations of parent function
+      'spark.driver.memory': '24g',
+    }
+
+  report_name_to_html = {}
+  with MFTSpark.sess(spark) as spark:
+    orig_df = to_spark_df(spark, pdf)
+
+    def extract_box_pairs(arow):
+      import copy
+      from oarphpy.spark import RowAdapter
+      row = arow.asDict()
+      for bb in row['bboxes']:
+        if bb.category_name != box_category_to_compare:
+          continue
+        bb = RowAdapter.from_row(bb)
+        for bb_alt in row['bboxes_alt']:
+          if bb_alt.category_name != box_category_to_compare:
+            continue
+          bb_alt = RowAdapter.from_row(bb_alt)
+          iou = (
+            float(bb_alt.get_intersection_with(bb).get_area()) / 
+                  bb_alt.get_union_with(bb).get_area())
+          if iou >= min_IOU:
+            row = copy.deepcopy(row)
+            row['bbox'] = copy.deepcopy(bb)
+            row['bbox_alt'] = copy.deepcopy(bb_alt)
+            yield RowAdapter.to_row(row)
+    
+    row_rdd = orig_df.rdd.flatMap(extract_box_pairs)
+    box_df = spark.createDataFrame(row_rdd, samplingRatio=1)
+    box_df = box_df.repartition('bbox').persist()
+
+    for src, target in reports:
+      report_name = "%s -> %s" % (src, target)
+      mft_misc.log.info("Working on report %s" % report_name)
+
+      df = box_df
+
+      if src.startswith('extra:'):
+        src = src.replace('extra:', '')
+        df = df.withColumn('src', df['bbox']['extra'][src].cast('float'))
+      else:
+        mft_misc.log.info("skipping, no src!")
+        continue
+
+      if target.startswith('extra:'):
+        target = target.replace('extra:', '')
+        df = df.withColumn(
+                'target', df['bbox_alt']['extra'][target].cast('float'))
+      else:
+        mft_misc.log.info("skipping, no target!")
+        continue
+      
+      from pyspark.ml.feature import VectorAssembler
+      va = VectorAssembler(inputCols=['src'], outputCol="features")
+      df = va.transform(df)
+
+      from pyspark.ml.regression import LinearRegression
+      lr = LinearRegression(
+            labelCol='target',
+            solver='normal',
+            loss="squaredError",
+            standardization=False)
+
+      model = lr.fit(df)
+
+      slope = model.coefficients[0]
+      intercept = model.intercept
+      stats = {
+        'Num. Points': model.summary.numInstances,
+        'R^2': model.summary.r2,
+        'RMSE': model.summary.rootMeanSquaredError,
+        'Coeff standard errors': model.summary.coefficientStandardErrors,
+        'Coeff p-Values': model.summary.pValues,
+      }
+
+      xs = [r.src for r in df.select('src').collect()]
+      ys = [r.target for r in df.select('target').collect()]
+      corr_plot_html = mft_plotting.gen_corr_plot_html(
+                        xs, ys,
+                        slope=slope, intercept=intercept,
+                        x_title=src, y_title=target,
+                        stats_kv=stats)
+
+      
+      from pyspark.sql import functions as F
+      pred_df = model.transform(df)
+      pred_df = pred_df.withColumn(
+                  'l2_error',
+                  (F.col('prediction') - F.col('target')) ** 2)
+      
+
+      from oarphpy import plotting as opl
+      class CorrBBoxPlotter(opl.HistogramWithExamplesPlotter):
+        NUM_BINS = 50
+        ROWS_TO_DISPLAY_PER_BUCKET = 10
+        SRC_NAME = ''
+        TARGET_NAME = ''
+
+        def display_bucket(self, sub_pivot, bucket_id, irows):
+          # Sample from irows using reservior sampling
+          import random
+          rand = random.Random(1337)
+          rows = []
+          for i, row in enumerate(irows):
+            r = rand.randint(0, i)
+            if r < self.ROWS_TO_DISPLAY_PER_BUCKET:
+              if i < self.ROWS_TO_DISPLAY_PER_BUCKET:
+                rows.insert(r, row)
+              else:
+                rows[r] = row
+
+          # Now render each row to HTML
+          from mft_utils.img_w_boxes import ImgWithBoxes
+          from mft_utils.bbox2d import BBox2D
+          row_htmls = []
+          for row in rows:
+            from oarphpy import spark as S
+            bbox = S.RowAdapter.from_row(row['bbox'])
+            bbox_alt = S.RowAdapter.from_row(row['bbox_alt'])
+            img_w_boxes = S.RowAdapter.from_row(row['img_bb'])
+            debug = img_w_boxes.get_debug_image(include_postprocessors=True)
+            bb_html = bbox.to_html(debug_img_src=debug)
+            bb_alt_html = bbox_alt.to_html(debug_img_src=debug)
+            src_name = self.SRC_NAME
+            target_name = self.TARGET_NAME
+            src_score = row['src']
+            target_score = row['target']
+            l2_error = row['l2_error']
+            row_html = f"""
+            <table>
+              <tr>
+                <td>{src_name}: {src_score}</td>
+                <td>{target_name}: {target_score}</td>
+                <td>L^2 Error: {l2_error}</td>
+              </tr>
+              <tr><td>{bb_html}</td><td>{bb_alt_html}</td></tr>
+            </table>
+            """
+            row_htmls.append(row_html)
+          
+          HTML = """
+          <b>Pivot: {spv} Bucket: {bucket_id} </b> <br/>
+          
+          {row_bodies}
+          """.format(
+                spv=sub_pivot,
+                bucket_id=bucket_id,
+                row_bodies="<br/><br/><br/>".join(row_htmls))
+          
+          return bucket_id, HTML
+      
+      corr_plotter = CorrBBoxPlotter()
+      corr_plotter.SRC_NAME = src
+      corr_plotter.TARGET_NAME = target
+      resid_fig = corr_plotter.run(pred_df, 'l2_error')
+
+      from mft_utils.plotting import bokeh_fig_to_html
+      resid_html = bokeh_fig_to_html(resid_fig, title="L^2 Error Examples")
+
+      report_html = """
+        {corr_html}<br/><br/>
+        {resid_html}<br/><br/>
+      """.format(corr_html=corr_plot_html, resid_html=resid_html)
+
+      report_name_to_html[report_name] = report_html
+  return report_name_to_html
+
+
+
+
 def detections_df_to_html(df):
+
+  hist_col_to_html = get_bbox_corr_report_htmls(df)
 
   sample_html = get_sample_row_html(df)
 
@@ -512,9 +734,9 @@ def detections_df_to_html(df):
 
   # time_series_html = get_time_series_report_html(df)
 
-  hist_col_to_html = get_histogram_with_examples_htmls(df)
+  # hist_col_to_html = get_histogram_with_examples_htmls(df)
 
-  bbox_report_to_html = get_bbox_histogram_with_examples_htmls(df)
+  bbox_report_to_html = {}#get_bbox_histogram_with_examples_htmls(df)
 
   hist_agg_html = "<br/><br/>".join(
     """
@@ -530,7 +752,7 @@ def detections_df_to_html(df):
     """ % (k, v)
     for k, v in bbox_report_to_html.items())
 
-  return """
+  full_report =  """
     {sample_html}<br/><br/>
 
     {core_desc_html}<br/><br/>
@@ -553,4 +775,8 @@ def detections_df_to_html(df):
       # time_series_html=time_series_html,
       hist_agg_html=hist_agg_html,
       bbox_agg_html=bbox_agg_html)
+  
+
+
+  return full_report
 

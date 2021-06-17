@@ -38,6 +38,8 @@ def create_eval_report(
         print('akpd_correlates_1_full')
         print('akpd_correlates_1_full')
         continue
+      if 'GeForce' not in fname:
+        continue
         
       det_path = os.path.join(use_model_artifact_dir, fname)
       mft_misc.log.info("Using detections %s" % det_path)

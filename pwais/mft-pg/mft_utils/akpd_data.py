@@ -250,15 +250,33 @@ def get_akpd_correlates_as_bbox_img_gts(
       imgs_basedir='/opt/mft-pg/datasets/datasets_s3/akpd_correlates/images/',
       kp_bbox_to_fish_scale=0.1,
       only_camera='', # Important: select BOTH cameras, sometimes one has trimmed fish but not the other
+      only_parts=('UPPER_LIP', 'TAIL_NOTCH', 'DORSAL_FIN', 'PELVIC_FIN'),
       parallel=-1):
   
-  return get_akpd_as_bbox_img_gts(
-            in_csv_path=in_csv_path,
-            imgs_basedir=imgs_basedir,
-            kp_bbox_to_fish_scale=kp_bbox_to_fish_scale,
-            only_camera=only_camera,
-            cleaner_func=create_cleaned_correlates_df,
-            parallel=parallel)
+  img_gts = get_akpd_as_bbox_img_gts(
+              in_csv_path=in_csv_path,
+              imgs_basedir=imgs_basedir,
+              kp_bbox_to_fish_scale=kp_bbox_to_fish_scale,
+              only_camera=only_camera,
+              cleaner_func=create_cleaned_correlates_df,
+              parallel=parallel)
+
+  for img_gt in img_gts:
+    img_gt.bboxes = [
+      b for b in img_gt.bboxes
+      if b.category_name in only_parts
+    ]
+    
+    # These are fish crops -- add a full-fish detection
+    bb = BBox2D.of_size(img_gt.img_width, img_gt.img_height)
+    bb.update(category_name='FISH')
+    img_gt.bboxes.append(bb)
+    
+    # For easier analysis
+    for bb in img_gt.bboxes:
+      bb.extra.update(img_gt.extra)
+  
+  return img_gts
 
 
 # def get_akpd_as_bbox_img_gts_with_ablated_parts(
@@ -603,6 +621,9 @@ def get_synth_fish_and_parts_img_gts(
       v.extra = v.postprocessor_configs
       v.postprocessor_configs = []
       # HACKS!!! need to use rowadapter or something
+      # the problem is the synth data is saved as pickle but then we
+      # update the ImageBBox class definition and attrs' de-pickler
+      # screws up field assignment.  but RowAdapter does not.
       return v
       # d = v.__dict__()#attr.asdict(v, recurse=False)
       # return ImgWithBoxes(**d)

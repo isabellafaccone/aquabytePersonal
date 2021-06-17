@@ -61,6 +61,7 @@ class ImgWithBoxes(object):
         identify_by='category_name',
         alt_identify_by='',
         only_track_id='',
+        include_postprocessors=False,
         show_alt=True):
     
     if not self.img_path:
@@ -80,6 +81,12 @@ class ImgWithBoxes(object):
         continue
       bbox.draw_in_image(debug, identify_by=identify_by)
     
+    if include_postprocessors:
+      for pp in self.postprocessor_to_result.keys():
+        result = self.get_postprocessor_result(pp)
+        if hasattr(result, 'get_debug_image'):
+          debug = result.get_debug_image(base_img_src=debug)
+
     return debug
 
   def load_preprocessed_img(self):

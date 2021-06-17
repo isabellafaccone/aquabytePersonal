@@ -59,6 +59,7 @@ def salmon_orthogonality_score(
   part_distance_score = np.mean(2. * np.abs(part_dists_scaled))
   part_distance_score = min(1., part_distance_score) + 1e-10
 
+  print('todo fix double associations!!')
   num_expected = len(expected_parts)
   num_parts_score = (
     1. - abs(float(len(part_bboxes)) - num_expected) / num_expected)
@@ -126,8 +127,8 @@ class SAOScorerResults(object):
     import cv2
     from mft_utils.bbox2d import BBox2D
 
-    if hasattr(base_img_src, 'load_preprocessed_img'):
-      debug_image, _ = base_img_src.load_preprocessed_img()
+    if hasattr(base_img_src, 'get_debug_image'):
+      debug_image = base_img_src.get_debug_image()
     elif hasattr(base_img_src, 'shape'):
       debug_image = base_img_src
     else:
