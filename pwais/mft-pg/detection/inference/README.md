@@ -156,12 +156,11 @@ Once done, plug the SD card into the Xavier NX board, connect the rest of the st
 You will now go through the normal Ubuntu set-up experience and (importantly) need to accept the 
 Nvidia license agreement.  You'll need to reboot a couple of times before SSH becomes available.
 
-At the time of writing, NVidia offered the disk image for version 4.5.1, 2021/02/24.
-That gave us JetPack 4.5.1:
+At the time of writing, the above disk image gave us JetPack 4.4.1:
 ```
 aq@aqxnx:~$ sudo apt-cache show nvidia-jetpack
 Package: nvidia-jetpack
-Version: 4.5.1-b17
+Version: 4.4.1-b50
 ...
 ```
 
