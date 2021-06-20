@@ -106,7 +106,7 @@ sudo nvpmodel -m 2
 sudo /usr/bin/jetson_clocks --show
 ```
 
-### Optional: jtop for Jetson
+### Recommended: jtop for Jetson
 
 Install `jtop` and python3 on the host:
 
@@ -141,8 +141,8 @@ First you will need:
 
 ### Flash Boot SD Card
 
-Grab a L4T disk image here:
- * https://developer.nvidia.com/embedded/downloads
+Grab the L4T disk image for Xavier NX with Jetpack 4.4 here:
+ * https://developer.nvidia.com/jetson-nx-developer-kit-sd-card-image-44
 
 And then flash the card using Balena Etcher:
  * https://www.balena.io/etcher/
@@ -151,6 +151,24 @@ Once done, plug the SD card into the Xavier NX board, connect the rest of the st
 
 You will now go through the normal Ubuntu set-up experience and (importantly) need to accept the 
 Nvidia license agreement.  You'll need to reboot a couple of times before SSH becomes available.
+
+At the time of writing, NVidia offered the disk image for version 4.5.1, 2021/02/24.
+That gave us JetPack 4.5.1:
+```
+aq@aqxnx:~$ sudo apt-cache show nvidia-jetpack
+Package: nvidia-jetpack
+Version: 4.5.1-b17
+...
+```
+
+### Testing Your Xavier NX
+
+Once you have a user account and ssh set-up, `nvidia-docker` should be readily available without
+you having to do anything:
+```
+docker run --net=host --runtime nvidia  --rm -it nvcr.io/nvidia/l4t-ml:r32.4-py3 bash
+
+```
 
 ### Building with OE4T
 
