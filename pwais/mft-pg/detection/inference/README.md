@@ -126,6 +126,86 @@ an NFS export on an x86 host and consuming that export as a TX2 client:
 https://www.digitalocean.com/community/tutorials/how-to-set-up-an-nfs-mount-on-ubuntu-20-04
 
 
+## Running on a Jetson Xavier NX
+
+### Flashing your TX2
+
+First you will need:
+ * A Jetson Xavier NX (e.g. a dev kit)
+ * A host computer, could be running Mac OS X if you want to use the defaul NVidia boot image.  
+    If you want to build an image (e.g. [OE4T Tegra Linux](https://github.com/OE4T/tegra-demo-distro) )
+    then you need docker.  See notes on OE4T building below.
+ * An HDMI monitor and keyboard (and a mouse would help too, but I was able to set up without one).  
+    You'll need this in order to accept the license once the Xavier NX boots.  You won't get
+    SSH access to the machine until after a couple reboots of Ubuntu.
+
+### Flash Boot SD Card
+
+Grab a L4T disk image here:
+ * https://developer.nvidia.com/embedded/downloads
+
+And then flash the card using Balena Etcher:
+ * https://www.balena.io/etcher/
+
+Once done, plug the SD card into the Xavier NX board, connect the rest of the stuff and power on.
+
+You will now go through the normal Ubuntu set-up experience and (importantly) need to accept the 
+Nvidia license agreement.  You'll need to reboot a couple of times before SSH becomes available.
+
+### Building with OE4T
+
+This section is incomplete, but should be able to build an OE4T-based disk image (?).  Edge
+team prefers OE4T because it's easier to add Aquabyte-specific stuff into the image.  The
+notes below build a vanilla L4T image.
+
+Use this `Dockerfile` to create a builder environment:
+```
+FROM ubuntu:18.04
+
+RUN \
+ apt-get update && \
+ DEBIAN_FRONTEND=noninteractive apt-get install -y \
+   gawk wget git-core diffstat unzip texinfo gcc-multilib \
+   build-essential chrpath socat cpio python3 python3-pip python3-pexpect \
+   xz-utils debianutils iputils-ping python3-git python3-jinja2 libegl1-mesa libsdl1.2-dev \
+                  pylint3 xterm \
+    sudo g++-8 \
+    locales \
+    git
+
+RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+    dpkg-reconfigure --frontend=noninteractive locales && \
+        update-locale LANG=en_US.UTF-8
+
+RUN \
+  useradd --password build -ms /bin/bash build && \
+  usermod -aG sudo build && \
+  echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+USER build
+
+WORKDIR /home/build/
+RUN git clone https://github.com/OE4T/tegra-demo-distro.git
+WORKDIR /home/build/tegra-demo-distro
+RUN \
+  git checkout dunfell-l4t-r32.4.3 && \
+  git submodule update --init
+
+ENV LANG en_US.UTF-8      
+```
+
+Build using:
+`docker build -t pwbuildtest .`
+
+Rung using:
+`docker run --rm -it  -v/:/outer_root pwbuildtest bash`
+
+Now build [according to the instructions](https://github.com/OE4T/tegra-demo-distro):
+```
+build@4dfec0e7d2a9:~/tegra-demo-distro$ . ./setup-env --machine jetson-xavier-nx-devkit
+build@4dfec0e7d2a9:~/tegra-demo-distro/build$ bitbake demo-image-full
+```
+
+
 
 ## pwais scratchpad
 
