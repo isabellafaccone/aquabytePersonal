@@ -164,13 +164,35 @@ Version: 4.5.1-b17
 ### Testing Your Xavier NX
 
 Once you have a user account and ssh set-up, `nvidia-docker` should be readily available without
-you having to do anything:
+you having to do anything.
+
+Test that you have some needed CUDA libs on the host:
 ```
-docker run --net=host --runtime nvidia  --rm -it nvcr.io/nvidia/l4t-ml:r32.4-py3 bash
+$ find /usr | grep libnvToolsExt.so
+/usr/local/cuda-10.2/targets/aarch64-linux/lib/libnvToolsExt.so
+$ find /usr | grep libcurand.so
+/usr/local/cuda-10.2/targets/aarch64-linux/lib/libcurand.so
+```
+
+And in a container:
+```
+docker run --runtime=nvidia --rm -it nvcr.io/nvidia/l4t-ml:r32.4.3-py3 bash
+root@9ae13c59927d:/# find /usr | grep libnvToolsExt.so
+/usr/local/cuda-10.2/targets/aarch64-linux/lib/libnvToolsExt.so
+```
+
+### Recommended: jtop for Jetson
+
+Install `jtop` and python3 on the host:
 
 ```
+sudo apt-get install -y python3-dev python3-pip
+sudo -H pip3 install -U jetson-stats
+sudo systemctl restart jetson_stats.service
+```
+(You'll need to `sudo reboot`).
 
-### Building with OE4T
+### Building Boot Image with OE4T
 
 This section is incomplete, but should be able to build an OE4T-based disk image (?).  Edge
 team prefers OE4T because it's easier to add Aquabyte-specific stuff into the image.  The
