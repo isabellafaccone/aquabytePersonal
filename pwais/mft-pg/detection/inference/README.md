@@ -126,6 +126,10 @@ an NFS export on an x86 host and consuming that export as a TX2 client:
 https://www.digitalocean.com/community/tutorials/how-to-set-up-an-nfs-mount-on-ubuntu-20-04
 
 
+
+
+
+
 ## Running on a Jetson Xavier NX
 
 ### Flashing your TX2
