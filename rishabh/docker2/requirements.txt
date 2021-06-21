@@ -1,0 +1,16 @@
+albumentations==0.4.5
+Cython==0.28.4
+jupyter==1.0.0
+jupyter-client==5.3.4
+jupyter-console==6.0.0
+jupyter-core==4.6.1
+jupyter-http-over-ws==0.0.1a1
+jupyter-tensorboard==0.1.7
+torch==1.5.*
+torchvision==0.6.*
+boto3==1.10.29
+botocore==1.13.29
+tqdm==4.45.0
+research-0.1.1.tar.gz
+numpy==1.*
+opencv-python==4.1.1.*
